@@ -162,6 +162,50 @@ $$;
 
 grant execute on function public.get_teacher_created_exercises() to authenticated;
 
+create or replace function public.delete_teacher_exercise(target_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_exercise_id text;
+  deleted_completion_count integer := 0;
+  deleted_exercise_count integer := 0;
+begin
+  if not public.is_teacher_admin() then
+    raise exception 'Acesso negado: usuário não cadastrado como professor.';
+  end if;
+
+  select te.exercise_id
+  into target_exercise_id
+  from public.teacher_exercises te
+  where te.id = target_id;
+
+  if target_exercise_id is null then
+    raise exception 'Exercício não encontrado.';
+  end if;
+
+  if to_regclass('public.daily_exercise_completion') is not null then
+    delete from public.daily_exercise_completion
+    where exercise_id = target_exercise_id;
+    get diagnostics deleted_completion_count = row_count;
+  end if;
+
+  delete from public.teacher_exercises
+  where id = target_id;
+  get diagnostics deleted_exercise_count = row_count;
+
+  return jsonb_build_object(
+    'ok', deleted_exercise_count = 1,
+    'deleted_exercise_count', deleted_exercise_count,
+    'deleted_completion_count', deleted_completion_count
+  );
+end;
+$$;
+
+grant execute on function public.delete_teacher_exercise(uuid) to authenticated;
+
 -- Necessário porque a estrutura e o filtro de retorno mudaram.
 drop function if exists public.get_public_teacher_exercises();
 
