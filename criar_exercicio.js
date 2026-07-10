@@ -79,7 +79,30 @@ function renderExerciseCard(exercise) {
     '<p><b>Link:</b> <a href="' + escapeHtml(exercise.exercise_url || "#") + '" target="_blank" rel="noopener noreferrer" style="color:#c4b5fd;">' + escapeHtml(exercise.exercise_url || "") + '</a></p>' +
     '<p><b>Publicação:</b> ' + escapeHtml(formatDateTime(exercise.scheduled_publish_at)) + '</p>' +
     '<p><b>Status:</b> ' + escapeHtml(publicationStatus(exercise)) + '</p>' +
+    '<button class="delete-button delete-exercise-button" type="button" data-exercise-id="' + escapeHtml(exercise.id) + '" data-exercise-title="' + escapeHtml(exercise.exercise_title || "Exercício") + '">EXCLUIR EXERCÍCIO</button>' +
   '</div>';
+}
+
+async function deleteExercise(exerciseId, exerciseTitle, button) {
+  const confirmed = window.confirm(
+    'Tem certeza que deseja excluir "' + (exerciseTitle || "este exercício") + '"? ' +
+    "Ele deixará de aparecer na página Exercícios Diários e os registros de conclusão vinculados também serão removidos. Essa ação não pode ser desfeita."
+  );
+  if (!confirmed) return;
+
+  button.disabled = true;
+  button.textContent = "EXCLUINDO...";
+
+  try {
+    const client = Auth.getClient();
+    const response = await client.rpc("delete_teacher_exercise", { target_id: exerciseId });
+    if (response.error) throw response.error;
+    await renderTeacherExercises();
+  } catch (error) {
+    alert("Não foi possível excluir o exercício: " + (error.message || "erro desconhecido") + ". Reexecute o SQL atualizado no Supabase.");
+    button.disabled = false;
+    button.textContent = "EXCLUIR EXERCÍCIO";
+  }
 }
 
 async function renderTeacherExercises() {
@@ -93,6 +116,11 @@ async function renderTeacherExercises() {
     }
     list.className = "";
     list.innerHTML = exercises.map(renderExerciseCard).join("");
+    document.querySelectorAll(".delete-exercise-button").forEach(function (button) {
+      button.addEventListener("click", function () {
+        deleteExercise(button.dataset.exerciseId, button.dataset.exerciseTitle, button);
+      });
+    });
   } catch (error) {
     list.className = "error";
     list.textContent = "Não foi possível carregar os exercícios. Execute supabase_exercicios_professor.sql no Supabase.";
