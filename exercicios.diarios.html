@@ -56,24 +56,7 @@
   </div>
 
   <script>
-    const fixedDailyExercises = [
-      { id: "2026-04-29", title: "Exercício 29.04.26", url: "https://forms.gle/oiP88rifiYJGuSPj8" },
-      { id: "2026-04-28", title: "Exercício 28.04.26", url: "https://forms.gle/1CzvmKQ3jbeMFiej9" },
-      { id: "2026-04-27", title: "Exercício 27.04.26", url: "https://forms.gle/68XaJ7MceURf9w2f7" },
-      { id: "2026-04-24", title: "Exercício 24.04.26", url: "https://forms.gle/ThUsnQXk7ijtfTr86" },
-      { id: "2026-04-23", title: "Exercício 23.04.26", url: "https://docs.google.com/document/d/1kvdEwj0WWOgx80hDmAP9aLncHG3ZRXegcXpUktutrbY/edit?usp=drivesdk" },
-      { id: "2026-04-22", title: "Exercício 22.04.26", url: "https://forms.gle/6oqZffmkcUNDSTwLA" },
-      { id: "2026-04-20", title: "Exercício 20.04.26", url: "https://forms.gle/yVGVp2yE61Utb9V19" },
-      { id: "2026-04-17", title: "Exercício 17.04.26", url: "https://forms.gle/oZzmQEoDVLTLB6vK6" },
-      { id: "2026-04-16", title: "Exercício 16.04.26", url: "https://docs.google.com/document/d/1aEk5PK36iCQ3hE6ktmGjZ_ZMap5Qkz1woaQV5oG7XBg/edit?usp=drivesdk" },
-      { id: "2026-04-15", title: "Exercício 15.04.26", url: "https://forms.gle/VFrTyV7BdhJfrGkQA" },
-      { id: "2026-04-14", title: "Exercício 14.04.26", url: "https://forms.gle/vFXKR5DtWWsi2rNCA" },
-      { id: "2026-04-13", title: "Exercício 13.04.26", url: "https://forms.gle/w6abhGRxnWwHTdjs9" },
-      { id: "2026-04-06", title: "Exercício 06.04.26", url: "https://forms.gle/qTWuPFKm8qkHmBAg8" },
-      { id: "2026-03-30", title: "Exercício 30.03.26", url: "https://forms.gle/4FmaxFuRGoz5e2pb6" }
-    ];
-
-    let dailyExercises = fixedDailyExercises.slice();
+    let dailyExercises = [];
     let currentUser = null;
     let completedExercises = new Map();
 
@@ -101,7 +84,7 @@
 
     function mergeExercises(createdExercises) {
       const seen = new Set();
-      dailyExercises = createdExercises.concat(fixedDailyExercises).filter(function (exercise) {
+      dailyExercises = createdExercises.filter(function (exercise) {
         if (!exercise.id || seen.has(exercise.id)) return false;
         seen.add(exercise.id);
         return true;
@@ -110,6 +93,12 @@
 
     function renderExercises() {
       const grid = document.getElementById("exerciseGrid");
+      if (!dailyExercises.length) {
+        grid.className = "";
+        grid.innerHTML = '<div class="blocked-panel">Nenhum exercício disponível no momento.</div>';
+        return;
+      }
+
       grid.className = "menu-grid";
       grid.innerHTML = dailyExercises.map(function (exercise) {
         const isDone = completedExercises.get(exercise.id) === true;
