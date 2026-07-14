@@ -114,7 +114,7 @@ begin
       coalesce(p.enrolled, false)::boolean as enrolled,
       coalesce(p.availability::jsonb, '{}'::jsonb) as availability,
       'profiles'::text as source,
-      null::timestamptz as created_at
+      p.created_at as created_at
     from public.profiles p
   ),
   auth_rows as (
