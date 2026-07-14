@@ -84,7 +84,7 @@ begin
       coalesce(p.availability::jsonb, '{}'::jsonb) as availability,
       'profiles'::text as source,
       'completed'::text as pre_enrollment_status,
-      null::timestamptz as created_at
+      p.created_at as created_at
     from public.profiles p
   ),
   auth_rows as (
