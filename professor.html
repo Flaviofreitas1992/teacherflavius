@@ -1,13 +1,13 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Área do Professor - Teacher Flávio</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase_config.js?v=20260503-4"></script>
-  <script src="auth.js?v=20260503-4"></script>
-  <link rel="stylesheet" href="professor.css?v=20260503-4">
+  <script src="supabase_config.js?v=20260715-1"></script>
+  <script src="auth.js?v=20260715-1"></script>
+  <link rel="stylesheet" href="professor.css?v=20260715-1">
   <style>
     .reorder-help {
       color: #94a3b8;
@@ -54,6 +54,11 @@
     <div id="professorMenuGrid" class="menu-grid reorder-enabled">
       <a class="menu-button" href="/perfil-dos-alunos/" draggable="true" data-card-id="alunos">
         <span><span class="icon">🪪</span>ALUNOS</span>
+        <span class="arrow">›</span>
+      </a>
+
+      <a class="menu-button" href="/mensalidades/" draggable="true" data-card-id="mensalidades">
+        <span><span class="icon">💳</span>CONTROLE DE MENSALIDADES</span>
         <span class="arrow">›</span>
       </a>
 
@@ -185,7 +190,7 @@
     })();
   </script>
 
-  <script src="professor_home.js?v=20260503-4"></script>
-  <script src="animated_cards.js?v=20260503-4"></script>
+  <script src="professor_home.js?v=20260715-1"></script>
+  <script src="animated_cards.js?v=20260715-1"></script>
 </body>
 </html>
