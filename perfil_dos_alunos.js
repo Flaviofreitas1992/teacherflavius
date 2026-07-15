@@ -207,6 +207,112 @@ function getStudentClassNames(student) {
   return classes.length ? classes.join(", ") : "Nenhuma turma atribuída";
 }
 
+function formatAvailabilityForSpreadsheet(student) {
+  const dayLabels = { seg: "Segunda", ter: "Terça", qua: "Quarta", qui: "Quinta", sex: "Sexta" };
+  const availability = student.availability || {};
+  const parts = Object.keys(dayLabels).map(function (day) {
+    const hours = Array.isArray(availability[day]) ? availability[day] : [];
+    if (!hours.length) return "";
+    return dayLabels[day] + ": " + hours.map(function (hour) { return hour + "h"; }).join(", ");
+  }).filter(Boolean);
+  return parts.length ? parts.join(" | ") : "Não informado";
+}
+
+function downloadEnrolledStudentsExcel() {
+  const button = document.getElementById("downloadEnrolledStudentsButton");
+  const students = cachedVisibleStudents.filter(isEnrolledStudent);
+
+  if (!students.length) {
+    alert("Nenhum aluno matriculado foi encontrado para exportação.");
+    return;
+  }
+
+  if (!window.XLSX) {
+    alert("Não foi possível carregar o gerador de Excel. Atualize a página e tente novamente.");
+    return;
+  }
+
+  const headers = [
+    "Nome completo",
+    "E-mail",
+    "CPF",
+    "WhatsApp",
+    "Chave PIX",
+    "Código de matrícula",
+    "Turma",
+    "Data da matrícula",
+    "Disponibilidade"
+  ];
+
+  const rows = students
+    .slice()
+    .sort(function (a, b) {
+      return String(a.name || a.email || "").localeCompare(String(b.name || b.email || ""), "pt-BR");
+    })
+    .map(function (student) {
+      const enrollmentDate = student.created_at ? new Date(student.created_at) : "";
+      return [
+        student.name || "",
+        student.email || "",
+        String(student.cpf || ""),
+        String(student.whatsapp || ""),
+        student.pix_key || "",
+        student.enrollment_code || "",
+        getStudentClassNames(student),
+        enrollmentDate instanceof Date && !Number.isNaN(enrollmentDate.getTime()) ? enrollmentDate : "",
+        formatAvailabilityForSpreadsheet(student)
+      ];
+    });
+
+  const worksheet = XLSX.utils.aoa_to_sheet([headers].concat(rows), { cellDates: true });
+  worksheet["!autofilter"] = { ref: "A1:I" + (rows.length + 1) };
+  worksheet["!cols"] = [
+    { wch: 30 },
+    { wch: 32 },
+    { wch: 16 },
+    { wch: 17 },
+    { wch: 26 },
+    { wch: 20 },
+    { wch: 24 },
+    { wch: 20 },
+    { wch: 52 }
+  ];
+
+  for (let rowIndex = 2; rowIndex <= rows.length + 1; rowIndex++) {
+    const dateCell = worksheet["H" + rowIndex];
+    if (dateCell && dateCell.t === "d") dateCell.z = "dd/mm/yyyy hh:mm";
+  }
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Alunos matriculados");
+
+  const today = new Date();
+  const dateSuffix = [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0")
+  ].join("-");
+
+  try {
+    button.disabled = true;
+    button.textContent = "GERANDO ARQUIVO...";
+    XLSX.writeFile(workbook, "alunos_matriculados_" + dateSuffix + ".xlsx", { compression: true });
+  } finally {
+    button.disabled = false;
+    button.textContent = "BAIXAR ALUNOS MATRICULADOS EM EXCEL";
+  }
+}
+
+function updateExcelDownloadButton() {
+  const button = document.getElementById("downloadEnrolledStudentsButton");
+  if (!button) return;
+  const count = cachedVisibleStudents.filter(isEnrolledStudent).length;
+  button.disabled = count === 0;
+  button.title = count
+    ? "Baixar dados de " + count + " aluno(s) matriculado(s)"
+    : "Nenhum aluno matriculado disponível";
+}
+
 async function loadStudents() {
   const client = Auth.getClient();
   const response = await client.rpc("get_teacher_students");
@@ -441,6 +547,7 @@ async function renderStudentProfiles() {
   try {
     const students = await loadStudents();
     cachedVisibleStudents = students.filter(isVisibleStudent);
+    updateExcelDownloadButton();
     renderFilteredStudents();
   } catch (error) {
     updateStudentCount(0);
@@ -453,11 +560,17 @@ async function renderStudentProfiles() {
 
 function setupFilterEvents() {
   const filterSelect = document.getElementById("studentStatusFilter");
-  if (!filterSelect) return;
+  const downloadButton = document.getElementById("downloadEnrolledStudentsButton");
 
-  filterSelect.addEventListener("change", function () {
-    applyStudentFilter(filterSelect.value || "all");
-  });
+  if (filterSelect) {
+    filterSelect.addEventListener("change", function () {
+      applyStudentFilter(filterSelect.value || "all");
+    });
+  }
+
+  if (downloadButton) {
+    downloadButton.addEventListener("click", downloadEnrolledStudentsExcel);
+  }
 }
 
 function setupModalEvents() {
