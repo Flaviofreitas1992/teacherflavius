@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Perfil dos Alunos - Teacher Flávio</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="supabase_config.js?v=20260429-8"></script>
   <script src="auth.js?v=20260429-8"></script>
   <link rel="stylesheet" href="professor.css?v=20260429-8">
@@ -90,6 +91,28 @@
 
     .student-filter-select option {
       color: #0f172a;
+    }
+
+    .download-students-button {
+      width: 100%;
+      border: 1.5px solid rgba(52,211,153,0.48);
+      border-radius: 12px;
+      padding: 13px 14px;
+      background: rgba(16,185,129,0.13);
+      color: #a7f3d0;
+      font-family: Georgia, serif;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .download-students-button:hover {
+      background: rgba(16,185,129,0.22);
+    }
+
+    .download-students-button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
     }
 
     .modal-backdrop {
@@ -254,6 +277,9 @@
           <option value="availability">Disponibilidade dos alunos</option>
           <option value="pre_enrolled">Alunos pré-matriculados</option>
         </select>
+        <button id="downloadEnrolledStudentsButton" class="download-students-button" type="button" disabled>
+          BAIXAR ALUNOS MATRICULADOS EM EXCEL
+        </button>
       </div>
     </div>
 
@@ -287,7 +313,7 @@
     </div>
   </div>
 
-  <script src="perfil_dos_alunos.js?v=20260510-2"></script>
+  <script src="perfil_dos_alunos.js?v=20260714-1"></script>
   <script src="animated_cards.js?v=20260429-8"></script>
 </body>
 </html>
