@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agenda de reposições - Teacher Flávio</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase_config.js?v=20260716-1"></script>
+  <script src="auth.js?v=20260716-1"></script>
+  <link rel="stylesheet" href="reposicoes.css?v=20260716-1">
+</head>
+<body class="auth-checking">
+  <main class="container admin-container">
+    <nav class="top-links" aria-label="Navegação principal">
+      <a class="top-link" href="/">HOME</a>
+      <a class="top-link" href="/professor/">ÁREA DO PROFESSOR</a>
+    </nav>
+
+    <header class="header">
+      <div><span class="badge">TEACHER FLÁVIO</span></div>
+      <h1>Agenda de reposições</h1>
+      <div id="adminStatus" class="status" role="status">Verificando credenciais...</div>
+    </header>
+
+    <div class="divider"></div>
+
+    <section class="panel" aria-labelledby="newSlotTitle">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">NOVO HORÁRIO</span>
+          <h2 id="newSlotTitle">Publicar horário disponível</h2>
+        </div>
+      </div>
+
+      <form id="slotForm" class="slot-form">
+        <label>
+          <span>Data</span>
+          <input id="slotDate" type="date" required>
+        </label>
+        <label>
+          <span>Início</span>
+          <input id="slotStartTime" type="time" required>
+        </label>
+        <label>
+          <span>Término</span>
+          <input id="slotEndTime" type="time" required>
+        </label>
+        <label>
+          <span>Quantidade de vagas</span>
+          <input id="slotCapacity" type="number" min="1" max="50" value="1" required>
+        </label>
+        <label class="full-field">
+          <span>Observação para os alunos (opcional)</span>
+          <textarea id="slotNotes" rows="3" maxlength="500" placeholder="Ex.: revisão de conversação"></textarea>
+        </label>
+        <button id="createSlotButton" class="primary-button full-field" type="submit">PUBLICAR HORÁRIO</button>
+      </form>
+      <p id="formMessage" class="form-message" role="status"></p>
+    </section>
+
+    <section class="panel" aria-labelledby="publishedSlotsTitle">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">CONTROLE</span>
+          <h2 id="publishedSlotsTitle">Horários e reservas</h2>
+        </div>
+        <button id="refreshAdminButton" class="secondary-button" type="button">ATUALIZAR</button>
+      </div>
+      <div id="adminSlots" class="cards-list" aria-live="polite">
+        <p class="empty">Carregando horários...</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="reposicoes_admin.js?v=20260716-1"></script>
+</body>
+</html>

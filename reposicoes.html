@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reposições de aula - Teacher Flávio</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase_config.js?v=20260716-1"></script>
+  <script src="auth.js?v=20260716-1"></script>
+  <link rel="stylesheet" href="reposicoes.css?v=20260716-1">
+</head>
+<body class="auth-checking">
+  <main class="container">
+    <nav class="top-links" aria-label="Navegação principal">
+      <a class="top-link" href="/">HOME</a>
+      <a class="top-link" href="/area-do-estudante/">ÁREA DO ESTUDANTE</a>
+    </nav>
+
+    <header class="header">
+      <div><span class="badge">TEACHER FLÁVIO</span></div>
+      <h1>Reposições de aula</h1>
+      <div id="pageStatus" class="status" role="status">Verificando acesso...</div>
+    </header>
+
+    <div class="divider"></div>
+
+    <section class="panel intro-panel">
+      <h2>Escolha sua reposição</h2>
+      <p>Selecione um dos horários publicados pelo professor. Após a confirmação, você receberá por e-mail a data, o horário e o link da videoaula da sua turma.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="availableSlotsTitle">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">AGENDA</span>
+          <h2 id="availableSlotsTitle">Horários disponíveis</h2>
+        </div>
+        <button id="refreshSlotsButton" class="secondary-button" type="button">ATUALIZAR</button>
+      </div>
+      <div id="availableSlots" class="cards-list" aria-live="polite">
+        <p class="empty">Carregando horários...</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="myBookingsTitle">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">MINHA AGENDA</span>
+          <h2 id="myBookingsTitle">Minhas reposições</h2>
+        </div>
+      </div>
+      <div id="myBookings" class="cards-list" aria-live="polite">
+        <p class="empty">Carregando agendamentos...</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="reposicoes.js?v=20260716-1"></script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+type NotificationRecord = {
+  id: string;
+  booking_id: string;
+};
+
+type DatabaseWebhookPayload = {
+  type?: string;
+  table?: string;
+  schema?: string;
+  record?: NotificationRecord;
+};
+
+const encoder = new TextEncoder();
+
+function jsonResponse(body: Record<string, unknown>, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json; charset=utf-8" },
+  });
+}
+
+async function digest(value: string): Promise<ArrayBuffer> {
+  return crypto.subtle.digest("SHA-256", encoder.encode(value));
+}
+
+async function secretsMatch(received: string, expected: string): Promise<boolean> {
+  if (!received || !expected) return false;
+  const [receivedDigest, expectedDigest] = await Promise.all([digest(received), digest(expected)]);
+  const receivedBytes = new Uint8Array(receivedDigest);
+  const expectedBytes = new Uint8Array(expectedDigest);
+  if (receivedBytes.length !== expectedBytes.length) return false;
+
+  let difference = 0;
+  for (let index = 0; index < receivedBytes.length; index += 1) {
+    difference |= receivedBytes[index] ^ expectedBytes[index];
+  }
+  return difference === 0;
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;",
+  })[character] ?? character);
+}
+
+function safeHeader(value: unknown, fallback: string): string {
+  return String(value ?? fallback).replace(/[\r\n]+/g, " ").trim().slice(0, 120) || fallback;
+}
+
+function safeHttpUrl(value: unknown): string | null {
+  try {
+    const url = new URL(String(value ?? ""));
+    return url.protocol === "https:" || url.protocol === "http:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date(value));
+}
+
+function formatTime(value: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date(value));
+}
+
+Deno.serve(async (request: Request) => {
+  if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
+  const fromEmail = Deno.env.get("ENROLLMENT_FROM_EMAIL") ?? "";
+  const expectedWebhookSecret = Deno.env.get("ENROLLMENT_WEBHOOK_SECRET") ?? "";
+
+  if (!supabaseUrl || !serviceRoleKey || !resendApiKey || !fromEmail || !expectedWebhookSecret) {
+    console.error("Missing required environment variables for makeup booking notification");
+    return jsonResponse({ error: "Server configuration is incomplete" }, 500);
+  }
+
+  const receivedWebhookSecret = request.headers.get("x-webhook-secret") ?? "";
+  if (!(await secretsMatch(receivedWebhookSecret, expectedWebhookSecret))) {
+    return jsonResponse({ error: "Unauthorized" }, 401);
+  }
+
+  let payload: DatabaseWebhookPayload;
+  try {
+    payload = await request.json();
+  } catch {
+    return jsonResponse({ error: "Invalid JSON body" }, 400);
+  }
+
+  const webhookRecord = payload.record;
+  if (
+    payload.type !== "INSERT" ||
+    payload.schema !== "public" ||
+    payload.table !== "makeup_class_email_notifications" ||
+    !webhookRecord?.id ||
+    !webhookRecord.booking_id
+  ) {
+    return jsonResponse({ error: "Unexpected webhook payload" }, 400);
+  }
+
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const { data: notification, error: notificationError } = await supabase
+    .from("makeup_class_email_notifications")
+    .select("id, booking_id, status, attempts, created_at")
+    .eq("id", webhookRecord.id)
+    .single();
+
+  if (notificationError || !notification) {
+    console.error("Makeup notification not found", webhookRecord.id, notificationError?.message);
+    return jsonResponse({ error: "Notification not found" }, 404);
+  }
+
+  if (notification.status === "sent") return jsonResponse({ ok: true, already_sent: true });
+
+  const attemptAt = new Date().toISOString();
+  await supabase
+    .from("makeup_class_email_notifications")
+    .update({
+      attempts: Number(notification.attempts ?? 0) + 1,
+      last_attempt_at: attemptAt,
+      updated_at: attemptAt,
+      last_error: null,
+    })
+    .eq("id", notification.id);
+
+  const { data: booking, error: bookingError } = await supabase
+    .from("makeup_class_bookings")
+    .select("id, slot_id, student_name, student_email, class_name, meeting_url, status")
+    .eq("id", notification.booking_id)
+    .single();
+
+  const failNotification = async (message: string) => {
+    await supabase
+      .from("makeup_class_email_notifications")
+      .update({ status: "failed", last_error: message.slice(0, 1000), updated_at: new Date().toISOString() })
+      .eq("id", notification.id);
+  };
+
+  if (bookingError || !booking) {
+    const message = bookingError?.message ?? "Booking not found";
+    await failNotification(message);
+    return jsonResponse({ error: "Booking not found" }, 404);
+  }
+
+  if (booking.status !== "confirmed") {
+    await failNotification("Booking was cancelled before the confirmation email was sent");
+    return jsonResponse({ ok: true, skipped: "cancelled_booking" });
+  }
+
+  const { data: slot, error: slotError } = await supabase
+    .from("makeup_class_slots")
+    .select("starts_at, ends_at")
+    .eq("id", booking.slot_id)
+    .single();
+
+  if (slotError || !slot) {
+    const message = slotError?.message ?? "Schedule slot not found";
+    await failNotification(message);
+    return jsonResponse({ error: "Schedule slot not found" }, 404);
+  }
+
+  const recipientEmail = safeHeader(booking.student_email, "");
+  const studentName = safeHeader(booking.student_name, "Aluno");
+  const className = safeHeader(booking.class_name, "Turma");
+  const meetingUrl = safeHttpUrl(booking.meeting_url);
+
+  if (!recipientEmail || !meetingUrl) {
+    await failNotification(!recipientEmail ? "Student email is missing" : "Meeting URL is invalid");
+    return jsonResponse({ error: "Booking contact data is incomplete" }, 422);
+  }
+
+  const classDate = formatDate(slot.starts_at);
+  const startTime = formatTime(slot.starts_at);
+  const endTime = formatTime(slot.ends_at);
+  const schedule = `${startTime} às ${endTime}`;
+
+  const textBody = [
+    `Olá, ${studentName}!`,
+    "",
+    "Sua reposição de aula foi agendada.",
+    "",
+    `Turma: ${className}`,
+    `Data: ${classDate}`,
+    `Horário: ${schedule}`,
+    `Link da aula: ${meetingUrl}`,
+    "",
+    "Guarde esta mensagem para acessar a aula no horário marcado.",
+  ].join("\n");
+
+  const htmlBody = `
+    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#172033;max-width:620px;margin:0 auto">
+      <h1 style="font-size:22px;margin-bottom:18px">Reposição de aula confirmada</h1>
+      <p>Olá, <strong>${escapeHtml(studentName)}</strong>!</p>
+      <p>Sua reposição foi agendada com sucesso.</p>
+      <table style="border-collapse:collapse;width:100%;margin:18px 0">
+        <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Turma</td><td>${escapeHtml(className)}</td></tr>
+        <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Data</td><td>${escapeHtml(classDate)}</td></tr>
+        <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Horário</td><td>${escapeHtml(schedule)}</td></tr>
+      </table>
+      <p style="margin:24px 0">
+        <a href="${escapeHtml(meetingUrl)}" style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;padding:12px 18px;border-radius:9px;font-weight:bold">Entrar na aula</a>
+      </p>
+      <p style="color:#667085;font-size:13px">Este é o mesmo link de videoaula cadastrado pelo professor para sua turma.</p>
+    </div>
+  `;
+
+  const resendResponse = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendApiKey}`,
+      "Content-Type": "application/json",
+      "Idempotency-Key": `makeup-booking-${notification.id}`,
+    },
+    body: JSON.stringify({
+      from: fromEmail,
+      to: [recipientEmail],
+      subject: `Reposição agendada — ${classDate}, ${startTime}`,
+      text: textBody,
+      html: htmlBody,
+    }),
+  });
+
+  if (!resendResponse.ok) {
+    const resendError = (await resendResponse.text()).slice(0, 1000);
+    await failNotification(resendError);
+    console.error("Resend rejected makeup notification", notification.id, resendResponse.status);
+    return jsonResponse({ error: "Email provider rejected the message" }, 502);
+  }
+
+  const sentAt = new Date().toISOString();
+  const { error: updateError } = await supabase
+    .from("makeup_class_email_notifications")
+    .update({ status: "sent", sent_at: sentAt, updated_at: sentAt, last_error: null })
+    .eq("id", notification.id);
+
+  if (updateError) {
+    console.error("Email sent but makeup notification status update failed", notification.id, updateError.message);
+    return jsonResponse({ error: "Email sent but status update failed" }, 500);
+  }
+
+  return jsonResponse({ ok: true });
+});
