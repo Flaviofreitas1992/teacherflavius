@@ -1,5 +1,7 @@
 -- Controle administrativo de mensalidades.
--- Execute este arquivo no Supabase SQL Editor depois de supabase_professor_admin.sql.
+-- Execute este arquivo no Supabase SQL Editor depois de:
+-- 1) supabase_professor_admin.sql
+-- 2) supabase_add_profile_enrollment_columns.sql
 
 -- Vincula o administrador ao UUID da conta quando o e-mail já está cadastrado.
 update public.teacher_admins ta
@@ -33,6 +35,154 @@ as $$
 $$;
 
 grant execute on function public.is_teacher_admin() to authenticated;
+
+-- Garante que todo usuário realmente matriculado também exista em public.profiles.
+-- A matrícula direta é criada primeiro em auth.users. Quando a confirmação de
+-- e-mail está ativa, o navegador ainda não possui uma sessão e o upsert feito
+-- pelo frontend pode ser bloqueado pelo RLS. Esta função faz a sincronização no
+-- banco, preservando dados já preenchidos no perfil.
+create or replace function public.sync_enrolled_auth_profile(
+  target_user_id uuid,
+  target_email text,
+  target_metadata jsonb
+)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  normalized_metadata jsonb := coalesce(target_metadata, '{}'::jsonb);
+  normalized_availability jsonb := '{}'::jsonb;
+  normalized_enrollment_code text;
+begin
+  if target_user_id is null then
+    return false;
+  end if;
+
+  if lower(coalesce(normalized_metadata ->> 'enrolled', 'false'))
+     not in ('true', '1', 'yes') then
+    return false;
+  end if;
+
+  if exists (
+    select 1
+    from public.teacher_admins ta
+    where ta.user_id = target_user_id
+       or lower(ta.email) = lower(coalesce(target_email, ''))
+  ) then
+    return false;
+  end if;
+
+  if jsonb_typeof(normalized_metadata -> 'availability') = 'object' then
+    normalized_availability := normalized_metadata -> 'availability';
+  end if;
+
+  normalized_enrollment_code := nullif(
+    trim(coalesce(normalized_metadata ->> 'enrollment_code', '')),
+    ''
+  );
+
+  -- Evita que um código antigo duplicado interrompa toda a recuperação.
+  if normalized_enrollment_code is not null and exists (
+    select 1
+    from public.profiles p
+    where p.enrollment_code = normalized_enrollment_code
+      and p.id <> target_user_id
+  ) then
+    normalized_enrollment_code := null;
+  end if;
+
+  insert into public.profiles (
+    id,
+    name,
+    email,
+    cpf,
+    whatsapp,
+    pix_key,
+    availability,
+    enrollment_code,
+    enrolled
+  ) values (
+    target_user_id,
+    nullif(trim(coalesce(normalized_metadata ->> 'name', '')), ''),
+    nullif(trim(coalesce(target_email, '')), ''),
+    nullif(trim(coalesce(normalized_metadata ->> 'cpf', '')), ''),
+    nullif(trim(coalesce(normalized_metadata ->> 'whatsapp', '')), ''),
+    nullif(trim(coalesce(normalized_metadata ->> 'pix_key', '')), ''),
+    normalized_availability,
+    normalized_enrollment_code,
+    true
+  )
+  on conflict (id) do update
+  set
+    name = coalesce(nullif(public.profiles.name, ''), excluded.name),
+    email = coalesce(nullif(public.profiles.email, ''), excluded.email),
+    cpf = coalesce(nullif(public.profiles.cpf, ''), excluded.cpf),
+    whatsapp = coalesce(nullif(public.profiles.whatsapp, ''), excluded.whatsapp),
+    pix_key = coalesce(nullif(public.profiles.pix_key, ''), excluded.pix_key),
+    availability = case
+      when public.profiles.availability is null
+        or public.profiles.availability = '{}'::jsonb
+      then excluded.availability
+      else public.profiles.availability
+    end,
+    enrollment_code = coalesce(
+      nullif(public.profiles.enrollment_code, ''),
+      excluded.enrollment_code
+    ),
+    enrolled = true;
+
+  return true;
+end;
+$$;
+
+revoke all on function public.sync_enrolled_auth_profile(uuid, text, jsonb) from public;
+
+-- Sincroniza automaticamente matrículas futuras, inclusive quando o usuário
+-- ainda precisa confirmar o e-mail e não possui uma sessão no navegador.
+create or replace function public.handle_enrolled_auth_user_profile()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform public.sync_enrolled_auth_profile(
+    new.id,
+    new.email,
+    new.raw_user_meta_data
+  );
+  return new;
+end;
+$$;
+
+revoke all on function public.handle_enrolled_auth_user_profile() from public;
+
+drop trigger if exists sync_enrolled_auth_user_profile_trigger on auth.users;
+create trigger sync_enrolled_auth_user_profile_trigger
+  after insert or update of raw_user_meta_data, email on auth.users
+  for each row
+  execute function public.handle_enrolled_auth_user_profile();
+
+-- Recupera imediatamente alunos antigos que estão em auth.users com
+-- enrolled=true, mas ainda não possuem um perfil financeiro utilizável.
+do $$
+declare
+  auth_user record;
+begin
+  for auth_user in
+    select u.id, u.email, u.raw_user_meta_data
+    from auth.users u
+  loop
+    perform public.sync_enrolled_auth_profile(
+      auth_user.id,
+      auth_user.email,
+      auth_user.raw_user_meta_data
+    );
+  end loop;
+end;
+$$;
 
 create table if not exists public.student_billing_settings (
   student_id uuid primary key references public.profiles(id) on delete cascade,
@@ -550,4 +700,3 @@ grant execute on function public.reverse_tuition_payment(uuid, text) to authenti
 revoke all on public.student_billing_settings from anon;
 revoke all on public.monthly_tuition from anon;
 revoke all on public.monthly_tuition_events from anon;
-
