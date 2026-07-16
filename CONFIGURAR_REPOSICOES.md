@@ -7,7 +7,9 @@ A funcionalidade possui quatro partes:
 3. `reposicoes.html` permite que alunos matriculados reservem horários com vaga.
 4. `supabase/functions/notify-makeup-booking/index.ts` envia a confirmação pelo Resend.
 
-O link enviado é uma cópia do **Link da videoaula** salvo na turma do aluno no momento da reserva. Se a turma não tiver esse link, o sistema não confirma o agendamento e orienta o aluno a avisar o professor.
+Ao publicar um horário, o professor escolhe uma turma. O sistema recupera o **Link da videoaula** dessa turma e salva uma cópia junto ao horário. Somente alunos matriculados na turma escolhida visualizam a vaga, e a reserva e o e-mail usam exatamente essa cópia.
+
+Se a turma não tiver um link `http://` ou `https://` válido, o botão de publicação fica desabilitado e o banco também rejeita a operação. Assim, nenhum horário novo é publicado sem o link que deverá chegar ao aluno.
 
 ## 1. Fazer o merge e executar o SQL
 
@@ -20,6 +22,8 @@ Primeiro faça o merge do Pull Request. Depois:
 5. Clique em **Run**.
 
 Execute o arquivo depois de `supabase_turmas.sql`, pois ele reutiliza as turmas, os vínculos dos alunos, `class_resources.video_lesson_url`, `is_teacher_admin()` e `set_updated_at()`.
+
+O arquivo é compatível com a agenda já instalada. Ao executá-lo novamente, horários antigos que já possuem reservas de uma única turma são associados a essa turma. Horários antigos que ainda não permitem identificar uma turma e um link são desativados por segurança e devem ser publicados novamente.
 
 ## 2. Conferir os Secrets existentes
 
@@ -43,6 +47,8 @@ Também é possível abrir **Edge Functions** no painel, escolher **Deploy a new
 
 A validação JWT fica desativada porque a chamada vem do Database Webhook. A função exige o cabeçalho `x-webhook-secret` e compara o valor com o Secret salvo no projeto.
 
+Se `notify-makeup-booking` já está publicada e os e-mails já funcionam, **não é necessário republicar a função** para esta alteração. Ela já lê o nome da turma e o link salvos na reserva.
+
 ## 4. Criar o Database Webhook
 
 No painel do Supabase, abra a área de **Database Webhooks** (em algumas versões do painel ela aparece em **Integrations > Webhooks**) e crie um webhook com:
@@ -57,13 +63,15 @@ No painel do Supabase, abra a área de **Database Webhooks** (em algumas versõe
 
 Database Webhooks do Supabase são executados depois da alteração na tabela e enviam o registro inserido para a URL configurada.
 
+Se esse webhook já está funcionando, **não é necessário recriá-lo**.
+
 ## 5. Testar o fluxo completo
 
 1. Na área do professor, abra **AGENDA DE REPOSIÇÕES**.
-2. Publique um horário futuro com uma vaga.
-3. Confirme que a turma do aluno possui **Link da videoaula**.
+2. Escolha uma turma que possua **Link da videoaula**.
+3. Confira o link recuperado na tela e publique um horário futuro com uma vaga.
 4. Entre com o usuário do aluno e abra **REPOSIÇÕES DE AULA**.
-5. Reserve o horário.
+5. Confirme que o aluno vê apenas os horários das turmas em que está matriculado e reserve o horário.
 6. Confira o e-mail do aluno.
 7. Na área do professor, confirme que a reserva aparece e que o status muda para **E-mail enviado**.
 
