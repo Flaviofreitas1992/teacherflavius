@@ -7,7 +7,7 @@ A funcionalidade possui quatro partes:
 3. `reposicoes.html` permite que alunos matriculados reservem horários com vaga.
 4. `supabase/functions/notify-makeup-booking/index.ts` envia a confirmação pelo Resend.
 
-Ao publicar um horário, o professor escolhe uma turma. O sistema recupera o **Link da videoaula** dessa turma e salva uma cópia junto ao horário. Somente alunos matriculados na turma escolhida visualizam a vaga, e a reserva e o e-mail usam exatamente essa cópia.
+Ao publicar um horário, o professor escolhe uma turma. O sistema recupera o **Link da videoaula** dessa turma e salva uma cópia junto ao horário. Todos os alunos matriculados podem visualizar e reservar qualquer vaga disponível, mesmo quando ela está associada a outra turma. A reserva e o e-mail usam exatamente o link copiado no horário escolhido.
 
 Se a turma não tiver um link `http://` ou `https://` válido, o botão de publicação fica desabilitado e o banco também rejeita a operação. Assim, nenhum horário novo é publicado sem o link que deverá chegar ao aluno.
 
@@ -71,7 +71,7 @@ Se esse webhook já está funcionando, **não é necessário recriá-lo**.
 2. Escolha uma turma que possua **Link da videoaula**.
 3. Confira o link recuperado na tela e publique um horário futuro com uma vaga.
 4. Entre com o usuário do aluno e abra **REPOSIÇÕES DE AULA**.
-5. Confirme que o aluno vê apenas os horários das turmas em que está matriculado e reserve o horário.
+5. Confirme que o aluno vê todos os horários disponíveis, inclusive os associados a outras turmas, e reserve um deles.
 6. Confira o e-mail do aluno.
 7. Na área do professor, confirme que a reserva aparece e que o status muda para **E-mail enviado**.
 
