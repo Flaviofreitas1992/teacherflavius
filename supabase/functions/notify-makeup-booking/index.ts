@@ -5,6 +5,8 @@ type NotificationRecord = {
   booking_id: string;
 };
 
+type NotificationType = "booking_confirmed" | "booking_cancelled";
+
 type DatabaseWebhookPayload = {
   type?: string;
   table?: string;
@@ -124,7 +126,7 @@ Deno.serve(async (request: Request) => {
 
   const { data: notification, error: notificationError } = await supabase
     .from("makeup_class_email_notifications")
-    .select("id, booking_id, status, attempts, created_at")
+    .select("id, booking_id, notification_type, status, attempts, created_at")
     .eq("id", webhookRecord.id)
     .single();
 
@@ -165,9 +167,21 @@ Deno.serve(async (request: Request) => {
     return jsonResponse({ error: "Booking not found" }, 404);
   }
 
-  if (booking.status !== "confirmed") {
+  const notificationType = notification.notification_type as NotificationType;
+  if (notificationType !== "booking_confirmed" && notificationType !== "booking_cancelled") {
+    await failNotification("Unknown notification type");
+    return jsonResponse({ error: "Unknown notification type" }, 422);
+  }
+
+  const isCancellation = notificationType === "booking_cancelled";
+  if (!isCancellation && booking.status !== "confirmed") {
     await failNotification("Booking was cancelled before the confirmation email was sent");
     return jsonResponse({ ok: true, skipped: "cancelled_booking" });
+  }
+
+  if (isCancellation && booking.status !== "cancelled") {
+    await failNotification("Booking is not cancelled");
+    return jsonResponse({ error: "Booking is not cancelled" }, 409);
   }
 
   const { data: slot, error: slotError } = await supabase
@@ -187,7 +201,7 @@ Deno.serve(async (request: Request) => {
   const className = safeHeader(booking.class_name, "Turma");
   const meetingUrl = safeHttpUrl(booking.meeting_url);
 
-  if (!recipientEmail || !meetingUrl) {
+  if (!recipientEmail || (!isCancellation && !meetingUrl)) {
     await failNotification(!recipientEmail ? "Student email is missing" : "Meeting URL is invalid");
     return jsonResponse({ error: "Booking contact data is incomplete" }, 422);
   }
@@ -197,47 +211,82 @@ Deno.serve(async (request: Request) => {
   const endTime = formatTime(slot.ends_at);
   const schedule = `${startTime} às ${endTime}`;
 
-  const textBody = [
-    `Olá, ${studentName}!`,
-    "",
-    "Sua reposição de aula foi agendada.",
-    "",
-    `Turma: ${className}`,
-    `Data: ${classDate}`,
-    `Horário: ${schedule}`,
-    `Link da aula: ${meetingUrl}`,
-    "",
-    "Guarde esta mensagem para acessar a aula no horário marcado.",
-  ].join("\n");
+  let subject: string;
+  let textBody: string;
+  let htmlBody: string;
 
-  const htmlBody = `
-    <div style="font-family:Arial,sans-serif;line-height:1.6;color:#172033;max-width:620px;margin:0 auto">
-      <h1 style="font-size:22px;margin-bottom:18px">Reposição de aula confirmada</h1>
-      <p>Olá, <strong>${escapeHtml(studentName)}</strong>!</p>
-      <p>Sua reposição foi agendada com sucesso.</p>
-      <table style="border-collapse:collapse;width:100%;margin:18px 0">
-        <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Turma</td><td>${escapeHtml(className)}</td></tr>
-        <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Data</td><td>${escapeHtml(classDate)}</td></tr>
-        <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Horário</td><td>${escapeHtml(schedule)}</td></tr>
-      </table>
-      <p style="margin:24px 0">
-        <a href="${escapeHtml(meetingUrl)}" style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;padding:12px 18px;border-radius:9px;font-weight:bold">Entrar na aula</a>
-      </p>
-      <p style="color:#667085;font-size:13px">Este é o mesmo link de videoaula cadastrado pelo professor para sua turma.</p>
-    </div>
-  `;
+  if (isCancellation) {
+    subject = `Reposição cancelada — ${classDate}, ${startTime}`;
+    textBody = [
+      `Olá, ${studentName}!`,
+      "",
+      "O cancelamento da sua reposição de aula foi confirmado.",
+      "",
+      `Turma: ${className}`,
+      `Data: ${classDate}`,
+      `Horário: ${schedule}`,
+      "",
+      "A vaga foi liberada. Você pode voltar ao site e escolher outro horário disponível.",
+    ].join("\n");
+
+    htmlBody = `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#172033;max-width:620px;margin:0 auto">
+        <h1 style="font-size:22px;margin-bottom:18px">Reposição cancelada</h1>
+        <p>Olá, <strong>${escapeHtml(studentName)}</strong>!</p>
+        <p>O cancelamento da sua reposição foi confirmado.</p>
+        <table style="border-collapse:collapse;width:100%;margin:18px 0">
+          <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Turma</td><td>${escapeHtml(className)}</td></tr>
+          <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Data</td><td>${escapeHtml(classDate)}</td></tr>
+          <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Horário</td><td>${escapeHtml(schedule)}</td></tr>
+        </table>
+        <p>A vaga foi liberada. Você pode voltar ao site e escolher outro horário disponível.</p>
+      </div>
+    `;
+  } else {
+    const confirmedMeetingUrl = meetingUrl as string;
+    subject = `Reposição agendada — ${classDate}, ${startTime}`;
+    textBody = [
+      `Olá, ${studentName}!`,
+      "",
+      "Sua reposição de aula foi agendada.",
+      "",
+      `Turma: ${className}`,
+      `Data: ${classDate}`,
+      `Horário: ${schedule}`,
+      `Link da aula: ${confirmedMeetingUrl}`,
+      "",
+      "Guarde esta mensagem para acessar a aula no horário marcado.",
+    ].join("\n");
+
+    htmlBody = `
+      <div style="font-family:Arial,sans-serif;line-height:1.6;color:#172033;max-width:620px;margin:0 auto">
+        <h1 style="font-size:22px;margin-bottom:18px">Reposição de aula confirmada</h1>
+        <p>Olá, <strong>${escapeHtml(studentName)}</strong>!</p>
+        <p>Sua reposição foi agendada com sucesso.</p>
+        <table style="border-collapse:collapse;width:100%;margin:18px 0">
+          <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Turma</td><td>${escapeHtml(className)}</td></tr>
+          <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Data</td><td>${escapeHtml(classDate)}</td></tr>
+          <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Horário</td><td>${escapeHtml(schedule)}</td></tr>
+        </table>
+        <p style="margin:24px 0">
+          <a href="${escapeHtml(confirmedMeetingUrl)}" style="display:inline-block;background:#6366f1;color:#fff;text-decoration:none;padding:12px 18px;border-radius:9px;font-weight:bold">Entrar na aula</a>
+        </p>
+        <p style="color:#667085;font-size:13px">Este é o link de videoaula associado ao horário escolhido.</p>
+      </div>
+    `;
+  }
 
   const resendResponse = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${resendApiKey}`,
       "Content-Type": "application/json",
-      "Idempotency-Key": `makeup-booking-${notification.id}`,
+      "Idempotency-Key": `makeup-${notificationType}-${notification.id}`,
     },
     body: JSON.stringify({
       from: fromEmail,
       to: [recipientEmail],
-      subject: `Reposição agendada — ${classDate}, ${startTime}`,
+      subject,
       text: textBody,
       html: htmlBody,
     }),
