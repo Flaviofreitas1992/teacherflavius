@@ -1,5 +1,6 @@
 let currentSession = null;
 let bookingInProgress = false;
+let cancellationInProgress = false;
 
 function sleep(ms) {
   return new Promise(function (resolve) { setTimeout(resolve, ms); });
@@ -50,10 +51,11 @@ function formatTime(value) {
   }).format(date);
 }
 
-function translateEmailStatus(status) {
-  if (status === "sent") return { label: "E-mail enviado", css: "success" };
-  if (status === "failed") return { label: "Falha no e-mail", css: "danger" };
-  return { label: "E-mail sendo enviado", css: "warning" };
+function translateEmailStatus(status, cancelled) {
+  if (status === "not_queued") return { label: "Cancelamento registrado", css: "" };
+  if (status === "sent") return { label: cancelled ? "E-mail de cancelamento enviado" : "E-mail enviado", css: "success" };
+  if (status === "failed") return { label: cancelled ? "Falha no e-mail de cancelamento" : "Falha no e-mail", css: "danger" };
+  return { label: cancelled ? "E-mail de cancelamento sendo enviado" : "E-mail sendo enviado", css: "warning" };
 }
 
 function renderAvailableSlot(slot) {
@@ -73,11 +75,15 @@ function renderAvailableSlot(slot) {
 
 function renderBooking(booking) {
   const cancelled = booking.status === "cancelled";
+  const hasStarted = new Date(booking.starts_at).getTime() <= Date.now();
   const isPast = new Date(booking.ends_at).getTime() < Date.now();
+  const canCancel = !cancelled && !hasStarted;
+  const bookingLabel = (booking.class_name || ("Turma " + booking.class_number)) + ", " +
+    formatDate(booking.starts_at) + ", das " + formatTime(booking.starts_at) + " às " + formatTime(booking.ends_at);
   let bookingStatus = { label: "Agendada", css: "success" };
   if (cancelled) bookingStatus = { label: "Cancelada", css: "danger" };
   else if (isPast) bookingStatus = { label: "Data concluída", css: "" };
-  const emailStatus = translateEmailStatus(booking.email_status);
+  const emailStatus = translateEmailStatus(booking.email_status, cancelled);
 
   return '<article class="booking-card' + (cancelled ? ' is-cancelled' : '') + '">' +
     '<div class="card-heading"><div>' +
@@ -86,7 +92,10 @@ function renderBooking(booking) {
     '</div><span class="status-pill ' + bookingStatus.css + '">' + escapeHtml(bookingStatus.label) + '</span></div>' +
     '<p><strong>Turma:</strong> ' + escapeHtml(booking.class_name || ("Turma " + booking.class_number)) + '</p>' +
     '<div class="card-meta"><span class="status-pill ' + emailStatus.css + '">' + escapeHtml(emailStatus.label) + '</span></div>' +
-    (!cancelled && booking.meeting_url ? '<a class="link-button" href="' + escapeHtml(booking.meeting_url) + '" target="_blank" rel="noopener noreferrer">ABRIR LINK DA AULA</a>' : '') +
+    ((!cancelled && booking.meeting_url) || canCancel ? '<div class="booking-actions">' +
+      (!cancelled && booking.meeting_url ? '<a class="link-button" href="' + escapeHtml(booking.meeting_url) + '" target="_blank" rel="noopener noreferrer">ABRIR LINK DA AULA</a>' : '') +
+      (canCancel ? '<button class="danger-button cancel-my-booking-button" type="button" data-booking-id="' + escapeHtml(booking.id) + '" data-booking-label="' + escapeHtml(bookingLabel) + '">CANCELAR REPOSIÇÃO</button>' : '') +
+    '</div>' : '') +
   '</article>';
 }
 
@@ -120,6 +129,11 @@ async function loadSchedule() {
       bookSlot(button.dataset.slotId, button.dataset.slotLabel, button);
     });
   });
+  document.querySelectorAll(".cancel-my-booking-button").forEach(function (button) {
+    button.addEventListener("click", function () {
+      cancelMyBooking(button.dataset.bookingId, button.dataset.bookingLabel, button);
+    });
+  });
 }
 
 async function bookSlot(slotId, slotLabel, button) {
@@ -143,6 +157,34 @@ async function bookSlot(slotId, slotLabel, button) {
     button.textContent = "AGENDAR REPOSIÇÃO";
   } finally {
     bookingInProgress = false;
+  }
+}
+
+async function cancelMyBooking(bookingId, bookingLabel, button) {
+  if (cancellationInProgress || bookingInProgress) return;
+  const confirmed = window.confirm(
+    "Deseja cancelar a reposição de " + bookingLabel + "? A vaga será liberada para outro aluno."
+  );
+  if (!confirmed) return;
+
+  cancellationInProgress = true;
+  button.disabled = true;
+  button.textContent = "CANCELANDO...";
+  const status = document.getElementById("pageStatus");
+
+  try {
+    const response = await Auth.getClient().rpc("cancel_my_makeup_class_booking", {
+      target_booking_id: bookingId
+    });
+    if (response.error) throw response.error;
+    status.textContent = "Reposição cancelada. A confirmação por e-mail está sendo enviada.";
+    await loadSchedule();
+  } catch (error) {
+    status.textContent = "Não foi possível cancelar: " + (error.message || "tente novamente.");
+    button.disabled = false;
+    button.textContent = "CANCELAR REPOSIÇÃO";
+  } finally {
+    cancellationInProgress = false;
   }
 }
 
