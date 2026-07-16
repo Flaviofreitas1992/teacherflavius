@@ -113,6 +113,7 @@ async function loadMakeupClasses() {
 function emailStatusLabel(status) {
   if (status === "sent") return "E-mail enviado";
   if (status === "failed") return "Falha no e-mail";
+  if (status === "not_queued") return "Cancelamento registrado";
   return "E-mail pendente";
 }
 
