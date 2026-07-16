@@ -43,6 +43,18 @@ function formatTime(value) {
   }).format(date);
 }
 
+function calculateOneHourEndTime(startTime) {
+  const parts = String(startTime || "").split(":").map(Number);
+  if (parts.length !== 2 || parts.some(Number.isNaN)) return null;
+
+  const totalMinutes = (parts[0] * 60) + parts[1] + 60;
+  if (totalMinutes >= 24 * 60) return null;
+
+  const endHours = String(Math.floor(totalMinutes / 60)).padStart(2, "0");
+  const endMinutes = String(totalMinutes % 60).padStart(2, "0");
+  return endHours + ":" + endMinutes;
+}
+
 function isHttpUrl(value) {
   try {
     const url = new URL(value);
@@ -209,7 +221,6 @@ function setInitialFormValues() {
   document.getElementById("slotDate").min = saoPauloDate;
   if (!document.getElementById("slotDate").value) document.getElementById("slotDate").value = saoPauloDate;
   if (!document.getElementById("slotStartTime").value) document.getElementById("slotStartTime").value = "14:00";
-  if (!document.getElementById("slotEndTime").value) document.getElementById("slotEndTime").value = "15:00";
 }
 
 document.getElementById("slotForm").addEventListener("submit", async function (event) {
@@ -217,7 +228,7 @@ document.getElementById("slotForm").addEventListener("submit", async function (e
   const button = document.getElementById("createSlotButton");
   const message = document.getElementById("formMessage");
   const startTime = document.getElementById("slotStartTime").value;
-  const endTime = document.getElementById("slotEndTime").value;
+  const endTime = calculateOneHourEndTime(startTime);
   const selectedClass = getSelectedClass();
   if (!selectedClass) {
     message.className = "form-message error";
@@ -229,9 +240,9 @@ document.getElementById("slotForm").addEventListener("submit", async function (e
     message.textContent = "Cadastre um link de videoaula válido para esta turma antes de publicar o horário.";
     return;
   }
-  if (endTime <= startTime) {
+  if (!endTime) {
     message.className = "form-message error";
-    message.textContent = "O término precisa ser depois do início.";
+    message.textContent = "Escolha um horário de início até 22:59 para que a aula termine no mesmo dia.";
     return;
   }
 
