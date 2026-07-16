@@ -409,7 +409,6 @@ set search_path = public
 as $$
 declare
   normalized_reference_month date;
-  last_day_of_month date;
   affected_count integer := 0;
 begin
   if not coalesce(public.is_teacher_admin(), false) then
@@ -420,7 +419,6 @@ begin
     'month',
     coalesce(target_reference_month, current_date)
   )::date;
-  last_day_of_month := (normalized_reference_month + interval '1 month - 1 day')::date;
 
   insert into public.monthly_tuition (
     student_id,
@@ -432,17 +430,30 @@ begin
   )
   select
     s.student_id,
-    normalized_reference_month,
+    generated_month.reference_month::date,
     make_date(
-      extract(year from normalized_reference_month)::integer,
-      extract(month from normalized_reference_month)::integer,
-      least(s.due_day::integer, extract(day from last_day_of_month)::integer)
+      extract(year from generated_month.reference_month)::integer,
+      extract(month from generated_month.reference_month)::integer,
+      least(
+        s.due_day::integer,
+        extract(
+          day from (
+            date_trunc('month', generated_month.reference_month)
+            + interval '1 month - 1 day'
+          )
+        )::integer
+      )
     ),
     s.monthly_fee,
     auth.uid(),
     auth.uid()
   from public.student_billing_settings s
   join public.profiles p on p.id = s.student_id
+  cross join lateral generate_series(
+    s.billing_start_month::timestamp,
+    normalized_reference_month::timestamp,
+    interval '1 month'
+  ) as generated_month(reference_month)
   where s.active = true
     and s.billing_start_month <= normalized_reference_month
     and coalesce(p.enrolled, false) = true
@@ -519,6 +530,10 @@ begin
   from public.monthly_tuition mt
   join public.profiles p on p.id = mt.student_id
   where mt.reference_month = normalized_reference_month
+     or (
+       mt.reference_month < normalized_reference_month
+       and mt.payment_date is null
+     )
   order by mt.due_date asc, p.name asc nulls last;
 end;
 $$;
