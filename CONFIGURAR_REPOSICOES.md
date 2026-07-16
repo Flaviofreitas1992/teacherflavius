@@ -5,11 +5,13 @@ A funcionalidade possui quatro partes:
 1. `supabase_reposicoes.sql` cria horários, reservas, permissões e a fila de e-mails.
 2. `reposicoes_admin.html` permite que o professor publique horários e acompanhe as reservas.
 3. `reposicoes.html` permite que alunos matriculados reservem horários com vaga.
-4. `supabase/functions/notify-makeup-booking/index.ts` envia a confirmação pelo Resend.
+4. `supabase/functions/notify-makeup-booking/index.ts` envia as confirmações de agendamento e cancelamento pelo Resend.
 
 Ao publicar um horário, o professor escolhe uma turma. O sistema recupera o **Link da videoaula** dessa turma e salva uma cópia junto ao horário. Todos os alunos matriculados podem visualizar e reservar qualquer vaga disponível, mesmo quando ela está associada a outra turma. A reserva e o e-mail usam exatamente o link copiado no horário escolhido.
 
 Se a turma não tiver um link `http://` ou `https://` válido, o botão de publicação fica desabilitado e o banco também rejeita a operação. Assim, nenhum horário novo é publicado sem o link que deverá chegar ao aluno.
+
+O aluno pode cancelar uma reposição futura na seção **Minhas reposições**. O cancelamento libera a vaga imediatamente e cria uma nova notificação para enviar a confirmação ao e-mail do aluno. Reposições que já começaram não podem ser canceladas pelo aluno.
 
 ## 1. Fazer o merge e executar o SQL
 
@@ -47,7 +49,7 @@ Também é possível abrir **Edge Functions** no painel, escolher **Deploy a new
 
 A validação JWT fica desativada porque a chamada vem do Database Webhook. A função exige o cabeçalho `x-webhook-secret` e compara o valor com o Secret salvo no projeto.
 
-Se `notify-makeup-booking` já está publicada e os e-mails já funcionam, **não é necessário republicar a função** para esta alteração. Ela já lê o nome da turma e o link salvos na reserva.
+Mesmo que `notify-makeup-booking` já esteja publicada, **é necessário republicá-la após esta alteração**, pois a função agora diferencia o e-mail de agendamento do e-mail de cancelamento.
 
 ## 4. Criar o Database Webhook
 
@@ -73,12 +75,16 @@ Se esse webhook já está funcionando, **não é necessário recriá-lo**.
 4. Entre com o usuário do aluno e abra **REPOSIÇÕES DE AULA**.
 5. Confirme que o aluno vê todos os horários disponíveis, inclusive os associados a outras turmas, e reserve um deles.
 6. Confira o e-mail do aluno.
-7. Na área do professor, confirme que a reserva aparece e que o status muda para **E-mail enviado**.
+7. Na seção **Minhas reposições**, clique em **CANCELAR REPOSIÇÃO** e confirme a operação.
+8. Confira se a vaga reaparece entre os horários disponíveis e se a reserva passa para **Cancelada**.
+9. Confira o e-mail de cancelamento do aluno.
+10. Na área do professor, confirme que a reserva aparece como cancelada e que o status do e-mail foi atualizado.
 
 Para diagnosticar o envio no SQL Editor:
 
 ```sql
 select
+  n.notification_type,
   n.status,
   n.attempts,
   n.last_error,
@@ -95,5 +101,7 @@ limit 20;
 - `pending` e `attempts = 0`: o webhook ainda não chamou a função; revise o webhook.
 - `failed`: consulte `last_error` e os logs de `notify-makeup-booking`.
 - `sent`: o Resend aceitou o envio.
+
+Em `notification_type`, `booking_confirmed` representa o e-mail de agendamento e `booking_cancelled` representa o e-mail de cancelamento.
 
 O envio usa uma chave de idempotência por notificação para reduzir o risco de mensagens duplicadas.
