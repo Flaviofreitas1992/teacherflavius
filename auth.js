@@ -10,7 +10,7 @@
 
       if (!document.querySelector('script[src^="animated_cards.js"]')) {
         const script = document.createElement("script");
-        script.src = "animated_cards.js?v=20260429-6";
+        script.src = "animated_cards.js?v=20260716-logout-1";
         script.defer = true;
         document.body.appendChild(script);
       }
@@ -219,9 +219,14 @@
 
   async function signOut() {
     const client = getClient();
-    if (!client) return;
-    await client.auth.signOut();
-    window.location.href = "login.html";
+    if (!client) {
+      window.location.replace("/login.html?logged_out=1");
+      return;
+    }
+
+    const response = await client.auth.signOut({ scope: "local" });
+    if (response.error) throw response.error;
+    window.location.replace("/login.html?logged_out=1");
   }
 
   async function getProfile() {
