@@ -1,4 +1,5 @@
 let currentAdminSession = null;
+let makeupClasses = [];
 
 function sleep(ms) {
   return new Promise(function (resolve) { setTimeout(resolve, ms); });
@@ -42,6 +43,73 @@ function formatTime(value) {
   }).format(date);
 }
 
+function isHttpUrl(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch (_error) {
+    return false;
+  }
+}
+
+function getSelectedClass() {
+  const value = document.getElementById("slotClass").value;
+  if (!value) return null;
+  return makeupClasses.find(function (item) {
+    return Number(item.class_number) === Number(value);
+  }) || null;
+}
+
+function updateClassLinkPreview() {
+  const selectedClass = getSelectedClass();
+  const input = document.getElementById("slotMeetingUrl");
+  const link = document.getElementById("slotMeetingLink");
+  const button = document.getElementById("createSlotButton");
+  const meetingUrl = selectedClass ? String(selectedClass.video_lesson_url || "").trim() : "";
+  const validLink = isHttpUrl(meetingUrl);
+
+  input.value = validLink ? meetingUrl : "";
+  input.placeholder = selectedClass
+    ? "Esta turma ainda não possui um link de videoaula válido"
+    : "Selecione uma turma para visualizar o link";
+  link.hidden = !validLink;
+  link.href = validLink ? meetingUrl : "#";
+  button.disabled = !selectedClass || !validLink;
+}
+
+async function loadMakeupClasses() {
+  const select = document.getElementById("slotClass");
+  const previousValue = select.value;
+  select.disabled = true;
+  select.innerHTML = '<option value="">Carregando turmas...</option>';
+
+  const response = await Auth.getClient().rpc("get_teacher_makeup_classes");
+  if (response.error) throw response.error;
+  makeupClasses = response.data || [];
+
+  select.innerHTML = "";
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = makeupClasses.length ? "Selecione uma turma" : "Nenhuma turma ativa encontrada";
+  select.appendChild(placeholder);
+
+  makeupClasses.forEach(function (item) {
+    const option = document.createElement("option");
+    const count = Number(item.student_count || 0);
+    const studentsLabel = count === 1 ? "1 aluno" : count + " alunos";
+    option.value = String(item.class_number);
+    option.textContent = (item.class_name || ("Turma " + item.class_number)) + " · " + studentsLabel +
+      (isHttpUrl(item.video_lesson_url) ? "" : " · sem link de videoaula");
+    select.appendChild(option);
+  });
+
+  if (makeupClasses.some(function (item) { return String(item.class_number) === previousValue; })) {
+    select.value = previousValue;
+  }
+  select.disabled = makeupClasses.length === 0;
+  updateClassLinkPreview();
+}
+
 function emailStatusLabel(status) {
   if (status === "sent") return "E-mail enviado";
   if (status === "failed") return "Falha no e-mail";
@@ -71,8 +139,10 @@ function renderAdminSlot(slot, bookings) {
     '<div class="card-heading"><div><h3>' + escapeHtml(formatDate(slot.starts_at)) + '</h3>' +
     '<div class="card-time">' + escapeHtml(formatTime(slot.starts_at)) + ' às ' + escapeHtml(formatTime(slot.ends_at)) + '</div></div>' +
     '<span class="status-pill ' + statusClass + '">' + escapeHtml(statusLabel) + '</span></div>' +
+    '<p><strong>Turma:</strong> ' + escapeHtml(slot.class_name || (slot.class_number ? ("Turma " + slot.class_number) : "Não definida")) + '</p>' +
     '<div class="card-meta"><span class="status-pill">' + confirmedCount + ' de ' + Number(slot.capacity) + ' vagas reservadas</span></div>' +
     (slot.notes ? '<p>' + escapeHtml(slot.notes) + '</p>' : '') +
+    (isHttpUrl(slot.meeting_url) ? '<a class="link-button" href="' + escapeHtml(slot.meeting_url) + '" target="_blank" rel="noopener noreferrer">ABRIR LINK DA TURMA</a>' : '') +
     (active ? '<button class="danger-button cancel-slot-button" type="button" data-slot-id="' + escapeHtml(slot.id) + '">CANCELAR HORÁRIO</button>' : '') +
     '<div class="booking-list">' + (slotBookings.length ? slotBookings.map(renderBookingRow).join("") : '<p class="empty">Nenhum aluno reservou este horário.</p>') + '</div>' +
   '</article>';
@@ -148,6 +218,17 @@ document.getElementById("slotForm").addEventListener("submit", async function (e
   const message = document.getElementById("formMessage");
   const startTime = document.getElementById("slotStartTime").value;
   const endTime = document.getElementById("slotEndTime").value;
+  const selectedClass = getSelectedClass();
+  if (!selectedClass) {
+    message.className = "form-message error";
+    message.textContent = "Escolha a turma deste horário.";
+    return;
+  }
+  if (!isHttpUrl(selectedClass.video_lesson_url)) {
+    message.className = "form-message error";
+    message.textContent = "Cadastre um link de videoaula válido para esta turma antes de publicar o horário.";
+    return;
+  }
   if (endTime <= startTime) {
     message.className = "form-message error";
     message.textContent = "O término precisa ser depois do início.";
@@ -161,6 +242,7 @@ document.getElementById("slotForm").addEventListener("submit", async function (e
 
   try {
     const response = await Auth.getClient().rpc("create_makeup_class_slot", {
+      target_class_number: Number(selectedClass.class_number),
       target_date: document.getElementById("slotDate").value,
       target_start_time: startTime,
       target_end_time: endTime,
@@ -176,13 +258,26 @@ document.getElementById("slotForm").addEventListener("submit", async function (e
     message.className = "form-message error";
     message.textContent = error.message || "Não foi possível publicar o horário.";
   } finally {
-    button.disabled = false;
     button.textContent = "PUBLICAR HORÁRIO";
+    updateClassLinkPreview();
+  }
+});
+
+document.getElementById("slotClass").addEventListener("change", function () {
+  updateClassLinkPreview();
+  const selectedClass = getSelectedClass();
+  const message = document.getElementById("formMessage");
+  if (selectedClass && !isHttpUrl(selectedClass.video_lesson_url)) {
+    message.className = "form-message error";
+    message.textContent = "Esta turma ainda não possui um link de videoaula válido.";
+  } else {
+    message.className = "form-message";
+    message.textContent = "";
   }
 });
 
 document.getElementById("refreshAdminButton").addEventListener("click", function () {
-  loadAdminSchedule().catch(function (error) {
+  Promise.all([loadMakeupClasses(), loadAdminSchedule()]).catch(function (error) {
     document.getElementById("adminStatus").textContent = "Não foi possível atualizar: " + (error.message || "tente novamente.");
   });
 });
@@ -216,7 +311,7 @@ async function guardAdminPage() {
   setInitialFormValues();
 
   try {
-    await loadAdminSchedule();
+    await Promise.all([loadMakeupClasses(), loadAdminSchedule()]);
   } catch (error) {
     document.getElementById("adminSlots").innerHTML = '<p class="error">' + escapeHtml(error.message || "Não foi possível carregar a agenda.") + '</p>';
   }
