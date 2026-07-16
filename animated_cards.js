@@ -22,6 +22,15 @@
     document.body.appendChild(script);
   }
 
+  function loadGlobalLogout() {
+    if (window.teacherFlavioGlobalLogoutLoaded) return;
+    if (document.querySelector('script[src^="/global_logout.js"], script[src^="global_logout.js"]')) return;
+    var script = document.createElement("script");
+    script.src = "/global_logout.js?v=20260716-1";
+    script.defer = true;
+    document.body.appendChild(script);
+  }
+
   function initParticles() {
     var canvas = document.getElementById("particles");
     if (!canvas || canvas.dataset.initialized === "true") return;
@@ -110,6 +119,7 @@
   function init() {
     injectBackground();
     loadClassRecordedLessonsExtension();
+    loadGlobalLogout();
     initParticles();
     initTiltAndRipple();
 
