@@ -328,15 +328,6 @@ begin
     and s.starts_at > now()
     and s.class_number is not null
     and coalesce(trim(s.meeting_url), '') ~* '^https?://'
-    and exists (
-      select 1
-      from public.class_students student_class
-      join public.teacher_classes active_class
-        on active_class.class_number = student_class.class_number
-       and active_class.is_active = true
-      where student_class.user_id = auth.uid()
-        and student_class.class_number = s.class_number
-    )
   group by s.id, s.class_number, s.class_name, s.starts_at, s.ends_at, s.capacity, s.notes
   having count(b.id) < s.capacity
   order by s.starts_at asc;
@@ -404,9 +395,8 @@ begin
       on tc.class_number = cs.class_number
      and tc.is_active = true
     where cs.user_id = auth.uid()
-      and cs.class_number = target_slot.class_number
   ) then
-    raise exception 'Este horario e exclusivo para alunos da turma selecionada pelo professor.';
+    raise exception 'Voce ainda nao foi inscrito em uma turma pelo professor.';
   end if;
 
   if coalesce(trim(target_slot.meeting_url), '') !~* '^https?://' then
