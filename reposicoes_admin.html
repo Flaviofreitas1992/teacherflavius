@@ -7,7 +7,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase_config.js?v=20260716-1"></script>
   <script src="auth.js?v=20260716-1"></script>
-  <link rel="stylesheet" href="reposicoes.css?v=20260716-1">
+  <link rel="stylesheet" href="reposicoes.css?v=20260716-2">
 </head>
 <body class="auth-checking">
   <main class="container admin-container">
@@ -33,6 +33,17 @@
       </div>
 
       <form id="slotForm" class="slot-form">
+        <label class="full-field">
+          <span>Turma</span>
+          <select id="slotClass" required>
+            <option value="">Carregando turmas...</option>
+          </select>
+        </label>
+        <label class="full-field">
+          <span>Link da videoaula recuperado da turma</span>
+          <input id="slotMeetingUrl" type="url" readonly placeholder="Selecione uma turma para visualizar o link">
+          <a id="slotMeetingLink" class="inline-link" href="#" target="_blank" rel="noopener noreferrer" hidden>ABRIR LINK DA TURMA</a>
+        </label>
         <label>
           <span>Data</span>
           <input id="slotDate" type="date" required>
@@ -53,7 +64,7 @@
           <span>Observação para os alunos (opcional)</span>
           <textarea id="slotNotes" rows="3" maxlength="500" placeholder="Ex.: revisão de conversação"></textarea>
         </label>
-        <button id="createSlotButton" class="primary-button full-field" type="submit">PUBLICAR HORÁRIO</button>
+        <button id="createSlotButton" class="primary-button full-field" type="submit" disabled>PUBLICAR HORÁRIO</button>
       </form>
       <p id="formMessage" class="form-message" role="status"></p>
     </section>
@@ -72,6 +83,6 @@
     </section>
   </main>
 
-  <script src="reposicoes_admin.js?v=20260716-1"></script>
+  <script src="reposicoes_admin.js?v=20260716-2"></script>
 </body>
 </html>

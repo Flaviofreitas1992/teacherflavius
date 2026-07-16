@@ -27,8 +27,11 @@ body { align-items: flex-start; color: #f1f5f9; }
 .primary-button:disabled, .secondary-button:disabled, .danger-button:disabled { opacity: .55; cursor: not-allowed; }
 .slot-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
 .slot-form label { display: grid; gap: 7px; color: #cbd5e1; font-size: 13px; }
-.slot-form input, .slot-form textarea { width: 100%; border: 1px solid rgba(255,255,255,.14); border-radius: 11px; background: rgba(15,23,42,.7); color: #f8fafc; padding: 12px; font: inherit; color-scheme: dark; }
-.slot-form input:focus, .slot-form textarea:focus { outline: 2px solid rgba(129,140,248,.5); border-color: transparent; }
+.slot-form input, .slot-form select, .slot-form textarea { width: 100%; border: 1px solid rgba(255,255,255,.14); border-radius: 11px; background: rgba(15,23,42,.7); color: #f8fafc; padding: 12px; font: inherit; color-scheme: dark; }
+.slot-form input:focus, .slot-form select:focus, .slot-form textarea:focus { outline: 2px solid rgba(129,140,248,.5); border-color: transparent; }
+.slot-form input[readonly] { color: #a5b4fc; cursor: default; }
+.inline-link { color: #6ee7b7; font-size: 12px; font-weight: bold; letter-spacing: .35px; text-decoration: none; width: fit-content; }
+.inline-link:hover { text-decoration: underline; }
 .full-field { grid-column: 1 / -1; }
 .form-message { min-height: 22px; color: #94a3b8; font-size: 13px; margin-top: 12px; }
 .form-message.success { color: #6ee7b7; }

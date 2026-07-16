@@ -64,9 +64,10 @@ function renderAvailableSlot(slot) {
       '<h3>' + escapeHtml(formatDate(slot.starts_at)) + '</h3>' +
       '<div class="card-time">' + escapeHtml(formatTime(slot.starts_at)) + ' às ' + escapeHtml(formatTime(slot.ends_at)) + '</div>' +
     '</div><span class="status-pill success">' + escapeHtml(spotsLabel) + '</span></div>' +
+    '<p><strong>Turma:</strong> ' + escapeHtml(slot.class_name || ("Turma " + slot.class_number)) + '</p>' +
     (slot.notes ? '<p>' + escapeHtml(slot.notes) + '</p>' : '') +
     '<button class="primary-button book-slot-button" type="button" data-slot-id="' + escapeHtml(slot.id) + '" data-slot-label="' +
-      escapeHtml(formatDate(slot.starts_at) + ', das ' + formatTime(slot.starts_at) + ' às ' + formatTime(slot.ends_at)) + '">AGENDAR REPOSIÇÃO</button>' +
+      escapeHtml((slot.class_name || ("Turma " + slot.class_number)) + ', ' + formatDate(slot.starts_at) + ', das ' + formatTime(slot.starts_at) + ' às ' + formatTime(slot.ends_at)) + '">AGENDAR REPOSIÇÃO</button>' +
   '</article>';
 }
 
