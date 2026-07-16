@@ -521,7 +521,10 @@ begin
     b.class_number,
     b.class_name,
     b.meeting_url,
-    coalesce(n.status, 'pending')::text as email_status,
+    case
+      when b.status = 'cancelled' and n.id is null then 'not_requested'
+      else coalesce(n.status, 'pending')
+    end::text as email_status,
     b.booked_at
   from public.makeup_class_bookings b
   join public.makeup_class_slots s on s.id = b.slot_id
