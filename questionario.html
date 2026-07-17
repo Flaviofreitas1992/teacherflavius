@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Questionário - Teacher Flávio</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase_config.js?v=20260718-1"></script>
+  <script src="auth.js?v=20260718-1"></script>
+  <link rel="stylesheet" href="professor.css?v=20260718-1">
+  <link rel="stylesheet" href="questionarios.css?v=20260718-1">
+</head>
+<body class="auth-checking">
+  <main class="container quiz-student-container">
+    <nav class="top-links" aria-label="Navegação principal">
+      <a class="top-link" href="/exercicios-diarios/">PORTAL DE EXERCÍCIOS</a>
+      <a class="top-link" href="/area-do-estudante/">ÁREA DO ESTUDANTE</a>
+    </nav>
+
+    <div id="pageStatus" class="status" role="status">Carregando questionário...</div>
+    <div class="divider"></div>
+
+    <div id="quizMount">
+      <section class="quiz-panel">
+        <p class="empty">Carregando atividade...</p>
+      </section>
+    </div>
+  </main>
+
+  <script src="questionario.js?v=20260718-1"></script>
+</body>
+</html>
