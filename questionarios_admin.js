@@ -407,7 +407,7 @@ async function saveQuiz(event) {
     message.textContent = error.message || "Não foi possível salvar o questionário.";
   } finally {
     button.disabled = false;
-    if (!editingQuizId) button.textContent = "SALVAR QUESTIONÁRIO";
+    button.textContent = editingQuizId ? "ATUALIZAR QUESTIONÁRIO" : "SALVAR QUESTIONÁRIO";
   }
 }
 
