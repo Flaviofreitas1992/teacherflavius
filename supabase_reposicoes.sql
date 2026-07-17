@@ -550,7 +550,7 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = public
-as $
+as $cancel_booking$
 declare
   current_status text;
   target_starts_at timestamptz;
@@ -599,7 +599,7 @@ begin
     'email_queued', true
   );
 end;
-$;
+$cancel_booking$;
 
 revoke all on function public.cancel_my_makeup_class_booking(uuid) from public;
 grant execute on function public.cancel_my_makeup_class_booking(uuid) to authenticated;
