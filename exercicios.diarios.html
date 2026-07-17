@@ -35,6 +35,9 @@
     .completion-status { color: #94a3b8; font-size: 12px; text-align: right; min-width: 90px; }
     .completion-status.saved { color: #6ee7b7; }
     .completion-status.error { color: #fca5a5; }
+    .quiz-description { color: #cbd5e1; font-size: 13px; line-height: 1.55; }
+    .quiz-meta { color: #94a3b8; font-size: 12px; line-height: 1.5; }
+    .quiz-score { color: #6ee7b7; font-size: 12px; font-weight: bold; text-align: right; }
     .blocked-panel { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 20px; color: #cbd5e1; line-height: 1.6; text-align: center; }
     @media (min-width: 760px) { .menu-grid { grid-template-columns: 1fr 1fr; } }
   </style>
@@ -59,6 +62,7 @@
 
   <script>
     let dailyExercises = [];
+    let publishedQuizzes = [];
     let currentUser = null;
     let completedExercises = new Map();
 
@@ -84,13 +88,67 @@
       });
     }
 
-    function mergeExercises(createdExercises) {
+    async function loadPublishedQuizzes() {
+      const client = Auth.getClient();
+      const response = await client.rpc("get_published_quizzes");
+      if (response.error) throw response.error;
+      return response.data || [];
+    }
+
+    function mergeExercises(createdExercises, quizzes) {
       const seen = new Set();
-      dailyExercises = createdExercises.filter(function (exercise) {
+      const externalExercises = createdExercises.filter(function (exercise) {
         if (!exercise.id || seen.has(exercise.id)) return false;
         seen.add(exercise.id);
         return true;
+      }).map(function (exercise) {
+        return Object.assign({ kind: "external" }, exercise);
       });
+
+      publishedQuizzes = quizzes || [];
+      const quizExercises = publishedQuizzes.map(function (quiz) {
+        return {
+          id: "quiz-" + quiz.quiz_id,
+          quizId: quiz.quiz_id,
+          title: quiz.quiz_title,
+          description: quiz.quiz_description,
+          url: "/questionario/?id=" + encodeURIComponent(quiz.quiz_id),
+          kind: "quiz",
+          questionCount: Number(quiz.question_count || 0),
+          totalPoints: Number(quiz.total_points || 0),
+          attemptCount: Number(quiz.attempt_count || 0),
+          bestPercentage: Number(quiz.best_percentage || 0)
+        };
+      });
+
+      dailyExercises = quizExercises.concat(externalExercises);
+    }
+
+    function renderExerciseCard(exercise) {
+      if (exercise.kind === "quiz") {
+        const completed = exercise.attemptCount > 0;
+        return '<div class="exercise-card ' + (completed ? 'done' : '') + '" data-exercise-id="' + escapeHtml(exercise.id) + '">' +
+          '<a class="exercise-link" href="' + escapeHtml(exercise.url) + '">' +
+            '<span><span class="icon">❓</span>' + escapeHtml(exercise.title) + '</span><span class="arrow">›</span>' +
+          '</a>' +
+          (exercise.description ? '<p class="quiz-description">' + escapeHtml(exercise.description) + '</p>' : '') +
+          '<div class="completion-row">' +
+            '<span class="quiz-meta">Questionário · ' + exercise.questionCount + ' perguntas · ' + exercise.totalPoints + ' pontos</span>' +
+            '<span class="quiz-score">' + (completed ? 'Melhor resultado: ' + exercise.bestPercentage.toLocaleString("pt-BR", { maximumFractionDigits: 2 }) + '%' : 'Ainda não respondido') + '</span>' +
+          '</div>' +
+        '</div>';
+      }
+
+      const isDone = completedExercises.get(exercise.id) === true;
+      return '<div class="exercise-card ' + (isDone ? 'done' : '') + '" data-exercise-id="' + escapeHtml(exercise.id) + '">' +
+        '<a class="exercise-link" href="' + escapeHtml(exercise.url) + '" target="_blank" rel="noopener noreferrer">' +
+          '<span><span class="icon">📝</span>' + escapeHtml(exercise.title) + '</span><span class="arrow">›</span>' +
+        '</a>' +
+        '<div class="completion-row">' +
+          '<label class="completion-label"><input class="completion-checkbox" type="checkbox" data-exercise-id="' + escapeHtml(exercise.id) + '" ' + (isDone ? 'checked' : '') + ' /><span>Já fiz este exercício</span></label>' +
+          '<span class="completion-status ' + (isDone ? 'saved' : '') + '" id="status-' + escapeHtml(exercise.id) + '">' + (isDone ? 'Feito' : 'Não feito') + '</span>' +
+        '</div>' +
+      '</div>';
     }
 
     function renderExercises() {
@@ -102,21 +160,12 @@
       }
 
       grid.className = "menu-grid";
-      grid.innerHTML = dailyExercises.map(function (exercise) {
-        const isDone = completedExercises.get(exercise.id) === true;
-        return '<div class="exercise-card ' + (isDone ? 'done' : '') + '" data-exercise-id="' + escapeHtml(exercise.id) + '">' +
-          '<a class="exercise-link" href="' + escapeHtml(exercise.url) + '" target="_blank" rel="noopener noreferrer">' +
-            '<span><span class="icon">📝</span>' + escapeHtml(exercise.title) + '</span><span class="arrow">›</span>' +
-          '</a>' +
-          '<div class="completion-row">' +
-            '<label class="completion-label"><input class="completion-checkbox" type="checkbox" data-exercise-id="' + escapeHtml(exercise.id) + '" ' + (isDone ? 'checked' : '') + ' /><span>Já fiz este exercício</span></label>' +
-            '<span class="completion-status ' + (isDone ? 'saved' : '') + '" id="status-' + escapeHtml(exercise.id) + '">' + (isDone ? 'Feito' : 'Não feito') + '</span>' +
-          '</div>' +
-        '</div>';
-      }).join("");
+      grid.innerHTML = dailyExercises.map(renderExerciseCard).join("");
 
       document.querySelectorAll(".completion-checkbox").forEach(function (checkbox) {
-        checkbox.addEventListener("change", function () { saveExerciseCompletion(checkbox.dataset.exerciseId, checkbox.checked, checkbox); });
+        checkbox.addEventListener("change", function () {
+          saveExerciseCompletion(checkbox.dataset.exerciseId, checkbox.checked, checkbox);
+        });
       });
     }
 
@@ -188,12 +237,22 @@
           return;
         }
 
+        let createdExercises = [];
+        let quizzes = [];
+
         try {
-          const createdExercises = await loadTeacherCreatedExercises();
-          mergeExercises(createdExercises);
+          createdExercises = await loadTeacherCreatedExercises();
         } catch (error) {
-          mergeExercises([]);
+          createdExercises = [];
         }
+
+        try {
+          quizzes = await loadPublishedQuizzes();
+        } catch (error) {
+          quizzes = [];
+        }
+
+        mergeExercises(createdExercises, quizzes);
 
         try {
           await loadCompletedExercises();
