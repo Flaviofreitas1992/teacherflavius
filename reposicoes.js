@@ -1,5 +1,6 @@
 let currentSession = null;
 let bookingInProgress = false;
+let cancellationInProgress = false;
 
 function sleep(ms) {
   return new Promise(function (resolve) { setTimeout(resolve, ms); });
@@ -53,6 +54,7 @@ function formatTime(value) {
 function translateEmailStatus(status) {
   if (status === "sent") return { label: "E-mail enviado", css: "success" };
   if (status === "failed") return { label: "Falha no e-mail", css: "danger" };
+  if (status === "not_requested") return { label: "E-mail não solicitado", css: "" };
   return { label: "E-mail sendo enviado", css: "warning" };
 }
 
@@ -73,11 +75,15 @@ function renderAvailableSlot(slot) {
 
 function renderBooking(booking) {
   const cancelled = booking.status === "cancelled";
+  const startsAt = new Date(booking.starts_at).getTime();
   const isPast = new Date(booking.ends_at).getTime() < Date.now();
+  const canCancel = !cancelled && startsAt > Date.now();
   let bookingStatus = { label: "Agendada", css: "success" };
   if (cancelled) bookingStatus = { label: "Cancelada", css: "danger" };
   else if (isPast) bookingStatus = { label: "Data concluída", css: "" };
   const emailStatus = translateEmailStatus(booking.email_status);
+  const bookingLabel = (booking.class_name || ("Turma " + booking.class_number)) + ", " +
+    formatDate(booking.starts_at) + ", das " + formatTime(booking.starts_at) + " às " + formatTime(booking.ends_at);
 
   return '<article class="booking-card' + (cancelled ? ' is-cancelled' : '') + '">' +
     '<div class="card-heading"><div>' +
@@ -87,6 +93,8 @@ function renderBooking(booking) {
     '<p><strong>Turma:</strong> ' + escapeHtml(booking.class_name || ("Turma " + booking.class_number)) + '</p>' +
     '<div class="card-meta"><span class="status-pill ' + emailStatus.css + '">' + escapeHtml(emailStatus.label) + '</span></div>' +
     (!cancelled && booking.meeting_url ? '<a class="link-button" href="' + escapeHtml(booking.meeting_url) + '" target="_blank" rel="noopener noreferrer">ABRIR LINK DA AULA</a>' : '') +
+    (canCancel ? '<div class="card-meta"><button class="danger-button cancel-booking-button" type="button" data-booking-id="' +
+      escapeHtml(booking.id) + '" data-booking-label="' + escapeHtml(bookingLabel) + '">CANCELAR REPOSIÇÃO</button></div>' : '') +
   '</article>';
 }
 
@@ -120,6 +128,11 @@ async function loadSchedule() {
       bookSlot(button.dataset.slotId, button.dataset.slotLabel, button);
     });
   });
+  document.querySelectorAll(".cancel-booking-button").forEach(function (button) {
+    button.addEventListener("click", function () {
+      cancelBooking(button.dataset.bookingId, button.dataset.bookingLabel, button);
+    });
+  });
 }
 
 async function bookSlot(slotId, slotLabel, button) {
@@ -143,6 +156,32 @@ async function bookSlot(slotId, slotLabel, button) {
     button.textContent = "AGENDAR REPOSIÇÃO";
   } finally {
     bookingInProgress = false;
+  }
+}
+
+async function cancelBooking(bookingId, bookingLabel, button) {
+  if (cancellationInProgress) return;
+  const confirmed = window.confirm("Deseja cancelar a reposição para " + bookingLabel + "? A vaga será liberada.");
+  if (!confirmed) return;
+
+  cancellationInProgress = true;
+  button.disabled = true;
+  button.textContent = "CANCELANDO...";
+  const status = document.getElementById("pageStatus");
+
+  try {
+    const response = await Auth.getClient().rpc("cancel_my_makeup_class_booking", {
+      target_booking_id: bookingId
+    });
+    if (response.error) throw response.error;
+    status.textContent = "Reposição cancelada. A confirmação por e-mail está sendo enviada.";
+    await loadSchedule();
+  } catch (error) {
+    status.textContent = "Não foi possível cancelar: " + (error.message || "tente novamente.");
+    button.disabled = false;
+    button.textContent = "CANCELAR REPOSIÇÃO";
+  } finally {
+    cancellationInProgress = false;
   }
 }
 

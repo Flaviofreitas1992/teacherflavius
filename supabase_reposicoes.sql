@@ -39,7 +39,9 @@ create unique index if not exists makeup_class_bookings_confirmed_unique
 
 create table if not exists public.makeup_class_email_notifications (
   id uuid primary key default gen_random_uuid(),
-  booking_id uuid not null unique references public.makeup_class_bookings(id) on delete cascade,
+  booking_id uuid not null references public.makeup_class_bookings(id) on delete cascade,
+  notification_type text not null default 'booking_confirmation'
+    check (notification_type in ('booking_confirmation', 'cancellation')),
   status text not null default 'pending'
     check (status in ('pending', 'sent', 'failed')),
   attempts integer not null default 0 check (attempts >= 0),
@@ -55,6 +57,25 @@ alter table public.makeup_class_slots
   add column if not exists class_number integer,
   add column if not exists class_name text,
   add column if not exists meeting_url text;
+
+alter table public.makeup_class_email_notifications
+  add column if not exists notification_type text default 'booking_confirmation';
+
+update public.makeup_class_email_notifications
+set notification_type = 'booking_confirmation'
+where notification_type is null;
+
+alter table public.makeup_class_email_notifications
+  alter column notification_type set default 'booking_confirmation',
+  alter column notification_type set not null,
+  drop constraint if exists makeup_class_email_notifications_notification_type_check,
+  add constraint makeup_class_email_notifications_notification_type_check
+    check (notification_type in ('booking_confirmation', 'cancellation')),
+  drop constraint if exists makeup_class_email_notifications_booking_id_key;
+
+drop index if exists public.makeup_class_email_notifications_booking_id_key;
+create unique index if not exists makeup_class_email_booking_type_unique
+  on public.makeup_class_email_notifications (booking_id, notification_type);
 
 -- Quando um horario antigo possui reservas de uma unica turma, preserva essa
 -- turma e o link ja usado nas reservas. Horarios antigos sem turma definida sao
@@ -454,8 +475,8 @@ begin
   )
   returning id into inserted_booking_id;
 
-  insert into public.makeup_class_email_notifications (booking_id)
-  values (inserted_booking_id);
+  insert into public.makeup_class_email_notifications (booking_id, notification_type)
+  values (inserted_booking_id, 'booking_confirmation');
 
   return jsonb_build_object(
     'ok', true,
@@ -500,11 +521,19 @@ begin
     b.class_number,
     b.class_name,
     b.meeting_url,
-    coalesce(n.status, 'pending')::text as email_status,
+    case
+      when b.status = 'cancelled' and n.id is null then 'not_requested'
+      else coalesce(n.status, 'pending')
+    end::text as email_status,
     b.booked_at
   from public.makeup_class_bookings b
   join public.makeup_class_slots s on s.id = b.slot_id
-  left join public.makeup_class_email_notifications n on n.booking_id = b.id
+  left join public.makeup_class_email_notifications n
+    on n.booking_id = b.id
+   and n.notification_type = case
+     when b.status = 'cancelled' then 'cancellation'
+     else 'booking_confirmation'
+   end
   where b.student_id = auth.uid()
   order by
     case when s.starts_at >= now() and b.status = 'confirmed' then 0 else 1 end,
@@ -515,6 +544,65 @@ $$;
 
 revoke all on function public.get_my_makeup_bookings() from public;
 grant execute on function public.get_my_makeup_bookings() to authenticated;
+
+create or replace function public.cancel_my_makeup_class_booking(target_booking_id uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $
+declare
+  current_status text;
+  target_starts_at timestamptz;
+begin
+  if auth.uid() is null then
+    raise exception 'Faca login para cancelar uma reposicao.';
+  end if;
+
+  select b.status, s.starts_at
+  into current_status, target_starts_at
+  from public.makeup_class_bookings b
+  join public.makeup_class_slots s on s.id = b.slot_id
+  where b.id = target_booking_id
+    and b.student_id = auth.uid()
+  for update of b;
+
+  if not found then
+    raise exception 'Reserva nao encontrada ou nao pertence a este aluno.';
+  end if;
+
+  if current_status = 'cancelled' then
+    return jsonb_build_object('ok', true, 'already_cancelled', true);
+  end if;
+
+  if current_status <> 'confirmed' then
+    raise exception 'Somente reservas confirmadas podem ser canceladas.';
+  end if;
+
+  if target_starts_at <= now() then
+    raise exception 'Nao e possivel cancelar uma reposicao que ja comecou.';
+  end if;
+
+  update public.makeup_class_bookings
+  set status = 'cancelled', cancelled_at = now()
+  where id = target_booking_id
+    and student_id = auth.uid()
+    and status = 'confirmed';
+
+  insert into public.makeup_class_email_notifications (booking_id, notification_type)
+  values (target_booking_id, 'cancellation')
+  on conflict (booking_id, notification_type) do nothing;
+
+  return jsonb_build_object(
+    'ok', true,
+    'booking_id', target_booking_id,
+    'email_queued', true
+  );
+end;
+$;
+
+revoke all on function public.cancel_my_makeup_class_booking(uuid) from public;
+grant execute on function public.cancel_my_makeup_class_booking(uuid) to authenticated;
 
 -- A estrutura de retorno agora inclui a turma e o link copiados no horario.
 drop function if exists public.get_teacher_makeup_slots();
@@ -607,7 +695,9 @@ begin
     coalesce(n.last_error, '')::text,
     b.booked_at
   from public.makeup_class_bookings b
-  left join public.makeup_class_email_notifications n on n.booking_id = b.id
+  left join public.makeup_class_email_notifications n
+    on n.booking_id = b.id
+   and n.notification_type = 'booking_confirmation'
   order by b.booked_at desc;
 end;
 $$;
