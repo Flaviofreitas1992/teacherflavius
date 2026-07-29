@@ -64,18 +64,6 @@ function safeSubject(value: unknown): string {
     .slice(0, 120) || "Aluno sem nome";
 }
 
-function formatEnrollmentDate(value: string): string {
-  try {
-    return new Intl.DateTimeFormat("pt-BR", {
-      dateStyle: "long",
-      timeStyle: "short",
-      timeZone: "America/Sao_Paulo",
-    }).format(new Date(value));
-  } catch {
-    return value;
-  }
-}
-
 Deno.serve(async (request: Request) => {
   if (request.method !== "POST") {
     return jsonResponse({ error: "Method not allowed" }, 405);
@@ -149,7 +137,7 @@ Deno.serve(async (request: Request) => {
 
   const { data: student, error: studentError } = await supabase
     .from("profiles")
-    .select("id, name, email, whatsapp, enrollment_code, enrolled")
+    .select("id, name, whatsapp, enrolled")
     .eq("id", notification.student_id)
     .single();
 
@@ -164,19 +152,13 @@ Deno.serve(async (request: Request) => {
   }
 
   const studentName = safeSubject(student.name);
-  const enrolledAt = formatEnrollmentDate(notification.created_at);
-  const studentEmail = String(student.email ?? "Não informado");
   const studentWhatsapp = String(student.whatsapp ?? "Não informado");
-  const enrollmentCode = String(student.enrollment_code ?? "Não informado");
 
   const textBody = [
     "Um novo aluno concluiu a matrícula no site.",
     "",
-    `Nome: ${studentName}`,
-    `E-mail: ${studentEmail}`,
+    `Nome completo: ${studentName}`,
     `WhatsApp: ${studentWhatsapp}`,
-    `Código de matrícula: ${enrollmentCode}`,
-    `Data da matrícula: ${enrolledAt}`,
   ].join("\n");
 
   const htmlBody = `
@@ -184,13 +166,9 @@ Deno.serve(async (request: Request) => {
       <h1 style="font-size:22px;margin-bottom:18px">Nova matrícula no site</h1>
       <p>Um novo aluno concluiu a matrícula.</p>
       <table style="border-collapse:collapse;width:100%">
-        <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Nome</td><td>${escapeHtml(studentName)}</td></tr>
-        <tr><td style="padding:7px 12px 7px 0;font-weight:bold">E-mail</td><td>${escapeHtml(studentEmail)}</td></tr>
+        <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Nome completo</td><td>${escapeHtml(studentName)}</td></tr>
         <tr><td style="padding:7px 12px 7px 0;font-weight:bold">WhatsApp</td><td>${escapeHtml(studentWhatsapp)}</td></tr>
-        <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Código</td><td>${escapeHtml(enrollmentCode)}</td></tr>
-        <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Data</td><td>${escapeHtml(enrolledAt)}</td></tr>
       </table>
-      <p style="margin-top:22px;color:#667085;font-size:13px">CPF e chave Pix não são enviados por e-mail por segurança.</p>
     </div>
   `;
 
