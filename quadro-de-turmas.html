@@ -177,7 +177,13 @@
       }
 
       const sortedClasses = classes.slice().sort(function (a, b) {
-        return Number(a.class_number) - Number(b.class_number);
+        const firstName = String(a.class_name || ("Turma " + a.class_number));
+        const secondName = String(b.class_name || ("Turma " + b.class_number));
+        return firstName.localeCompare(
+          secondName,
+          "pt-BR",
+          { sensitivity: "base", numeric: true }
+        );
       });
 
       return '<div class="extra-section">' +
