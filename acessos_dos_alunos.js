@@ -38,17 +38,6 @@
     }).format(date);
   }
 
-  function locationLabel(status) {
-    const labels = {
-      granted: "Compartilhada",
-      denied: "Negada no navegador",
-      unavailable: "Indisponível",
-      error: "Erro ao obter",
-      not_shared: "Não compartilhada"
-    };
-    return labels[status] || "Não compartilhada";
-  }
-
   function renderStudents(students) {
     const select = document.getElementById("studentFilter");
     const selectedValue = select.value;
@@ -83,20 +72,15 @@
   function renderSummary(accesses) {
     const studentIds = new Set();
     const pages = new Set();
-    let sharedLocations = 0;
 
     accesses.forEach(function (access) {
       if (access.user_id) studentIds.add(access.user_id);
       if (access.page_path) pages.add(access.page_path);
-      if (access.location_status === "granted" && access.latitude != null && access.longitude != null) {
-        sharedLocations++;
-      }
     });
 
     document.getElementById("totalAccesses").textContent = String(accesses.length);
     document.getElementById("activeStudents").textContent = String(studentIds.size);
     document.getElementById("uniquePages").textContent = String(pages.size);
-    document.getElementById("sharedLocations").textContent = String(sharedLocations);
   }
 
   function renderAccesses(accesses) {
@@ -118,30 +102,6 @@
     tbody.innerHTML = accesses.map(function (access) {
       const pageTitle = access.page_title || "Página sem título";
       const pagePath = access.page_path || "/";
-      const hasLocation = access.location_status === "granted"
-        && access.latitude != null
-        && access.longitude != null;
-      let locationHtml = '<span class="location-status">' +
-        escapeHtml(locationLabel(access.location_status)) +
-        "</span>";
-
-      if (hasLocation) {
-        const latitude = Number(access.latitude);
-        const longitude = Number(access.longitude);
-        const mapUrl = "https://www.openstreetmap.org/?mlat=" +
-          encodeURIComponent(latitude) +
-          "&mlon=" +
-          encodeURIComponent(longitude) +
-          "#map=12/" +
-          encodeURIComponent(latitude) +
-          "/" +
-          encodeURIComponent(longitude);
-        locationHtml = [
-          '<span class="location-status shared">Compartilhada</span><br>',
-          escapeHtml(latitude.toFixed(2) + ", " + longitude.toFixed(2)),
-          '<br><a class="map-link" href="' + mapUrl + '" target="_blank" rel="noopener noreferrer">Abrir mapa</a>'
-        ].join("");
-      }
 
       return [
         "<tr>",
@@ -153,7 +113,6 @@
         '<td><a class="page-link" href="' + escapeHtml(pagePath) + '" target="_blank" rel="noopener noreferrer">' +
           escapeHtml(pageTitle) + "</a>",
         '<div class="muted">' + escapeHtml(pagePath) + "</div></td>",
-        "<td>" + locationHtml + "</td>",
         "</tr>"
       ].join("");
     }).join("");
