@@ -55,7 +55,7 @@ create index if not exists class_lesson_records_invite_id_idx
 -- A assinatura de retorno desta função muda. Por isso, é obrigatório derrubá-la antes de recriar.
 drop function if exists public.get_teacher_class_lesson_records(integer);
 
--- Atualiza a listagem para devolver referência genérica user/invite.
+-- Atualiza a listagem para devolver referência genérica user/invite e o histórico completo do aluno, mesmo após uma troca de turma.
 create function public.get_teacher_class_lesson_records(target_class_number integer)
 returns table (
   id text,
@@ -93,7 +93,16 @@ begin
     clr.created_at,
     clr.updated_at
   from public.class_lesson_records clr
-  where clr.class_number = target_class_number
+  where exists (
+    select 1
+    from public.class_students cs
+    where cs.class_number = target_class_number
+      and (
+        (clr.user_id is not null and cs.user_id = clr.user_id)
+        or
+        (clr.invite_id is not null and cs.invite_id = clr.invite_id)
+      )
+  )
   order by clr.class_date desc, clr.created_at desc;
 end;
 $$;
