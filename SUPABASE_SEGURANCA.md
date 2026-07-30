@@ -62,3 +62,52 @@ explícita da Fase 1 antes de reaplicar o script principal.
 - revisar as Edge Functions públicas e desativar funções antigas após confirmar
   que não recebem mais eventos;
 - corrigir índices ausentes e consultas apontadas pelo Performance Advisor.
+
+## Fase 2 — políticas RLS
+
+O arquivo `supabase_seguranca_fase2_rls.sql`:
+
+- substitui `public` por `authenticated` nas políticas de acesso do site;
+- consolida políticas permissivas que hoje são combinadas implicitamente com
+  lógica `OR`;
+- mantém alunos limitados aos próprios registros;
+- mantém professores com acesso administrativo;
+- usa `(select auth.uid())`, `(select auth.jwt())` e
+  `(select is_teacher_admin())` para evitar reavaliação por linha;
+- valida que não restaram políticas atribuídas a `public` nem grupos
+  permissivos duplicados.
+
+### Como aplicar
+
+1. Faça o merge da PR da Fase 2.
+2. No SQL Editor, execute todo o arquivo
+   `supabase_seguranca_fase2_rls.sql`.
+3. Confirme que o relatório final mostra:
+   - `policies_for_public = 0`
+   - `duplicate_permissive_groups = 0`
+4. Abra o Database Advisor e confirme a remoção dos alertas
+   `auth_rls_initplan` e `multiple_permissive_policies`.
+
+### Checklist da Fase 2
+
+Use uma conta de aluno:
+
+1. Entrar no site e abrir o próprio perfil.
+2. Marcar e desmarcar uma lição no roteiro de estudos.
+3. Marcar um exercício diário como concluído.
+4. Abrir os recursos da própria turma.
+5. Confirmar que não é possível visualizar dados de outro aluno.
+
+Use uma conta de professor:
+
+1. Abrir a lista de alunos e os perfis.
+2. Abrir uma turma e consultar alunos, recursos e lições.
+3. Salvar e remover um recurso de teste da turma.
+4. Criar ou editar um exercício de teste.
+5. Confirmar que mensalidades, questionários e reposições continuam acessíveis.
+
+### Rollback emergencial
+
+Se uma operação autorizada retornar erro de RLS ou deixar de encontrar registros,
+execute `supabase_seguranca_fase2_rls_rollback.sql`. O rollback restaura somente
+as políticas anteriores; as proteções da Fase 1 permanecem ativas.
