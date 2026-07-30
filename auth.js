@@ -27,7 +27,7 @@
     function inject() {
       if (document.querySelector('script[src^="/student_access_tracker.js"]')) return;
       const script = document.createElement("script");
-      script.src = "/student_access_tracker.js?v=20260730-1";
+      script.src = "/student_access_tracker.js?v=20260730-2";
       script.defer = true;
       document.body.appendChild(script);
     }
