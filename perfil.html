@@ -6,7 +6,7 @@
   <title>Meu Perfil - Teacher Flávio</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase_config.js?v=20260428-4"></script>
-  <script src="auth.js?v=20260730-1"></script>
+  <script src="auth.js?v=20260428-4"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { min-height: 100vh; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%); padding: 32px 16px 48px; font-family: Georgia, serif; color: #f1f5f9; }
@@ -39,11 +39,6 @@
     .message { min-height: 20px; color: #94a3b8; font-size: 13px; margin-top: 10px; line-height: 1.5; }
     .message.success { color: #6ee7b7; }
     .message.error { color: #fca5a5; }
-    .privacy-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
-    .privacy-actions button { flex: 1 1 220px; }
-    .privacy-allow { border: 0; background: linear-gradient(90deg,#818cf8,#a78bfa); color: #fff; font-weight: bold; }
-    .privacy-revoke { border-color: rgba(248,113,113,0.45); background: rgba(248,113,113,0.10); color: #fca5a5; font-weight: bold; }
-    .privacy-status { margin-top: 10px; color: #cbd5e1; font-size: 13px; line-height: 1.5; }
     @media (max-width: 560px) { .availability-grid { grid-template-columns: 68px repeat(5, minmax(0, 1fr)); gap: 8px 3px; } .grid-head, .time-label { font-size: 12px; } .slot-box { width: 25px; height: 25px; } }
   </style>
 </head>
@@ -90,19 +85,6 @@
         <button class="primary" type="submit">SALVAR ALTERAÇÕES</button>
         <div id="message" class="message"></div>
       </form>
-    </div>
-
-    <div class="card" id="accessPrivacyCard">
-      <h2>Privacidade dos acessos</h2>
-      <p>O site registra as páginas acessadas, a data e a hora por até 90 dias. Não armazenamos seu endereço IP nem os parâmetros da URL. O compartilhamento da localização aproximada com o professor é opcional.</p>
-      <div class="readonly" style="margin-top:14px;">
-        <p><b>Localização:</b> <span id="locationPreferenceStatus">Carregando preferência...</span></p>
-      </div>
-      <div class="privacy-actions">
-        <button id="allowLocationButton" class="privacy-allow" type="button">PERMITIR LOCALIZAÇÃO</button>
-        <button id="revokeLocationButton" class="privacy-revoke" type="button" hidden>REVOGAR PERMISSÃO</button>
-      </div>
-      <div id="locationPreferenceMessage" class="privacy-status"></div>
     </div>
   </div>
 
@@ -214,84 +196,8 @@
       }
     });
 
-    async function waitForAccessTracker() {
-      for (let attempt = 0; attempt < 20; attempt++) {
-        if (window.StudentAccessTracker) return true;
-        await new Promise(resolve => setTimeout(resolve, 150));
-      }
-      return !!window.StudentAccessTracker;
-    }
-
-    function renderLocationPreference(preference) {
-      const allowed = preference && preference.location_consent === true;
-      const decided = preference && preference.consent_decided === true;
-      document.getElementById("locationPreferenceStatus").textContent = allowed
-        ? "Compartilhamento autorizado"
-        : decided
-          ? "Não compartilhada"
-          : "Preferência ainda não definida";
-      document.getElementById("allowLocationButton").hidden = allowed;
-      document.getElementById("revokeLocationButton").hidden = !allowed;
-    }
-
-    async function loadLocationPreference() {
-      const ready = await waitForAccessTracker();
-      if (!ready) {
-        document.getElementById("locationPreferenceStatus").textContent = "Indisponível";
-        document.getElementById("locationPreferenceMessage").textContent = "Não foi possível carregar as preferências de acesso.";
-        return;
-      }
-
-      try {
-        const preference = await StudentAccessTracker.getPreference();
-        renderLocationPreference(preference);
-      } catch (error) {
-        document.getElementById("locationPreferenceStatus").textContent = "Aguardando configuração";
-        document.getElementById("locationPreferenceMessage").textContent = "O recurso será disponibilizado após a configuração do painel de acessos.";
-      }
-    }
-
-    async function changeLocationPreference(consent) {
-      const allowButton = document.getElementById("allowLocationButton");
-      const revokeButton = document.getElementById("revokeLocationButton");
-      const statusMessage = document.getElementById("locationPreferenceMessage");
-      allowButton.disabled = true;
-      revokeButton.disabled = true;
-      statusMessage.textContent = consent
-        ? "Solicitando permissão ao navegador..."
-        : "Revogando a permissão...";
-
-      try {
-        const result = await StudentAccessTracker.setLocationConsent(consent);
-        renderLocationPreference(result.preference);
-        if (!consent) {
-          statusMessage.textContent = "Permissão revogada. As localizações anteriores foram removidas e as próximas não serão compartilhadas.";
-        } else if (result.location_status === "granted") {
-          statusMessage.textContent = "Preferência salva e localização aproximada compartilhada.";
-        } else {
-          statusMessage.textContent = "Preferência salva, mas o navegador não forneceu a localização. Você pode revisar a permissão nas configurações do navegador.";
-        }
-      } catch (error) {
-        statusMessage.textContent = error.message || "Não foi possível salvar a preferência.";
-      } finally {
-        allowButton.disabled = false;
-        revokeButton.disabled = false;
-      }
-    }
-
-    document.getElementById("allowLocationButton").addEventListener("click", function () {
-      changeLocationPreference(true);
-    });
-    document.getElementById("revokeLocationButton").addEventListener("click", function () {
-      changeLocationPreference(false);
-    });
-    window.addEventListener("student-access-preference-changed", function (event) {
-      if (event.detail && event.detail.preference) renderLocationPreference(event.detail.preference);
-    });
-
     buildAvailabilityGrid();
     loadProfile();
-    loadLocationPreference();
   </script>
 </body>
 </html>
