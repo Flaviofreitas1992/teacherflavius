@@ -1,197 +1,495 @@
-# Teacher Flávio — Atividades de Inglês
+# Teacher Flávio — Portal de Ensino de Inglês
 
-Repositório de páginas HTML estáticas para atividades de inglês do Teacher Flávio. O projeto reúne quizzes de gramática e exercícios interativos de ordenar palavras para formar frases em inglês.
+<!-- markdownlint-disable MD013 -->
 
-O site foi pensado para uso por alunos em celular, com interface responsiva, navegação simples e coleta de desempenho.
+Site oficial e portal acadêmico do Teacher Flávio, disponível em
+[teacherflavius.com](https://teacherflavius.com).
 
-## Estrutura principal
+O projeto deixou de ser apenas uma coleção de atividades estáticas. Atualmente,
+ele reúne matrícula, autenticação, áreas do aluno e do professor, gestão de
+turmas, registro de lições, frequência, exercícios, questionários com correção
+automática, mensalidades, reposições, aulas de gramática, notificações por e-mail
+e acompanhamento de acessos.
 
-### Página inicial
+## Visão geral
 
-- `index.html`
+Há três experiências principais:
 
-Página inicial do site. Atualmente contém apenas dois cards principais:
+- **Visitante:** conhece as aulas, inicia uma matrícula e acessa o login.
+- **Aluno autenticado:** consulta sua turma, materiais, frequência, roteiro,
+  exercícios, questionários, reposições, aulas de gramática e perfil.
+- **Professor administrador:** gerencia alunos, turmas, lições, exercícios,
+  questionários, mensalidades, reposições e relatórios de acesso.
 
-1. `QUIZZES` — redireciona para `quizzes.html`.
-2. `ORDENAR FRASES` — redireciona para `exercicios_ordenar_frases.html`.
+O frontend é estático e hospedado no GitHub Pages. Autenticação, dados, regras de
+acesso e funções remotas ficam no Supabase. As notificações de matrícula e
+reposição são enviadas pelo Resend por meio de Supabase Edge Functions.
 
-### Página de quizzes
-
-- `quizzes.html`
-
-Página com os cards dos quizzes disponíveis.
-
-Quizzes atuais:
-
-- `in_on_at.html` — quiz sobre as preposições `in`, `on` e `at`.
-- `there_to_be.html` — quiz sobre `there is`, `there are` e formas relacionadas.
-- `this_that_these_those.html` — quiz sobre demonstrativos.
-- `simple_present.html` — quiz sobre Simple Present.
-- `simple_past.html` — quiz sobre Simple Past.
-
-### Página de exercícios de ordenar frases
-
-- `exercicios_ordenar_frases.html`
-
-Página com os cards dos exercícios em que o aluno deve organizar palavras para formar frases.
-
-Exercício atual:
-
-- `ordenar_simple_present.html` — exercício com 10 frases de nível A1 em Simple Present. O aluno arrasta as palavras com o dedo para colocá-las na ordem correta.
-
-## Funcionalidades implementadas
-
-### 1. Coleta de dados dos alunos
-
-Antes de responder aos quizzes e ao exercício de ordenar frases, o aluno informa:
-
-- nome;
-- e-mail;
-- autorização para registro do desempenho.
-
-Esses dados são usados para associar cada resultado ao respectivo aluno.
-
-### 2. Registro de desempenho
-
-O sistema registra:
-
-- data e hora;
-- nome do aluno;
-- e-mail do aluno;
-- nome da atividade;
-- quantidade de acertos;
-- total de questões/frases;
-- percentual de desempenho;
-- identificador único do registro.
-
-### 3. Integração com Google Sheets
-
-Os resultados são enviados para uma planilha do Google Sheets por meio de um endpoint do Google Apps Script.
-
-A URL do endpoint está configurada nas páginas das atividades por meio da variável:
-
-```html
-<script>
-  window.QUIZ_RESULTS_ENDPOINT = "URL_DO_APPS_SCRIPT";
-</script>
+```mermaid
+flowchart TB
+  Pages["GitHub Pages<br>teacherflavius.com"] --> Browser["HTML, CSS e JavaScript<br>no navegador"]
+  Browser --> Auth["Supabase Auth"]
+  Browser --> Database["PostgreSQL<br>RLS e RPCs"]
+  Database --> Functions["Database Webhooks<br>Edge Functions"]
+  Functions --> Resend["Resend<br>e-mails transacionais"]
 ```
 
-O envio é feito via `fetch` com `mode: "no-cors"`. Por isso, o navegador envia os dados, mas não confirma a resposta do Google Sheets. A validação real deve ser feita conferindo se uma nova linha apareceu na planilha.
+## Tecnologias
 
-### 4. Armazenamento local
+| Camada | Tecnologia |
+| --- | --- |
+| Hospedagem | GitHub Pages com domínio personalizado |
+| Frontend | HTML, CSS e JavaScript sem etapa de build |
+| Cliente de dados | `@supabase/supabase-js` v2 carregado por CDN |
+| Atividades antigas | React e ReactDOM carregados por CDN |
+| Autenticação | Supabase Auth com e-mail e senha |
+| Banco | PostgreSQL do Supabase |
+| Autorização | Row Level Security (RLS) e RPCs PostgreSQL |
+| Funções de servidor | Supabase Edge Functions em TypeScript/Deno |
+| E-mail | Resend |
 
-Além do envio para a planilha, os resultados também são salvos no `localStorage` do navegador.
+## Rotas principais
 
-A página `resultados.html` permite consultar e exportar os registros salvos localmente em CSV. Essa página existe no repositório, mas não está mais exibida como card na página inicial.
+Os diretórios com `index.html` fornecem URLs amigáveis. Alguns arquivos `.html`
+na raiz são mantidos por compatibilidade.
 
-### 5. Botão para avisar o professor
+### Páginas públicas
 
-Ao final dos quizzes e dos exercícios de ordenar frases, aparece uma mensagem:
+| Rota | Finalidade |
+| --- | --- |
+| `/` | Página inicial com entrada para alunos e visitantes |
+| `/quero_conhecer.html` | Apresentação das opções de estudo |
+| `/matricula/` | Matrícula e criação da conta do aluno |
+| `/login/` | Login com e-mail e senha |
 
-> Agora que você finalizou este quiz, avise o professor
+### Área do aluno
 
-Abaixo da mensagem, há o botão:
+| Rota | Finalidade |
+| --- | --- |
+| `/area-do-estudante/` | Menu principal do aluno |
+| `/perfil/` | Dados pessoais e histórico de atividades |
+| `/minha-turma/` | Turma, videoaula, material, gravações e grupo |
+| `/reposicoes/` | Consulta, agendamento e cancelamento de reposições |
+| `/frequencia/` | Histórico de lições e frequência |
+| `/exercicios-diarios/` | Portal de exercícios e questionários publicados |
+| `/roteiro-de-estudos/` | Roteiro e progresso das lições |
+| `/questionario/?id=...` | Execução de um questionário interno |
+| `/aulas-de-gramatica.html` | Videoaulas e exercícios de gramática |
+| `/guia-do-estudante.html` | Orientações para o aluno |
 
-> AVISE O PROFESSOR
+### Área do professor
 
-O botão abre o WhatsApp no link:
+| Rota | Finalidade |
+| --- | --- |
+| `/professor/` | Menu administrativo |
+| `/perfil-dos-alunos/` | Lista, consulta e edição de alunos |
+| `/acessos-dos-alunos/` | Data, hora e páginas acessadas pelos alunos |
+| `/mensalidades/` | Configuração, geração e registro de pagamentos |
+| `/turmas/` | Criação e gestão de turmas |
+| `/reposicoes-admin/` | Publicação de horários e acompanhamento de reservas |
+| `/quadro-de-turmas.html` | Visão geral de turmas, horários e tags |
+| `/criar-exercicio/` | Cadastro de links de exercícios |
+| `/questionarios-admin/` | Criação, publicação e resultados de questionários |
+| `/aulas-de-gramatica-interface-do-professor.html` | Gestão das aulas de gramática |
+| `/exercicios-dos-alunos/` | Progresso dos exercícios feitos pelos alunos |
+
+### Atividades estáticas
+
+O repositório ainda contém quizzes tradicionais e exercícios de ordenar frases,
+como:
+
+- `in_on_at.html`;
+- `there_to_be.html`;
+- `this_that_these_those.html`;
+- `simple_present.html`;
+- `simple_past.html`;
+- `ordenar_simple_present.html`.
+
+Essas atividades usam `quiz_core.js` e salvam resultados em
+`activity_results` no Supabase. Como o gabarito faz parte do JavaScript entregue
+ao navegador, elas são adequadas para prática, mas não para avaliações sigilosas.
+Para avaliações com gabarito protegido e pontuação calculada no servidor, use o
+módulo de questionários internos.
+
+## Funcionalidades
+
+### Autenticação e matrícula
+
+- criação de conta com e-mail e senha;
+- confirmação de e-mail e redirecionamento para o login;
+- cadastro de nome, CPF, WhatsApp, chave PIX e disponibilidade;
+- código de matrícula;
+- pré-matrículas e posterior associação à conta;
+- distinção entre aluno e professor administrador.
+
+`auth.js` concentra sessão, login, matrícula, perfil e gravação de resultados.
+`supabase_config.js` contém somente a URL do projeto e a chave pública usada pelo
+navegador.
+
+### Turmas e acompanhamento pedagógico
+
+- uma turma ativa por aluno;
+- criação, edição e ordenação de turmas;
+- exibição alfabética nas telas administrativas;
+- links de videoaula, material, aulas gravadas e grupo;
+- registros de L1 a L74 e opções especiais;
+- histórico de lições preservado quando o aluno muda de turma;
+- controle de presença e histórico individual;
+- tags administrativas, como `pacote antigo`.
+
+### Exercícios e questionários
+
+- exercícios cadastrados pelo professor;
+- publicação imediata ou programada;
+- marcação de conclusão pelo aluno;
+- roteiro de estudos com progresso individual;
+- questionários com textos, vídeos e múltipla escolha;
+- rascunho, publicação, despublicação e arquivamento;
+- gabarito protegido no banco;
+- correção automática e histórico de tentativas;
+- painel de resultados para o professor.
+
+Detalhes: [CONFIGURAR_QUESTIONARIOS.md](CONFIGURAR_QUESTIONARIOS.md).
+
+### Reposições
+
+- cada horário publicado tem duração padrão de uma hora;
+- o professor escolhe o horário inicial, a turma e a capacidade;
+- o link da videoaula é copiado dos recursos da turma;
+- alunos matriculados podem reservar vagas disponíveis;
+- cancelamento pelo aluno antes do limite definido pelo banco;
+- cancelamento administrativo;
+- devolução automática da vaga;
+- e-mails de confirmação e cancelamento;
+- datas armazenadas em UTC e exibidas em `America/Sao_Paulo`.
+
+Detalhes: [CONFIGURAR_REPOSICOES.md](CONFIGURAR_REPOSICOES.md).
+
+### Mensalidades
+
+- valor, vencimento, situação e observações por aluno;
+- geração das mensalidades do mês;
+- registro e estorno de pagamento;
+- histórico de eventos financeiros;
+- acesso restrito ao professor.
+
+### Acessos dos alunos
+
+O rastreador registra:
+
+- aluno autenticado;
+- data e hora;
+- caminho e título da página;
+- fuso horário informado pelo navegador.
+
+Não são registrados localização, coordenadas, endereço IP nem parâmetros da URL.
+Os registros são restritos ao professor e mantidos por no máximo 90 dias.
+
+### E-mails transacionais
+
+Há duas Edge Functions versionadas:
+
+| Função | Origem | Finalidade |
+| --- | --- | --- |
+| `notify-new-enrollment` | Inserção em `enrollment_email_notifications` | Avisar o professor sobre uma nova matrícula |
+| `notify-makeup-booking` | Inserção em `makeup_class_email_notifications` | Confirmar agendamento ou cancelamento de reposição |
+
+As duas são chamadas por Database Webhooks. Elas são publicadas com validação JWT
+desativada porque a origem é o banco, mas exigem o cabeçalho privado
+`x-webhook-secret`.
+
+Detalhes: [CONFIGURAR_EMAIL_MATRICULAS.md](CONFIGURAR_EMAIL_MATRICULAS.md) e
+[CONFIGURAR_REPOSICOES.md](CONFIGURAR_REPOSICOES.md).
+
+## Estrutura do repositório
+
+| Arquivo ou diretório | Responsabilidade |
+| --- | --- |
+| `index.html` | Entrada pública do site |
+| `auth.js` | Autenticação, matrícula, perfil e resultados |
+| `supabase_config.js` | URL e chave pública do Supabase |
+| `professor.html` / `area_do_estudante.html` | Menus principais |
+| `turmas.js` / `turma.js` / `minha_turma.js` | Gestão e visualização das turmas |
+| `reposicoes_admin.js` / `reposicoes.js` | Agenda de reposições |
+| `questionarios_admin.js` / `questionario.js` | Questionários internos |
+| `mensalidades.js` | Controle financeiro |
+| `perfil_dos_alunos.js` | Administração de alunos |
+| `acessos_dos_alunos.js` | Relatório de acessos |
+| `student_access_tracker.js` | Registro de páginas acessadas |
+| `class_lesson_attendance.js` | Registro de lições e presença |
+| `class_recorded_lessons.js` | Link de aulas gravadas |
+| `quiz_core.js` | Motor dos quizzes estáticos |
+| `supabase/functions/` | Edge Functions versionadas |
+| `supabase_*.sql` | Estrutura, RPCs, políticas e correções do banco |
+| `CONFIGURAR_*.md` | Instruções específicas dos módulos |
+| `SUPABASE_SEGURANCA.md` | Segurança, aplicação e checklists |
+| `CNAME` | Domínio personalizado do GitHub Pages |
+
+## Executar localmente
+
+Não há instalação de dependências nem processo de compilação para o frontend.
+Sirva a raiz do repositório por HTTP:
+
+```bash
+python3 -m http.server 8000
+```
+
+Depois acesse <http://localhost:8000>.
+
+Não abra as páginas com `file://`: o projeto usa rotas absolutas, autenticação e
+requisições HTTP. Para testar cadastro ou confirmação de e-mail localmente,
+adicione a URL local às URLs permitidas no Supabase Auth e ajuste
+temporariamente o redirecionamento definido em `auth.js`. Não publique essa
+alteração de desenvolvimento.
+
+## Configurar o Supabase
+
+### 1. Frontend
+
+Edite `supabase_config.js`:
+
+```javascript
+window.SUPABASE_CONFIG = {
+  url: "https://SEU_PROJECT_REF.supabase.co",
+  anonKey: "SUA_CHAVE_PUBLICA"
+};
+```
+
+A chave pública pode ser usada no navegador quando RLS e permissões estão
+corretamente configuradas. Nunca coloque `service_role`, Secret Key, senha do
+banco ou chave do Resend no frontend ou no repositório.
+
+Configuração inicial: [SUPABASE_SETUP.md](SUPABASE_SETUP.md).
+
+### 2. Banco de dados
+
+Os arquivos SQL representam a evolução incremental do banco; ainda não são uma
+cadeia formal de migrations executada automaticamente. Por isso:
+
+- faça backup antes de mudanças estruturais;
+- leia o cabeçalho de cada SQL e respeite as dependências;
+- não execute todos os arquivos indiscriminadamente em produção;
+- faça primeiro o merge do código e depois execute o SQL correspondente;
+- aplique os scripts de segurança por último, pois scripts antigos podem
+  recriar funções ou políticas anteriores.
+
+Ordem de dependência para uma instalação nova:
+
+1. Execute a estrutura inicial descrita em `SUPABASE_SETUP.md`.
+2. Execute `supabase_add_profile_enrollment_columns.sql`.
+3. Edite o e-mail do professor e execute `supabase_professor_admin.sql`.
+4. Execute `supabase_pre_matriculas.sql` e `supabase_turmas.sql`.
+5. Execute `supabase_pre_matriculas_turmas.sql`.
+6. Instale os complementos de turma:
+   - `supabase_aulas_gravadas.sql`;
+   - `supabase_ordem_turmas.sql`;
+   - `supabase_student_tags.sql`.
+7. Instale o registro de lições:
+   - `supabase_licoes_turma.sql`;
+   - `supabase_licoes_pre_matriculas_fix.sql`;
+   - `supabase_licoes_opcoes_extras.sql`;
+   - `supabase_preservar_licoes_troca_turma.sql`;
+   - `supabase_frequencia_aluno.sql`.
+8. Instale os módulos necessários:
+   - `supabase_exercicios_diarios.sql`;
+   - `supabase_roteiro_de_estudos.sql`;
+   - `supabase_exercicios_professor.sql`;
+   - `supabase_aulas_de_gramatica.sql`;
+   - `supabase_questionarios.sql`;
+   - `supabase_reposicoes.sql`;
+   - `supabase_mensalidades.sql`;
+   - `supabase_acessos_alunos.sql`.
+9. Para e-mail de matrícula, execute
+   `supabase_notificacoes_matricula.sql`.
+10. Execute por último:
+    - `supabase_seguranca_fase1.sql`;
+    - `supabase_seguranca_fase2_rls.sql`.
+
+Os arquivos com `corrigir`, `fix` ou regras de migração existem para atualizar
+instalações antigas. Use-os quando o cabeçalho descrever o estado do banco que
+está sendo corrigido. Exemplos:
+
+- `supabase_corrigir_funcoes_pre_matriculas_turmas.sql`: corrige erro `42P13`;
+- `supabase_corrigir_troca_de_turma.sql`: corrige conflito de chave ao trocar a
+  turma do aluno;
+- `supabase_aluno_uma_turma.sql`: garante uma turma atual por aluno;
+- `supabase_preservar_licoes_troca_turma.sql`: mantém o histórico pedagógico
+  após a troca.
+
+Ao aplicar um corretivo que recrie funções ou políticas, reaplique as fases de
+segurança e execute os checklists.
+
+### 3. Edge Functions e Resend
+
+Secrets necessários:
 
 ```text
-https://wa.me/5534998349756
+RESEND_API_KEY
+ENROLLMENT_NOTIFICATION_EMAIL
+ENROLLMENT_FROM_EMAIL
+ENROLLMENT_WEBHOOK_SECRET
 ```
 
-Esse comportamento é controlado pelo arquivo:
+Configuração pelo CLI:
 
-- `notify_teacher.js`
-
-### 6. Motor compartilhado dos quizzes
-
-Os quizzes usam um mecanismo comum no arquivo:
-
-- `quiz_core.js`
-
-Esse arquivo controla:
-
-- formulário de identificação do aluno;
-- validação de nome, e-mail e autorização;
-- lógica de perguntas;
-- pontuação;
-- tela final;
-- gravação local;
-- envio dos dados para o Google Sheets;
-- exportação CSV.
-
-### 7. Rastreamento dos exercícios de ordenar palavras
-
-O exercício `ordenar_simple_present.html` usa também:
-
-- `word_order_tracking.js`
-
-Esse script exibe o formulário de identificação do aluno, detecta a conclusão do exercício e envia o desempenho para a mesma planilha usada pelos quizzes.
-
-## Arquivos importantes
-
-| Arquivo | Função |
-|---|---|
-| `index.html` | Página inicial com dois cards principais. |
-| `quizzes.html` | Lista de quizzes de gramática. |
-| `exercicios_ordenar_frases.html` | Lista de exercícios de ordenar frases. |
-| `quiz_core.js` | Motor compartilhado dos quizzes e funções de registro de resultados. |
-| `word_order_tracking.js` | Coleta e registro de resultados dos exercícios de ordenar frases. |
-| `notify_teacher.js` | Insere o botão de aviso ao professor ao final das atividades. |
-| `resultados.html` | Consulta local e exportação CSV dos resultados salvos no navegador. |
-| `ordenar_simple_present.html` | Exercício interativo de ordenar frases no Simple Present. |
-
-## Como adicionar um novo quiz
-
-1. Crie um novo arquivo `.html` para o quiz.
-2. Inclua React, ReactDOM, `quiz_core.js` e, se quiser o botão do WhatsApp, `notify_teacher.js`.
-3. Configure `window.QUIZ_RESULTS_ENDPOINT` antes de carregar `quiz_core.js`.
-4. Use `QuizCore.renderQuiz({...})` com título, subtítulo opcional e lista de perguntas.
-5. Adicione um card em `quizzes.html` apontando para o novo arquivo.
-
-Exemplo simplificado:
-
-```html
-<script>
-  window.QUIZ_RESULTS_ENDPOINT = "URL_DO_APPS_SCRIPT";
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="quiz_core.js"></script>
-<script src="notify_teacher.js"></script>
-
-<script>
-  QuizCore.renderQuiz({
-    title: "Novo Quiz",
-    subtitle: "Escolha a alternativa correta",
-    questions: [
-      {
-        question: "She ___ English.",
-        options: ["speak", "speaks", "speaking", "spoke"],
-        answer: "speaks",
-        explanation: "Com she/he/it, usamos -s no Simple Present."
-      }
-    ]
-  });
-</script>
+```bash
+npx supabase login
+npx supabase link --project-ref SEU_PROJECT_REF
+npx supabase secrets set RESEND_API_KEY=re_sua_chave
+npx supabase secrets set ENROLLMENT_NOTIFICATION_EMAIL=seu-email@exemplo.com
+npx supabase secrets set 'ENROLLMENT_FROM_EMAIL=Matrículas <matriculas@seudominio.com>'
+npx supabase secrets set ENROLLMENT_WEBHOOK_SECRET=UM_SEGREDO_LONGO_E_ALEATORIO
 ```
 
-## Como adicionar um novo exercício de ordenar frases
+Publicação:
 
-1. Crie uma nova página baseada em `ordenar_simple_present.html`.
-2. Altere o título, as frases e as traduções.
-3. Mantenha `quiz_core.js`, `word_order_tracking.js` e `notify_teacher.js` se desejar coleta de dados, envio para Google Sheets e botão do WhatsApp.
-4. Adicione um card em `exercicios_ordenar_frases.html`.
+```bash
+npx supabase functions deploy notify-new-enrollment --no-verify-jwt
+npx supabase functions deploy notify-makeup-booking --no-verify-jwt
+```
 
-## Observações técnicas
+Database Webhooks:
 
-- O projeto é estático e pode rodar em GitHub Pages.
-- Não há backend próprio no repositório.
-- O Google Sheets recebe os dados por meio de Google Apps Script.
-- Dados pessoais são coletados: nome e e-mail. O formulário inclui autorização do aluno antes do registro.
-- Para produção mais robusta, o ideal é migrar o registro de dados para um backend com controle de autenticação, logs e política formal de privacidade.
+| Nome | Tabela | Evento | URL |
+| --- | --- | --- | --- |
+| `notify-new-enrollment` | `public.enrollment_email_notifications` | `INSERT` | `/functions/v1/notify-new-enrollment` |
+| `notify-makeup-booking` | `public.makeup_class_email_notifications` | `INSERT` | `/functions/v1/notify-makeup-booking` |
+
+Inclua em ambos:
+
+```text
+Content-Type: application/json
+x-webhook-secret: mesmo valor de ENROLLMENT_WEBHOOK_SECRET
+```
+
+## Modelo de segurança
+
+- Todas as tabelas expostas devem permanecer com RLS ativo.
+- Alunos autenticados acessam somente registros permitidos pelas políticas.
+- Operações administrativas passam por RPCs que verificam
+  `is_teacher_admin()`.
+- Funções `SECURITY DEFINER` têm execução explicitamente controlada.
+- Tabelas com gabaritos, tentativas, logs e filas não são acessadas diretamente
+  pelo navegador.
+- `service_role` é exclusiva de rotinas de servidor.
+- Edge Functions chamadas por webhooks exigem um segredo compartilhado.
+- O repositório é público: nenhum segredo operacional pode ser versionado.
+
+As fases atuais de hardening estão documentadas em
+[SUPABASE_SEGURANCA.md](SUPABASE_SEGURANCA.md). Há também arquivos de rollback
+emergencial para cada fase.
+
+Ao criar tabelas novas, declare explicitamente os `GRANT`s necessários. RLS e
+permissões de tabela são camadas diferentes, e projetos Supabase novos podem não
+expor tabelas à Data API automaticamente.
+
+## Dados pessoais e privacidade
+
+O sistema pode armazenar nome, e-mail, CPF, WhatsApp, chave PIX, disponibilidade,
+progresso pedagógico, pagamentos e histórico de acesso. Esses dados devem ser
+tratados como confidenciais.
+
+Recomendações operacionais:
+
+- manter acesso administrativo individual;
+- não compartilhar credenciais;
+- revisar periodicamente administradores e políticas RLS;
+- manter retenção mínima necessária;
+- documentar finalidade e base legal do tratamento;
+- excluir ou anonimizar dados quando não forem mais necessários;
+- nunca inserir dados reais em issues, commits, logs públicos ou testes.
+
+## Publicação
+
+O site é publicado pelo GitHub Pages a partir da branch configurada no
+repositório. O arquivo `CNAME` define:
+
+```text
+teacherflavius.com
+```
+
+Fluxo recomendado:
+
+1. crie uma branch;
+2. faça a alteração;
+3. valide as páginas afetadas;
+4. abra uma Pull Request;
+5. faça o merge;
+6. execute manualmente SQL e deploy de Edge Functions, quando necessários;
+7. valide produção e o Database Advisor.
+
+O merge publica apenas os arquivos do repositório. Ele não executa SQL, não
+altera Secrets e não republica Edge Functions automaticamente.
+
+Ao alterar arquivos JavaScript ou CSS, atualize o parâmetro `?v=` nas páginas que
+os carregam para reduzir problemas de cache no navegador.
+
+## Checklist de validação
+
+### Público
+
+- página inicial e navegação;
+- matrícula;
+- login e recuperação de sessão;
+- layout em celular.
+
+### Aluno
+
+- perfil;
+- turma e recursos;
+- frequência e roteiro;
+- conclusão de exercícios;
+- questionário e pontuação;
+- agendamento e cancelamento de reposição;
+- logout.
+
+### Professor
+
+- credencial administrativa;
+- alunos e edição de perfil;
+- criação e ordenação de turmas;
+- troca de turma sem perda do histórico;
+- lições e frequência;
+- exercícios e questionários;
+- mensalidades;
+- reposições;
+- relatório de acessos.
+
+### Integrações
+
+- filas de notificação;
+- Database Webhooks;
+- logs das Edge Functions;
+- entrega no Resend;
+- Security e Performance Advisors do Supabase.
+
+Não existe atualmente uma suíte automatizada de testes. Mudanças devem passar
+pelos testes manuais dos módulos afetados antes e depois da publicação.
+
+## Solução de problemas
+
+| Sintoma | Verificação |
+| --- | --- |
+| `permission denied for function ...` | Confirme se o SQL do módulo foi executado e reaplique `supabase_seguranca_fase1.sql` |
+| Página retorna lista vazia após mudança de RLS | Confirme sessão, papel e políticas; consulte `SUPABASE_SEGURANCA.md` |
+| Erro `42P13` em pré-matrículas/turmas | Execute `supabase_corrigir_funcoes_pre_matriculas_turmas.sql` e depois o SQL principal |
+| Erro de chave duplicada ao trocar turma | Execute `supabase_corrigir_troca_de_turma.sql` |
+| E-mail permanece `pending` | Verifique webhook, URL, segredo, deploy e logs da Edge Function |
+| E-mail fica `failed` | Consulte `last_error` e os logs do Resend/Edge Function |
+| Questionário não aparece | Confirme publicação, matrícula e execução de `supabase_questionarios.sql` |
+| Reposição não aparece | Confirme data futura, vaga, turma ativa e link válido da videoaula |
+| Alteração de JS/CSS não aparece | Atualize o `?v=` e limpe o cache |
+| Rota amigável retorna 404 | Confirme o diretório com `index.html`, configuração do Pages e `CNAME` |
+
+## Documentação complementar
+
+- [Configuração inicial do Supabase](SUPABASE_SETUP.md)
+- [Segurança do Supabase](SUPABASE_SEGURANCA.md)
+- [Questionários](CONFIGURAR_QUESTIONARIOS.md)
+- [Reposições](CONFIGURAR_REPOSICOES.md)
+- [E-mail de matrícula](CONFIGURAR_EMAIL_MATRICULAS.md)
 
 ## Público-alvo
 
-Alunos de inglês do Teacher Flávio, especialmente em atividades rápidas de revisão gramatical, prática de estrutura frasal e acompanhamento de desempenho.
+Alunos de inglês do Teacher Flávio e o professor responsável pela administração
+pedagógica e financeira da escola.
