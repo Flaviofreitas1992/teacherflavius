@@ -6,7 +6,9 @@
     user: null,
     isTeacher: false,
     decks: [],
+    students: [],
     editingDeckId: null,
+    editingOwnerId: null,
     studyDeckId: null,
     studyCards: [],
     studyIndex: 0,
@@ -19,8 +21,9 @@
   function cacheElements() {
     [
       "loginStatus", "flashcardMessage", "libraryView", "editorView", "studyView",
-      "sharedSection", "sharedDecks", "myDecks", "newDeckButton", "cancelEditorButton",
-      "deckForm", "deckTitle", "deckDescription", "sharedField", "deckShared",
+      "libraryTitle", "libraryLead", "teacherDirectorySection", "studentDirectory",
+      "studentSearch", "ownDeckSection", "myDecks", "newDeckButton", "cancelEditorButton",
+      "deckForm", "deckTitle", "deckDescription", "deckOwnerField", "deckOwner",
       "cardsEditor", "cardCount", "addCardButton", "saveDeckButton", "editorTitle",
       "cardRowTemplate", "studyTitle", "studyProgress", "studyScore", "progressBar",
       "studyWord", "translationAnswer", "checkAnswerButton", "answerFeedback",
@@ -80,6 +83,14 @@
     return Array.isArray(relation) && relation[0] ? Number(relation[0].count || 0) : 0;
   }
 
+  function canManageDeck(deck) {
+    return !!deck && (deck.owner_id === state.user.id || state.isTeacher);
+  }
+
+  function studentDisplayName(student) {
+    return student && student.name ? student.name : student && student.email ? student.email : "Aluno";
+  }
+
   function createActionButton(label, className, action, deckId) {
     const button = document.createElement("button");
     button.type = "button";
@@ -100,7 +111,7 @@
     title.textContent = deck.title;
     top.appendChild(title);
 
-    if (deck.owner_id === state.user.id) {
+    if (canManageDeck(deck)) {
       const deleteButton = document.createElement("button");
       deleteButton.type = "button";
       deleteButton.className = "icon-button";
@@ -119,13 +130,6 @@
       article.appendChild(description);
     }
 
-    if (deck.is_shared) {
-      const pill = document.createElement("span");
-      pill.className = "shared-pill";
-      pill.textContent = deck.owner_id === state.user.id ? "Compartilhado com os alunos" : "Criado pelo professor";
-      article.appendChild(pill);
-    }
-
     const count = deckCardCount(deck);
     const meta = document.createElement("p");
     meta.className = "deck-meta";
@@ -137,7 +141,7 @@
     const studyButton = createActionButton("ESTUDAR", "button-primary", "study", deck.id);
     studyButton.disabled = count === 0;
     actions.appendChild(studyButton);
-    if (deck.owner_id === state.user.id) {
+    if (canManageDeck(deck)) {
       actions.appendChild(createActionButton("EDITAR", "button-secondary", "edit", deck.id));
     }
     article.appendChild(actions);
@@ -151,15 +155,69 @@
     container.replaceChildren(empty);
   }
 
-  function renderDecks() {
-    const sharedDecks = state.decks.filter(function (deck) {
-      return deck.is_shared && deck.owner_id !== state.user.id;
+  function createStudentGroup(student) {
+    const decks = state.decks.filter(function (deck) { return deck.owner_id === student.user_id; });
+    const section = document.createElement("section");
+    section.className = "student-group";
+
+    const header = document.createElement("div");
+    header.className = "student-group-header";
+    const identity = document.createElement("div");
+    identity.className = "student-identity";
+    const name = document.createElement("h4");
+    name.textContent = studentDisplayName(student);
+    const email = document.createElement("p");
+    email.textContent = student.email || "E-mail não informado";
+    const count = document.createElement("span");
+    count.className = "student-deck-count";
+    count.textContent = decks.length + (decks.length === 1 ? " conjunto" : " conjuntos");
+    identity.append(name, email, count);
+
+    const addButton = document.createElement("button");
+    addButton.type = "button";
+    addButton.className = "button button-secondary";
+    addButton.textContent = "+ NOVO CONJUNTO";
+    addButton.dataset.action = "new-for-student";
+    addButton.dataset.ownerId = student.user_id;
+    header.append(identity, addButton);
+    section.appendChild(header);
+
+    const grid = document.createElement("div");
+    grid.className = "deck-grid";
+    if (decks.length) {
+      grid.replaceChildren.apply(grid, decks.map(createDeckCard));
+    } else {
+      renderEmpty(grid, "Este aluno ainda não criou nenhum conjunto.");
+    }
+    section.appendChild(grid);
+    return section;
+  }
+
+  function renderTeacherDirectory() {
+    const term = String(elements.studentSearch.value || "").trim().toLocaleLowerCase("pt-BR");
+    const filtered = state.students.filter(function (student) {
+      return !term || (student.name || "").toLocaleLowerCase("pt-BR").includes(term)
+        || (student.email || "").toLocaleLowerCase("pt-BR").includes(term);
     });
+
+    if (!filtered.length) {
+      renderEmpty(elements.studentDirectory, term ? "Nenhum aluno encontrado." : "Nenhum aluno cadastrado.");
+      return;
+    }
+    elements.studentDirectory.replaceChildren.apply(elements.studentDirectory, filtered.map(createStudentGroup));
+  }
+
+  function renderDecks() {
+    if (state.isTeacher) {
+      elements.teacherDirectorySection.hidden = false;
+      elements.ownDeckSection.hidden = true;
+      renderTeacherDirectory();
+      return;
+    }
+
+    elements.teacherDirectorySection.hidden = true;
+    elements.ownDeckSection.hidden = false;
     const ownDecks = state.decks.filter(function (deck) { return deck.owner_id === state.user.id; });
-
-    elements.sharedSection.hidden = sharedDecks.length === 0;
-    elements.sharedDecks.replaceChildren.apply(elements.sharedDecks, sharedDecks.map(createDeckCard));
-
     if (ownDecks.length) {
       elements.myDecks.replaceChildren.apply(elements.myDecks, ownDecks.map(createDeckCard));
     } else {
@@ -167,11 +225,44 @@
     }
   }
 
+  function isUuid(value) {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ""));
+  }
+
+  async function loadStudents() {
+    if (!state.isTeacher) return;
+    const response = await state.client.rpc("get_teacher_students");
+    if (response.error) throw response.error;
+    const uniqueStudents = new Map();
+    (response.data || []).forEach(function (student) {
+      if (isUuid(student.user_id) && student.user_id !== state.user.id && !uniqueStudents.has(student.user_id)) {
+        uniqueStudents.set(student.user_id, student);
+      }
+    });
+    state.students = Array.from(uniqueStudents.values()).sort(function (a, b) {
+      return studentDisplayName(a).localeCompare(studentDisplayName(b), "pt-BR");
+    });
+    populateStudentSelect();
+  }
+
+  function populateStudentSelect() {
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.textContent = "Selecione um aluno";
+    const options = state.students.map(function (student) {
+      const option = document.createElement("option");
+      option.value = student.user_id;
+      option.textContent = studentDisplayName(student) + (student.email ? " — " + student.email : "");
+      return option;
+    });
+    elements.deckOwner.replaceChildren(placeholder, ...options);
+  }
+
   async function loadDecks() {
     elements.myDecks.innerHTML = '<div class="empty-state">Carregando seus conjuntos...</div>';
     const response = await state.client
       .from("flashcard_decks")
-      .select("id, owner_id, title, description, is_shared, created_at, updated_at, flashcards(count)")
+      .select("id, owner_id, title, description, created_at, updated_at, flashcards(count)")
       .order("updated_at", { ascending: false });
 
     if (response.error) throw response.error;
@@ -216,21 +307,24 @@
     return response.data || [];
   }
 
-  function openNewDeck() {
+  function openNewDeck(ownerId) {
     state.editingDeckId = null;
+    state.editingOwnerId = state.isTeacher ? (ownerId || null) : state.user.id;
     elements.editorTitle.textContent = "Novo conjunto";
     elements.deckTitle.value = "";
     elements.deckDescription.value = "";
-    elements.deckShared.checked = false;
+    elements.deckOwner.value = state.editingOwnerId || "";
+    elements.deckOwner.disabled = false;
     elements.cardsEditor.replaceChildren();
     addCardRow();
     setView("editor");
-    elements.deckTitle.focus();
+    if (state.isTeacher && !state.editingOwnerId) elements.deckOwner.focus();
+    else elements.deckTitle.focus();
   }
 
   async function openDeckEditor(deckId) {
     const deck = state.decks.find(function (item) { return item.id === deckId; });
-    if (!deck || deck.owner_id !== state.user.id) {
+    if (!canManageDeck(deck)) {
       showMessage("Você não tem permissão para editar este conjunto.", "error");
       return;
     }
@@ -238,10 +332,12 @@
     try {
       const cards = await loadCards(deckId);
       state.editingDeckId = deckId;
+      state.editingOwnerId = deck.owner_id;
       elements.editorTitle.textContent = "Editar conjunto";
       elements.deckTitle.value = deck.title;
       elements.deckDescription.value = deck.description || "";
-      elements.deckShared.checked = deck.is_shared === true;
+      elements.deckOwner.value = deck.owner_id;
+      elements.deckOwner.disabled = true;
       elements.cardsEditor.replaceChildren();
       (cards.length ? cards : [{}]).forEach(addCardRow);
       setView("editor");
@@ -257,12 +353,18 @@
 
     const title = elements.deckTitle.value.trim();
     const description = elements.deckDescription.value.trim();
+    const ownerId = state.isTeacher ? elements.deckOwner.value : state.user.id;
     const cards = readEditorCards();
     const incomplete = cards.some(function (card) { return !card.english_word || !card.translation; });
 
     if (!title) {
       showMessage("Informe um nome para o conjunto.", "error");
       elements.deckTitle.focus();
+      return;
+    }
+    if (!ownerId) {
+      showMessage("Selecione o aluno que será o proprietário do conjunto.", "error");
+      elements.deckOwner.focus();
       return;
     }
     if (incomplete) {
@@ -279,9 +381,9 @@
     try {
       const response = await state.client.rpc("save_flashcard_deck", {
         p_deck_id: state.editingDeckId,
+        p_owner_id: ownerId,
         p_title: title,
         p_description: description || null,
-        p_is_shared: state.isTeacher && elements.deckShared.checked,
         p_cards: cards
       });
       if (response.error) throw response.error;
@@ -298,7 +400,7 @@
 
   async function deleteDeck(deckId) {
     const deck = state.decks.find(function (item) { return item.id === deckId; });
-    if (!deck || deck.owner_id !== state.user.id) return;
+    if (!canManageDeck(deck)) return;
     if (!window.confirm("Excluir o conjunto “" + deck.title + "” e todos os seus cartões?")) return;
 
     try {
@@ -433,7 +535,8 @@
   }
 
   function bindEvents() {
-    elements.newDeckButton.addEventListener("click", openNewDeck);
+    elements.newDeckButton.addEventListener("click", function () { openNewDeck(); });
+    elements.studentSearch.addEventListener("input", renderTeacherDirectory);
     elements.cancelEditorButton.addEventListener("click", function () { setView("library"); });
     elements.deckForm.addEventListener("submit", saveDeck);
     elements.addCardButton.addEventListener("click", function () {
@@ -458,6 +561,7 @@
       if (actionButton.dataset.action === "study") startStudy(deckId);
       if (actionButton.dataset.action === "edit") openDeckEditor(deckId);
       if (actionButton.dataset.action === "delete") deleteDeck(deckId);
+      if (actionButton.dataset.action === "new-for-student") openNewDeck(actionButton.dataset.ownerId);
     });
 
     elements.checkAnswerButton.addEventListener("click", checkAnswer);
@@ -500,16 +604,23 @@
     state.client = Auth.getClient();
     const teacherResponse = await state.client.rpc("is_teacher_admin");
     state.isTeacher = !teacherResponse.error && teacherResponse.data === true;
-    elements.sharedField.hidden = !state.isTeacher;
+    elements.deckOwnerField.hidden = !state.isTeacher;
+    elements.libraryTitle.textContent = state.isTeacher ? "Flashcards por aluno" : "Conjuntos de palavras";
+    elements.libraryLead.textContent = state.isTeacher
+      ? "Abra os conjuntos de cada aluno para praticar, adicionar palavras, editar traduções ou excluir cartões."
+      : "Crie seus próprios cartões e pratique sempre que quiser.";
+    elements.newDeckButton.textContent = state.isTeacher ? "+ NOVO CONJUNTO PARA ALUNO" : "+ NOVO CONJUNTO";
     elements.loginStatus.textContent = state.isTeacher
-      ? "Professor autenticado. Você pode criar conjuntos para todos os alunos."
+      ? "Professor autenticado. Você pode administrar os conjuntos individuais dos alunos."
       : "Logado como " + state.user.email + ".";
     document.body.classList.remove("auth-checking");
 
     try {
+      await loadStudents();
       await loadDecks();
     } catch (error) {
-      renderEmpty(elements.myDecks, "Não foi possível carregar os conjuntos.");
+      if (state.isTeacher) renderEmpty(elements.studentDirectory, "Não foi possível carregar os alunos e seus conjuntos.");
+      else renderEmpty(elements.myDecks, "Não foi possível carregar os conjuntos.");
       showMessage(errorText(error, "Não foi possível carregar os flashcards."), "error");
     }
   }
