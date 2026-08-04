@@ -3,7 +3,8 @@
 
   function isSafeUrl(value) {
     if (!value) return false;
-    if (value.startsWith("/") || value.startsWith("#")) return true;
+    if (value.startsWith("#")) return true;
+    if (value.startsWith("/")) return !value.startsWith("//") && !value.startsWith("/\\");
 
     try {
       const parsed = new URL(value, window.location.origin);

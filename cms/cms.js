@@ -12,10 +12,35 @@
     cabecalho: "Cabeçalho",
     card_aluno: "Card do aluno",
     card_visitante: "Card de visitante",
-    main: "Conteúdo principal"
+    main: "Conteúdo principal",
+    menu: "Menu",
+    navegacao: "Navegação",
+    hero: "Apresentação",
+    nova_turma: "Nova turma",
+    beneficios: "Benefícios",
+    disponibilidade: "Disponibilidade",
+    investimento: "Investimento",
+    professor: "Professor",
+    redes_sociais: "Redes sociais",
+    roteiro: "Roteiro de estudos",
+    gramatica: "Gramática",
+    tarefas: "Tarefas para casa",
+    turma_guia: "Sua turma",
+    reposicao: "Reposição de aulas",
+    anotacoes: "Anotações das aulas",
+    feriados: "Feriados",
+    cancelamentos: "Cancelamento de aulas",
+    transferencia: "Transferência de turma",
+    encerramento: "Substituição e cancelamento"
   };
 
-  const pageNames = { home: "Página inicial" };
+  const pageNames = {
+    home: "Página inicial",
+    aluno: "Portal do aluno",
+    quero_conhecer: "Conheça as aulas",
+    guia_estudante: "Guia do estudante"
+  };
+  const pageOrder = ["home", "aluno", "quero_conhecer", "guia_estudante"];
 
   function byId(id) { return document.getElementById(id); }
   function sleep(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
@@ -48,7 +73,8 @@
   function normalizeUrl(value) {
     const trimmed = value.trim();
     if (!trimmed) return "";
-    if (trimmed.startsWith("/") || trimmed.startsWith("#")) return trimmed;
+    if (trimmed.startsWith("#")) return trimmed;
+    if (trimmed.startsWith("/") && !trimmed.startsWith("//") && !trimmed.startsWith("/\\")) return trimmed;
 
     const parsed = new URL(trimmed);
     if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
@@ -154,7 +180,14 @@
 
   function renderPageSelect() {
     const select = byId("cmsPageSelect");
-    const pages = Array.from(new Set(state.items.map(function (item) { return item.page_slug; })));
+    const pages = Array.from(new Set(state.items.map(function (item) { return item.page_slug; }))).sort(function (a, b) {
+      const aIndex = pageOrder.indexOf(a);
+      const bIndex = pageOrder.indexOf(b);
+      if (aIndex === -1 && bIndex === -1) return a.localeCompare(b, "pt-BR");
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
     select.replaceChildren();
 
     pages.forEach(function (page) {
