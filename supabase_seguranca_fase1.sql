@@ -26,7 +26,6 @@ grant execute on all functions in schema public to service_role;
 
 -- RPCs usadas por alunos e professores autenticados.
 grant execute on function public.add_teacher_class_student_by_ref(integer, text, text) to authenticated;
-grant execute on function public.archive_quiz(uuid) to authenticated;
 grant execute on function public.book_makeup_class(uuid) to authenticated;
 grant execute on function public.cancel_makeup_class_booking(uuid) to authenticated;
 grant execute on function public.cancel_makeup_class_slot(uuid) to authenticated;
@@ -42,11 +41,8 @@ grant execute on function public.get_available_makeup_slots() to authenticated;
 grant execute on function public.get_my_lesson_records() to authenticated;
 grant execute on function public.get_my_makeup_bookings() to authenticated;
 grant execute on function public.get_my_private_student_data() to authenticated;
-grant execute on function public.get_my_quiz_attempts(uuid) to authenticated;
 grant execute on function public.get_my_student_class() to authenticated;
 grant execute on function public.get_public_teacher_exercises() to authenticated;
-grant execute on function public.get_published_quizzes() to authenticated;
-grant execute on function public.get_quiz_for_student(uuid) to authenticated;
 grant execute on function public.get_teacher_billing_students() to authenticated;
 grant execute on function public.get_teacher_class_activity_history(integer) to authenticated;
 grant execute on function public.get_teacher_class_lesson_records(integer) to authenticated;
@@ -60,8 +56,6 @@ grant execute on function public.get_teacher_makeup_classes() to authenticated;
 grant execute on function public.get_teacher_makeup_slots() to authenticated;
 grant execute on function public.get_teacher_monthly_tuition(date) to authenticated;
 grant execute on function public.get_teacher_private_student_data() to authenticated;
-grant execute on function public.get_teacher_quiz_results() to authenticated;
-grant execute on function public.get_teacher_quizzes() to authenticated;
 grant execute on function public.get_teacher_student_accesses(integer, uuid) to authenticated;
 grant execute on function public.get_teacher_student_tags() to authenticated;
 grant execute on function public.get_teacher_student_tuition_history(uuid) to authenticated;
@@ -71,13 +65,10 @@ grant execute on function public.log_student_page_access(text, text, text) to au
 grant execute on function public.record_tuition_payment(uuid, date, numeric, text, text) to authenticated;
 grant execute on function public.remove_teacher_class_student_by_ref(integer, text, text) to authenticated;
 grant execute on function public.reverse_tuition_payment(uuid, text) to authenticated;
-grant execute on function public.save_quiz(uuid, text, text, jsonb, boolean) to authenticated;
 grant execute on function public.save_student_billing_settings(uuid, numeric, integer, date, boolean, text) to authenticated;
 grant execute on function public.save_teacher_class_attendance_by_ref(integer, date, text, jsonb) to authenticated;
 grant execute on function public.save_teacher_class_lesson_record_by_ref(integer, text, text, date, text) to authenticated;
 grant execute on function public.save_teacher_class_resources(integer, text, text, text, text) to authenticated;
-grant execute on function public.set_quiz_published(uuid, boolean) to authenticated;
-grant execute on function public.submit_quiz_attempt(uuid, jsonb) to authenticated;
 grant execute on function public.toggle_teacher_student_tag(text, text, text) to authenticated;
 grant execute on function public.update_teacher_student_profile(uuid, text, text, text, text, text, text, jsonb) to authenticated;
 grant execute on function public.upsert_my_private_student_data(text, text, text, boolean) to authenticated;
@@ -98,7 +89,6 @@ declare
   function_oid regprocedure;
   required_functions constant text[] := array[
     'public.add_teacher_class_student_by_ref(integer,text,text)',
-    'public.archive_quiz(uuid)',
     'public.book_makeup_class(uuid)',
     'public.cancel_makeup_class_booking(uuid)',
     'public.cancel_makeup_class_slot(uuid)',
@@ -114,11 +104,8 @@ declare
     'public.get_my_lesson_records()',
     'public.get_my_makeup_bookings()',
     'public.get_my_private_student_data()',
-    'public.get_my_quiz_attempts(uuid)',
     'public.get_my_student_class()',
     'public.get_public_teacher_exercises()',
-    'public.get_published_quizzes()',
-    'public.get_quiz_for_student(uuid)',
     'public.get_teacher_billing_students()',
     'public.get_teacher_class_activity_history(integer)',
     'public.get_teacher_class_lesson_records(integer)',
@@ -132,8 +119,6 @@ declare
     'public.get_teacher_makeup_slots()',
     'public.get_teacher_monthly_tuition(date)',
     'public.get_teacher_private_student_data()',
-    'public.get_teacher_quiz_results()',
-    'public.get_teacher_quizzes()',
     'public.get_teacher_student_accesses(integer,uuid)',
     'public.get_teacher_student_tags()',
     'public.get_teacher_student_tuition_history(uuid)',
@@ -143,13 +128,10 @@ declare
     'public.record_tuition_payment(uuid,date,numeric,text,text)',
     'public.remove_teacher_class_student_by_ref(integer,text,text)',
     'public.reverse_tuition_payment(uuid,text)',
-    'public.save_quiz(uuid,text,text,jsonb,boolean)',
     'public.save_student_billing_settings(uuid,numeric,integer,date,boolean,text)',
     'public.save_teacher_class_attendance_by_ref(integer,date,text,jsonb)',
     'public.save_teacher_class_lesson_record_by_ref(integer,text,text,date,text)',
     'public.save_teacher_class_resources(integer,text,text,text,text)',
-    'public.set_quiz_published(uuid,boolean)',
-    'public.submit_quiz_attempt(uuid,jsonb)',
     'public.toggle_teacher_student_tag(text,text,text)',
     'public.update_teacher_student_profile(uuid,text,text,text,text,text,text,jsonb)',
     'public.upsert_my_private_student_data(text,text,text,boolean)'
