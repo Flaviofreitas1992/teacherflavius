@@ -9,19 +9,20 @@
   <script src="auth.js?v=20260427-5"></script>
   <link rel="stylesheet" href="home.css?v=20260427-5">
 </head>
-<body>
+<body data-cms-page="aluno">
   <div class="container">
-    <div class="header"><h1>Teacher Flávio</h1></div>
+    <div class="header"><h1 data-cms-key="aluno_title">Teacher Flávio</h1></div>
     <div class="divider"></div>
     <div class="menu-grid">
-      <a id="enrollmentCard" class="menu-button enrollment" href="/matricula/"><span><span class="icon">🪪</span>MATRÍCULA</span><span class="arrow">›</span></a>
-      <a class="menu-button" href="/area-do-estudante/"><span><span class="icon">🎓</span>ÁREA DO ESTUDANTE</span><span class="arrow">›</span></a>
-      <a class="menu-button" href="https://youtube.com/@teacherflavio" target="_blank" rel="noopener noreferrer"><span><span class="icon">▶️</span>YOUTUBE</span><span class="arrow">›</span></a>
-      <a class="menu-button" href="https://www.instagram.com/teacher.flavius" target="_blank" rel="noopener noreferrer"><span><span class="icon">📸</span>INSTAGRAM</span><span class="arrow">›</span></a>
+      <a id="enrollmentCard" class="menu-button enrollment" href="/matricula/" data-cms-key="aluno_enrollment_url" data-cms-attr="href"><span><span class="icon">🪪</span><span data-cms-key="aluno_enrollment_label">MATRÍCULA</span></span><span class="arrow">›</span></a>
+      <a class="menu-button" href="/area-do-estudante/" data-cms-key="aluno_student_area_url" data-cms-attr="href"><span><span class="icon">🎓</span><span data-cms-key="aluno_student_area_label">ÁREA DO ESTUDANTE</span></span><span class="arrow">›</span></a>
+      <a class="menu-button" href="https://youtube.com/@teacherflavio" data-cms-key="aluno_youtube_url" data-cms-attr="href" target="_blank" rel="noopener noreferrer"><span><span class="icon">▶️</span><span data-cms-key="aluno_youtube_label">YOUTUBE</span></span><span class="arrow">›</span></a>
+      <a class="menu-button" href="https://www.instagram.com/teacher.flavius" data-cms-key="aluno_instagram_url" data-cms-attr="href" target="_blank" rel="noopener noreferrer"><span><span class="icon">📸</span><span data-cms-key="aluno_instagram_label">INSTAGRAM</span></span><span class="arrow">›</span></a>
     </div>
-    <div id="professorAdminLink" class="footer-admin" style="display:none;"><a class="professor-button" href="/professor/">ÁREA DO PROFESSOR</a></div>
+    <div id="professorAdminLink" class="footer-admin" style="display:none;"><a class="professor-button" href="/professor/" data-cms-key="aluno_professor_url" data-cms-attr="href"><span data-cms-key="aluno_professor_label">ÁREA DO PROFESSOR</span></a></div>
   </div>
   <script src="home.js?v=20260428-1"></script>
   <script src="animated_cards.js?v=20260427-5"></script>
+  <script src="cms_public.js?v=20260804-2"></script>
 </body>
 </html>

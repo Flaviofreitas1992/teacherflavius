@@ -13,15 +13,24 @@ conta administrativa da Área do Professor.
 4. Edite um campo e clique em **Salvar e publicar**.
 5. Abra a HOME em uma nova aba e atualize a página.
 
-O script é idempotente: pode ser executado novamente. Os valores já editados não
-são sobrescritos pelos dados iniciais.
+Se o CMS da HOME já estava instalado antes desta atualização, execute apenas
+`supabase_cms_paginas_publicas.sql` para acrescentar as demais páginas.
 
-## O que a primeira versão gerencia
+Os dois scripts são idempotentes: podem ser executados novamente e os valores já
+editados não são sobrescritos pelos dados iniciais.
 
-- título e apresentação da HOME;
-- títulos, descrições e destinos dos dois cards;
-- imagem de destaque opcional;
+## Páginas gerenciadas
+
+- Página inicial: apresentação, cards, links e imagem de destaque;
+- Portal do aluno: título e botões de navegação;
+- Conheça as aulas: apresentação, vídeo, turma, benefícios, vagas, investimento,
+  dados do professor, foto e redes sociais;
+- Guia do estudante: navegação, apresentação, títulos, orientações principais e
+  aviso final;
 - upload de JPG, PNG, WebP e GIF com até 5 MB.
+
+Login, matrícula, autenticação e painéis internos não são editáveis pelo CMS,
+pois são telas funcionais e possuem regras próprias de segurança.
 
 As imagens são enviadas ao bucket público `cms-media`. Somente administradores
 autenticados podem enviar, substituir ou excluir arquivos.
@@ -34,7 +43,7 @@ autenticados podem enviar, substituir ou excluir arquivos.
 - o navegador recebe somente a chave pública do Supabase;
 - HTML não é aceito como conteúdo, reduzindo o risco de XSS;
 - URLs com protocolos perigosos não são aplicadas às páginas;
-- a HOME mantém o texto padrão caso o CMS ou o Supabase esteja indisponível.
+- cada página mantém o texto padrão caso o CMS ou o Supabase esteja indisponível.
 
 Depois de aplicar o SQL, execute os Advisors de Security e Performance do
 Supabase e confirme que a tabela `site_content` está com RLS ativo.

@@ -55,6 +55,7 @@
       font-family:'Montserrat',sans-serif; font-weight:900; font-size:clamp(1.8rem,5vw,3.6rem);
       line-height:1.15; max-width:860px; text-shadow:0 3px 20px rgba(0,0,0,.3); letter-spacing:-.01em; animation:fadeUp .8s ease both;
     }
+    .cms-multiline { white-space:pre-line; }
     .hero-sub { margin-top:22px; font-size:clamp(.95rem,2vw,1.15rem); color:rgba(255,255,255,.85); font-weight:600; letter-spacing:.02em; animation:fadeUp .8s .2s ease both; }
     .video-wrapper { margin:36px auto 0; width:100%; max-width:780px; padding:0 20px; animation:fadeUp .8s .35s ease both; }
     .video-box { background:rgba(0,0,0,.35); border:2px solid rgba(255,255,255,.2); border-radius:20px; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.45); aspect-ratio:16/9; position:relative; }
@@ -136,111 +137,116 @@
     }
   </style>
 </head>
-<body>
+<body data-cms-page="quero_conhecer">
   <header>
-    <a class="btn-alunos" href="/login.html?next=area_do_estudante.html">Área de alunos</a>
+    <a class="btn-alunos" href="/login.html?next=area_do_estudante.html" data-cms-key="conhecer_student_url" data-cms-attr="href"><span data-cms-key="conhecer_student_label">Área de alunos</span></a>
     <span class="plane">✈️</span>
   </header>
 
   <section class="hero">
-    <div class="hero-tag">🌍 Inglês que transforma vidas</div>
-    <h1>CHEGOU A SUA HORA DE FAZER<br>PARTE DO TIME DE ALUNOS DO<br>TEACHER FLAVIO</h1>
-    <p class="hero-sub">Assista ao vídeo abaixo para conhecer a metodologia.</p>
+    <div class="hero-tag" data-cms-key="conhecer_hero_tag">🌍 Inglês que transforma vidas</div>
+    <h1 class="cms-multiline" data-cms-key="conhecer_hero_title">CHEGOU A SUA HORA DE FAZER
+PARTE DO TIME DE ALUNOS DO
+TEACHER FLAVIO</h1>
+    <p class="hero-sub" data-cms-key="conhecer_hero_subtitle">Assista ao vídeo abaixo para conhecer a metodologia.</p>
   </section>
 
   <div class="video-wrapper">
     <div class="video-box" id="videoBox">
-      <iframe src="https://www.youtube.com/embed/mZ2GyKKkteI?rel=0" title="Vídeo de apresentação Teacher Flavio" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+      <iframe src="https://www.youtube.com/embed/mZ2GyKKkteI?rel=0" data-cms-key="conhecer_video_url" data-cms-attr="src" title="Vídeo de apresentação Teacher Flavio" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
     </div>
   </div>
 
   <section class="new-class-section" aria-labelledby="newClassTitle">
     <div class="new-class-content">
-      <h2 id="newClassTitle">NOVA TURMA DE INGLÊS</h2>
-      <div class="limited-card">VAGAS LIMITADAS</div>
-      <p class="new-class-question">Você quer aprender inglês de verdade, mesmo que ache que não leva jeito para idiomas?</p>
-      <p class="new-class-opportunity">Então essa pode ser a oportunidade que você estava esperando.</p>
-      <p class="new-class-opportunity">Meu curso foi criado para pessoas que:</p>
+      <h2 id="newClassTitle" data-cms-key="conhecer_new_class_title">NOVA TURMA DE INGLÊS</h2>
+      <div class="limited-card" data-cms-key="conhecer_limited_label">VAGAS LIMITADAS</div>
+      <p class="new-class-question" data-cms-key="conhecer_question">Você quer aprender inglês de verdade, mesmo que ache que não leva jeito para idiomas?</p>
+      <p class="new-class-opportunity" data-cms-key="conhecer_opportunity_1">Então essa pode ser a oportunidade que você estava esperando.</p>
+      <p class="new-class-opportunity" data-cms-key="conhecer_opportunity_2">Meu curso foi criado para pessoas que:</p>
       <ul class="audience-list">
-        <li>✔️ nunca estudaram inglês</li>
-        <li>✔️ estudaram mas não conseguem falar</li>
-        <li>✔️ querem aprender de forma simples e prática</li>
+        <li data-cms-key="conhecer_audience_1">✔️ nunca estudaram inglês</li>
+        <li data-cms-key="conhecer_audience_2">✔️ estudaram mas não conseguem falar</li>
+        <li data-cms-key="conhecer_audience_3">✔️ querem aprender de forma simples e prática</li>
       </ul>
     </div>
   </section>
 
   <section class="course-benefits-section" aria-labelledby="courseBenefitsTitle">
     <div class="course-benefits-card">
-      <h2 id="courseBenefitsTitle">📚 O que você vai ter no curso</h2>
+      <h2 id="courseBenefitsTitle" data-cms-key="conhecer_benefits_title">📚 O que você vai ter no curso</h2>
       <ul class="benefits-list">
-        <li>✔️ Aulas 100% online</li>
-        <li>✔️ Aulas ao vivo</li>
-        <li>✔️ Método simples e direto</li>
-        <li>✔️ Material de apoio</li>
-        <li>✔️ 4 aulas por mês</li>
-        <li>✔️ Aulas focadas na prática</li>
-        <li>✔️ Aula experimental gratuita</li>
+        <li data-cms-key="conhecer_benefit_1">✔️ Aulas 100% online</li>
+        <li data-cms-key="conhecer_benefit_2">✔️ Aulas ao vivo</li>
+        <li data-cms-key="conhecer_benefit_3">✔️ Método simples e direto</li>
+        <li data-cms-key="conhecer_benefit_4">✔️ Material de apoio</li>
+        <li data-cms-key="conhecer_benefit_5">✔️ 4 aulas por mês</li>
+        <li data-cms-key="conhecer_benefit_6">✔️ Aulas focadas na prática</li>
+        <li data-cms-key="conhecer_benefit_7">✔️ Aula experimental gratuita</li>
       </ul>
     </div>
   </section>
 
   <div class="cta-wrapper">
-    <a href="/matricula/" class="btn-inscricao">FAZER INSCRIÇÃO</a>
+    <a href="/matricula/" class="btn-inscricao" data-cms-key="conhecer_enrollment_url" data-cms-attr="href"><span data-cms-key="conhecer_enrollment_label">FAZER INSCRIÇÃO</span></a>
   </div>
 
   <section class="availability-section" aria-labelledby="availabilityTitle">
     <div class="availability-card">
-      <h2 id="availabilityTitle">Disponibilidade de vagas</h2>
+      <h2 id="availabilityTitle" data-cms-key="conhecer_availability_title">Disponibilidade de vagas</h2>
       <ul class="availability-list">
-        <li>Manhã - 2 vagas</li>
-        <li>Tarde - 2 vagas</li>
-        <li>Noite - 3 vagas</li>
+        <li data-cms-key="conhecer_slot_1">Manhã - 2 vagas</li>
+        <li data-cms-key="conhecer_slot_2">Tarde - 2 vagas</li>
+        <li data-cms-key="conhecer_slot_3">Noite - 3 vagas</li>
       </ul>
-      <p class="availability-highlight">⚠️ A turma é pequena (4 alunos) para garantir acompanhamento individual.</p>
-      <p class="availability-note">Por isso teremos apenas 4 vagas por turma.</p>
+      <p class="availability-highlight" data-cms-key="conhecer_availability_highlight">⚠️ A turma é pequena (4 alunos) para garantir acompanhamento individual.</p>
+      <p class="availability-note" data-cms-key="conhecer_availability_note">Por isso teremos apenas 4 vagas por turma.</p>
     </div>
     <div class="investment-card">
-      <p class="investment-label">💰 INVESTIMENTO</p>
-      <div class="price-pulse">R$99,90/MÊS</div>
+      <p class="investment-label" data-cms-key="conhecer_investment_label">💰 INVESTIMENTO</p>
+      <div class="price-pulse" data-cms-key="conhecer_price">R$99,90/MÊS</div>
     </div>
-    <p class="registration-note">⏳ As inscrições ficam abertas até acabar as vagas.</p>
+    <p class="registration-note" data-cms-key="conhecer_registration_note">⏳ As inscrições ficam abertas até acabar as vagas.</p>
   </section>
 
   <div class="trial-cta-wrapper">
-    <a href="https://wa.me/5534998349756?text=Teacher%2C%20quero%20marcar%20uma%20aula%20experimental%20gratuita" class="btn-trial">AGENDAR AULA EXPERIMENTAL</a>
+    <a href="https://wa.me/5534998349756?text=Teacher%2C%20quero%20marcar%20uma%20aula%20experimental%20gratuita" class="btn-trial" data-cms-key="conhecer_trial_url" data-cms-attr="href"><span data-cms-key="conhecer_trial_label">AGENDAR AULA EXPERIMENTAL</span></a>
   </div>
 
   <section class="instructor-section" aria-labelledby="instructorTitle">
     <div class="instructor-photo-card">
-      <img src="FaceApp_1692762158831%20(1).jpg" alt="Foto do professor Flávio" class="instructor-photo" loading="lazy">
+      <img src="FaceApp_1692762158831%20(1).jpg" data-cms-key="conhecer_instructor_photo" data-cms-attr="src" alt="Foto do professor Flávio" class="instructor-photo" loading="lazy">
     </div>
 
     <div class="instructor-card">
-      <h2 id="instructorTitle">Sobre o professor</h2>
-      <p class="instructor-text">Eu me chamo Flávio, tenho 34 anos e sou professor de idiomas há 15 anos.</p>
-      <p class="section-label">Tenho as seguintes formações:</p>
+      <h2 id="instructorTitle" data-cms-key="conhecer_instructor_title">Sobre o professor</h2>
+      <p class="instructor-text" data-cms-key="conhecer_instructor_intro">Eu me chamo Flávio, tenho 34 anos e sou professor de idiomas há 15 anos.</p>
+      <p class="section-label" data-cms-key="conhecer_credentials_label">Tenho as seguintes formações:</p>
       <ul class="credentials-list">
-        <li>🧑🏻‍🎓 Bacharelado em Tradução</li>
-        <li>🧑🏻‍🎓 Mestrado em Linguística</li>
-        <li>🧑🏻‍🎓 Doutorado em Linguística</li>
-        <li>🧑🏻‍🎓 Certificado Cambridge</li>
+        <li data-cms-key="conhecer_credential_1">🧑🏻‍🎓 Bacharelado em Tradução</li>
+        <li data-cms-key="conhecer_credential_2">🧑🏻‍🎓 Mestrado em Linguística</li>
+        <li data-cms-key="conhecer_credential_3">🧑🏻‍🎓 Doutorado em Linguística</li>
+        <li data-cms-key="conhecer_credential_4">🧑🏻‍🎓 Certificado Cambridge</li>
       </ul>
-      <p class="instructor-text">Durante os meus estudos fiz intercâmbios em Londres, em Roma e em Zurique. Dou aulas e faço traduções dos seguintes idiomas:</p>
+      <p class="instructor-text" data-cms-key="conhecer_instructor_bio">Durante os meus estudos fiz intercâmbios em Londres, em Roma e em Zurique. Dou aulas e faço traduções dos seguintes idiomas:</p>
       <ul class="languages-list">
-        <li>🇺🇸 INGLÊS</li>
-        <li>🇮🇹 ITALIANO</li>
-        <li>🇩🇪 ALEMÃO</li>
+        <li data-cms-key="conhecer_language_1">🇺🇸 INGLÊS</li>
+        <li data-cms-key="conhecer_language_2">🇮🇹 ITALIANO</li>
+        <li data-cms-key="conhecer_language_3">🇩🇪 ALEMÃO</li>
       </ul>
     </div>
 
     <div class="trial-cta-wrapper repeat">
-      <a href="https://wa.me/5534998349756?text=Teacher%2C%20quero%20marcar%20uma%20aula%20experimental%20gratuita" class="btn-trial">AGENDAR AULA EXPERIMENTAL</a>
+      <a href="https://wa.me/5534998349756?text=Teacher%2C%20quero%20marcar%20uma%20aula%20experimental%20gratuita" class="btn-trial" data-cms-key="conhecer_trial_url" data-cms-attr="href"><span data-cms-key="conhecer_trial_label">AGENDAR AULA EXPERIMENTAL</span></a>
     </div>
 
     <div class="instagram-card">
-      <p class="instagram-text">Confira mais sobre meu trabalho em meu Instagram:</p>
-      <a href="https://www.instagram.com/teacher.flavius" class="btn-instagram" target="_blank" rel="noopener noreferrer">VER INSTAGRAM</a>
+      <p class="instagram-text" data-cms-key="conhecer_instagram_text">Confira mais sobre meu trabalho em meu Instagram:</p>
+      <a href="https://www.instagram.com/teacher.flavius" class="btn-instagram" data-cms-key="conhecer_instagram_url" data-cms-attr="href" target="_blank" rel="noopener noreferrer"><span data-cms-key="conhecer_instagram_label">VER INSTAGRAM</span></a>
     </div>
   </section>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase_config.js?v=20260427-5"></script>
+  <script src="cms_public.js?v=20260804-2"></script>
 </body>
 </html>

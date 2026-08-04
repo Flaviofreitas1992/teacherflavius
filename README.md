@@ -159,7 +159,7 @@ Detalhes: [CONFIGURAR_QUESTIONARIOS.md](CONFIGURAR_QUESTIONARIOS.md).
 - upload de imagens para o Supabase Storage;
 - acesso restrito às contas cadastradas como professor administrador;
 - conteúdo estático mantido como fallback quando o Supabase estiver indisponível;
-- HOME conectada na primeira versão e estrutura pronta para novas páginas.
+- páginas conectadas: Página inicial, Portal do aluno, Conheça as aulas e Guia do estudante.
 
 Detalhes: [CONFIGURAR_CMS.md](CONFIGURAR_CMS.md).
 
@@ -468,7 +468,7 @@ os carregam para reduzir problemas de cache no navegador.
 - mensalidades;
 - reposições;
 - relatório de acessos.
-- CMS: edição de textos e links, upload de imagem e fallback da HOME.
+- CMS: edição das quatro páginas públicas de conteúdo, upload de imagem e fallback estático.
 
 ### Integrações
 
