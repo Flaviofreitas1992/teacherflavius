@@ -24,10 +24,19 @@ create table if not exists public.flashcards (
   unique (deck_id, position)
 );
 
+create table if not exists public.flashcard_practice_days (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  practice_date date not null,
+  created_at timestamptz not null default now(),
+  primary key (user_id, practice_date)
+);
+
 create index if not exists flashcard_decks_owner_id_idx
   on public.flashcard_decks(owner_id);
 create index if not exists flashcards_deck_id_position_idx
   on public.flashcards(deck_id, position);
+create index if not exists flashcard_practice_days_date_idx
+  on public.flashcard_practice_days(practice_date desc);
 
 -- Desativa a função da primeira versão, que possuía compartilhamento geral.
 -- A coluna antiga, quando existir, fica sem efeito para preservar compatibilidade.
@@ -42,6 +51,7 @@ drop index if exists public.flashcard_decks_shared_updated_idx;
 
 alter table public.flashcard_decks enable row level security;
 alter table public.flashcards enable row level security;
+alter table public.flashcard_practice_days enable row level security;
 
 drop policy if exists "Usuários podem visualizar conjuntos permitidos" on public.flashcard_decks;
 create policy "Usuários podem visualizar conjuntos permitidos"
@@ -166,10 +176,33 @@ create policy "Usuários podem excluir cartões dos próprios conjuntos"
     )
   );
 
+drop policy if exists "Alunos e professor podem visualizar dias de prática" on public.flashcard_practice_days;
+create policy "Alunos e professor podem visualizar dias de prática"
+  on public.flashcard_practice_days
+  for select
+  to authenticated
+  using (
+    user_id = (select auth.uid())
+    or (select public.is_teacher_admin())
+  );
+
+drop policy if exists "Alunos podem registrar o dia atual de prática" on public.flashcard_practice_days;
+create policy "Alunos podem registrar o dia atual de prática"
+  on public.flashcard_practice_days
+  for insert
+  to authenticated
+  with check (
+    user_id = (select auth.uid())
+    and practice_date = (now() at time zone 'America/Sao_Paulo')::date
+  );
+
 revoke all on table public.flashcard_decks from anon;
 revoke all on table public.flashcards from anon;
+revoke all on table public.flashcard_practice_days from anon;
 grant select, insert, update, delete on table public.flashcard_decks to authenticated;
 grant select, insert, update, delete on table public.flashcards to authenticated;
+revoke all on table public.flashcard_practice_days from authenticated;
+grant select, insert on table public.flashcard_practice_days to authenticated;
 
 create or replace function public.set_flashcards_updated_at()
 returns trigger
@@ -292,9 +325,33 @@ $$;
 revoke all on function public.save_flashcard_deck(uuid, uuid, text, text, jsonb) from public, anon;
 grant execute on function public.save_flashcard_deck(uuid, uuid, text, text, jsonb) to authenticated;
 
+create or replace function public.record_flashcard_practice_day()
+returns date
+language plpgsql
+security invoker
+set search_path = public
+as $$
+declare
+  v_today date := (now() at time zone 'America/Sao_Paulo')::date;
+begin
+  if (select auth.uid()) is null then
+    raise exception 'Usuário não autenticado.';
+  end if;
+
+  insert into public.flashcard_practice_days (user_id, practice_date)
+  values ((select auth.uid()), v_today)
+  on conflict (user_id, practice_date) do nothing;
+
+  return v_today;
+end;
+$$;
+
+revoke all on function public.record_flashcard_practice_day() from public, anon;
+grant execute on function public.record_flashcard_practice_day() to authenticated;
+
 commit;
 
--- Verificação rápida: duas tabelas, RLS ativo e políticas apenas para authenticated.
+-- Verificação rápida: tabelas com RLS ativo e políticas apenas para authenticated.
 select
   c.relname as table_name,
   c.relrowsecurity as rls_enabled,
@@ -303,6 +360,6 @@ from pg_class c
 join pg_namespace n on n.oid = c.relnamespace
 left join pg_policies p on p.schemaname = n.nspname and p.tablename = c.relname
 where n.nspname = 'public'
-  and c.relname in ('flashcard_decks', 'flashcards')
+  and c.relname in ('flashcard_decks', 'flashcards', 'flashcard_practice_days')
 group by c.relname, c.relrowsecurity
 order by c.relname;
