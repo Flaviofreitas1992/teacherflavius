@@ -90,7 +90,6 @@ na raiz são mantidos por compatibilidade.
 | `/quadro-de-turmas.html` | Visão geral de turmas, horários e tags |
 | `/criar-exercicio/` | Cadastro de links de exercícios |
 | `/questionarios-admin/` | Criação, publicação e resultados de questionários |
-| `/cms/` | Edição de textos, links e imagens das páginas públicas |
 | `/aulas-de-gramatica-interface-do-professor.html` | Gestão das aulas de gramática |
 | `/exercicios-dos-alunos/` | Progresso dos exercícios feitos pelos alunos |
 
@@ -151,17 +150,6 @@ navegador.
 - painel de resultados para o professor.
 
 Detalhes: [CONFIGURAR_QUESTIONARIOS.md](CONFIGURAR_QUESTIONARIOS.md).
-
-### CMS do site
-
-- edição do conteúdo público sem alterar arquivos HTML;
-- campos de texto, textos longos, links e imagens;
-- upload de imagens para o Supabase Storage;
-- acesso restrito às contas cadastradas como professor administrador;
-- conteúdo estático mantido como fallback quando o Supabase estiver indisponível;
-- páginas conectadas: Página inicial, Portal do aluno, Conheça as aulas e Guia do estudante.
-
-Detalhes: [CONFIGURAR_CMS.md](CONFIGURAR_CMS.md).
 
 ### Reposições
 
@@ -228,7 +216,6 @@ Detalhes: [CONFIGURAR_EMAIL_MATRICULAS.md](CONFIGURAR_EMAIL_MATRICULAS.md) e
 | `perfil_dos_alunos.js` | Administração de alunos |
 | `acessos_dos_alunos.js` | Relatório de acessos |
 | `student_access_tracker.js` | Registro de páginas acessadas |
-| `cms/` / `cms_public.js` | Painel do CMS e aplicação do conteúdo nas páginas públicas |
 | `class_lesson_attendance.js` | Registro de lições e presença |
 | `class_recorded_lessons.js` | Link de aulas gravadas |
 | `quiz_core.js` | Motor dos quizzes estáticos |
@@ -312,7 +299,6 @@ Ordem de dependência para uma instalação nova:
    - `supabase_reposicoes.sql`;
    - `supabase_mensalidades.sql`;
    - `supabase_acessos_alunos.sql`.
-   - `supabase_cms.sql`.
 9. Para e-mail de matrícula, execute
    `supabase_notificacoes_matricula.sql`.
 10. Execute por último:
@@ -468,7 +454,6 @@ os carregam para reduzir problemas de cache no navegador.
 - mensalidades;
 - reposições;
 - relatório de acessos.
-- CMS: edição das quatro páginas públicas de conteúdo, upload de imagem e fallback estático.
 
 ### Integrações
 
