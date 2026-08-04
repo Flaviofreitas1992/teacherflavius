@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flashcards - Teacher Flávio</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase_config.js?v=20260430-3"></script>
+  <script src="/auth.js?v=20260730-1"></script>
+  <link rel="stylesheet" href="/flashcards.css?v=20260804-1">
+</head>
+<body class="auth-checking">
+  <div class="app-shell">
+    <nav class="top-links" aria-label="Navegação principal">
+      <a class="top-link" href="/area-do-estudante/">ÁREA DO ESTUDANTE</a>
+      <a class="top-link" href="/perfil/">MEU PERFIL</a>
+    </nav>
+
+    <header class="page-header">
+      <span class="badge">TEACHER FLÁVIO</span>
+      <h1>Flashcards</h1>
+      <p id="loginStatus" class="status">Verificando acesso...</p>
+    </header>
+
+    <div class="divider"></div>
+    <div id="flashcardMessage" class="message" role="status" aria-live="polite" hidden></div>
+
+    <main>
+      <section id="libraryView" class="view" aria-labelledby="libraryTitle">
+        <div class="view-heading">
+          <div>
+            <p class="eyebrow">SUA BIBLIOTECA</p>
+            <h2 id="libraryTitle">Conjuntos de palavras</h2>
+            <p class="lead">Crie seus próprios cartões ou estude os conjuntos compartilhados pelo professor.</p>
+          </div>
+          <button id="newDeckButton" class="button button-primary" type="button">+ NOVO CONJUNTO</button>
+        </div>
+
+        <section id="sharedSection" class="deck-section" hidden>
+          <div class="section-title-row">
+            <h3>Criados pelo professor</h3>
+            <span class="section-icon" aria-hidden="true">🎓</span>
+          </div>
+          <div id="sharedDecks" class="deck-grid"></div>
+        </section>
+
+        <section class="deck-section">
+          <div class="section-title-row">
+            <h3>Meus conjuntos</h3>
+            <span class="section-icon" aria-hidden="true">🗂️</span>
+          </div>
+          <div id="myDecks" class="deck-grid"></div>
+        </section>
+      </section>
+
+      <section id="editorView" class="view panel" aria-labelledby="editorTitle" hidden>
+        <div class="view-heading compact">
+          <div>
+            <p class="eyebrow">EDITOR</p>
+            <h2 id="editorTitle">Novo conjunto</h2>
+          </div>
+          <button id="cancelEditorButton" class="button button-ghost" type="button">VOLTAR</button>
+        </div>
+
+        <form id="deckForm" novalidate>
+          <label class="field">
+            <span>Nome do conjunto</span>
+            <input id="deckTitle" name="title" type="text" maxlength="120" placeholder="Ex.: Vocabulário de viagens" required>
+          </label>
+
+          <label class="field">
+            <span>Descrição <small>(opcional)</small></span>
+            <textarea id="deckDescription" name="description" maxlength="500" rows="3" placeholder="Explique o tema ou o objetivo deste conjunto."></textarea>
+          </label>
+
+          <label id="sharedField" class="share-option" hidden>
+            <input id="deckShared" name="is_shared" type="checkbox">
+            <span>
+              <strong>Compartilhar com todos os alunos</strong>
+              <small>O conjunto aparecerá na biblioteca dos alunos e só poderá ser editado pelo professor.</small>
+            </span>
+          </label>
+
+          <div class="cards-heading">
+            <div>
+              <h3>Palavras</h3>
+              <p>Digite a palavra em inglês e, logo abaixo, a tradução.</p>
+            </div>
+            <span id="cardCount" class="count-pill">0 cartões</span>
+          </div>
+
+          <div id="cardsEditor" class="cards-editor"></div>
+
+          <div class="editor-actions">
+            <button id="addCardButton" class="button button-secondary" type="button">+ ADICIONAR PALAVRA</button>
+            <button id="saveDeckButton" class="button button-primary" type="submit">SALVAR CONJUNTO</button>
+          </div>
+        </form>
+      </section>
+
+      <section id="studyView" class="view panel study-panel" aria-labelledby="studyTitle" hidden>
+        <div class="view-heading compact">
+          <div>
+            <p class="eyebrow">MODO DE ESTUDO</p>
+            <h2 id="studyTitle">Flashcards</h2>
+          </div>
+          <button id="leaveStudyButton" class="button button-ghost" type="button">SAIR</button>
+        </div>
+
+        <div id="studyContent">
+          <div class="study-progress-row">
+            <span id="studyProgress">Cartão 1 de 1</span>
+            <span id="studyScore">0 acertos</span>
+          </div>
+          <div class="progress-track" aria-hidden="true"><span id="progressBar"></span></div>
+
+          <article class="study-card">
+            <span class="card-label">PALAVRA EM INGLÊS</span>
+            <div id="studyWord" class="study-word"></div>
+            <label class="study-translation-field">
+              <span>Tradução</span>
+              <input id="translationAnswer" type="text" autocomplete="off" placeholder="Digite a tradução em português">
+            </label>
+            <button id="checkAnswerButton" class="button button-primary full-width" type="button">CONFERIR TRADUÇÃO</button>
+            <div id="answerFeedback" class="answer-feedback" hidden>
+              <span id="answerResult" class="answer-result"></span>
+              <p>Tradução cadastrada: <strong id="expectedTranslation"></strong></p>
+              <div class="self-grade" aria-label="Autoavaliação">
+                <button class="button grade-button grade-wrong" type="button" data-grade="wrong">PRECISO REVISAR</button>
+                <button class="button grade-button grade-right" type="button" data-grade="right">EU ACERTEI</button>
+              </div>
+            </div>
+          </article>
+
+          <div class="study-navigation">
+            <button id="previousCardButton" class="button button-ghost" type="button">‹ ANTERIOR</button>
+            <button id="shuffleButton" class="button button-ghost" type="button">EMBARALHAR</button>
+            <button id="nextCardButton" class="button button-secondary" type="button">PRÓXIMO ›</button>
+          </div>
+        </div>
+
+        <div id="studySummary" class="study-summary" hidden>
+          <div class="summary-icon" aria-hidden="true">✨</div>
+          <h3>Sessão concluída</h3>
+          <p id="summaryText"></p>
+          <div class="summary-actions">
+            <button id="restartStudyButton" class="button button-secondary" type="button">ESTUDAR NOVAMENTE</button>
+            <button id="finishStudyButton" class="button button-primary" type="button">VOLTAR À BIBLIOTECA</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <template id="cardRowTemplate">
+    <div class="card-editor-row">
+      <div class="card-number" aria-hidden="true"></div>
+      <div class="card-fields">
+        <label class="field">
+          <span>Palavra em inglês</span>
+          <input class="english-input" type="text" maxlength="180" placeholder="Ex.: journey" required>
+        </label>
+        <label class="field translation-field">
+          <span>Tradução</span>
+          <input class="translation-input" type="text" maxlength="300" placeholder="Ex.: viagem" required>
+        </label>
+      </div>
+      <button class="remove-card-button" type="button" aria-label="Remover cartão">×</button>
+    </div>
+  </template>
+
+  <script src="/flashcards.js?v=20260804-1"></script>
+</body>
+</html>
