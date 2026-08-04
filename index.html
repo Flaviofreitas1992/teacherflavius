@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Teacher Flávio</title>
   <link rel="stylesheet" href="home.css?v=20260427-5">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script defer src="supabase_config.js?v=20260804-1"></script>
+  <script defer src="cms_public.js?v=20260804-1"></script>
   <style>
     .hero-subtitle {
       color: #cbd5e1;
@@ -84,6 +87,16 @@
       border-color: rgba(129,140,248,0.32);
     }
 
+    .cms-hero-media {
+      min-height: clamp(180px, 34vw, 320px);
+      margin: 0 0 24px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 24px;
+      background-position: center;
+      background-size: cover;
+      box-shadow: 0 20px 55px rgba(0,0,0,0.24);
+    }
+
     @media (min-width: 720px) {
       .entry-grid {
         grid-template-columns: 1fr 1fr;
@@ -91,28 +104,30 @@
     }
   </style>
 </head>
-<body>
+<body data-cms-page="home">
   <div class="container">
     <div class="header">
-      <h1>Teacher Flávio</h1>
-      <p class="hero-subtitle">Escolha uma opção para acessar sua área ou conhecer melhor as aulas de inglês.</p>
+      <h1 data-cms-key="home.title">Teacher Flávio</h1>
+      <p class="hero-subtitle" data-cms-key="home.subtitle">Escolha uma opção para acessar sua área ou conhecer melhor as aulas de inglês.</p>
     </div>
 
     <div class="divider"></div>
 
+    <div class="cms-hero-media" data-cms-key="home.hero_image" data-cms-attr="background-image" hidden></div>
+
     <div class="entry-grid">
-      <a class="entry-card student" href="/aluno.html">
+      <a class="entry-card student" href="/aluno.html" data-cms-key="home.student_url" data-cms-attr="href">
         <span>
-          <strong>JÁ SOU ALUNO</strong>
-          <span class="description">Acesse matrícula, área do estudante, links das aulas e conteúdos do curso.</span>
+          <strong data-cms-key="home.student_title">JÁ SOU ALUNO</strong>
+          <span class="description" data-cms-key="home.student_description">Acesse matrícula, área do estudante, links das aulas e conteúdos do curso.</span>
         </span>
         <span class="entry-icon">🎓</span>
       </a>
 
-      <a class="entry-card visitor" href="/quero_conhecer.html">
+      <a class="entry-card visitor" href="/quero_conhecer.html" data-cms-key="home.visitor_url" data-cms-attr="href">
         <span>
-          <strong>QUERO CONHECER</strong>
-          <span class="description">Veja as opções para começar seus estudos de inglês com o Teacher Flávio.</span>
+          <strong data-cms-key="home.visitor_title">QUERO CONHECER</strong>
+          <span class="description" data-cms-key="home.visitor_description">Veja as opções para começar seus estudos de inglês com o Teacher Flávio.</span>
         </span>
         <span class="entry-icon">✨</span>
       </a>
