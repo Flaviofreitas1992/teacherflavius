@@ -87,6 +87,14 @@ h2 { font-size: clamp(25px, 4vw, 34px); margin-bottom: 8px; }
 .student-identity p { color: var(--muted); font-size: 12px; margin: 0; overflow-wrap: anywhere; }
 .student-deck-count { display: inline-block; margin-top: 7px; color: #c7d2fe; font-size: 11px; }
 .student-group .empty-state { padding: 20px 14px; }
+.practice-history { margin: 0 0 18px; padding: 13px 14px; border: 1px solid rgba(129,140,248,.2); border-radius: 15px; background: rgba(15,23,42,.42); }
+.practice-history-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; color: #cbd5e1; font-size: 12px; }
+.practice-history-heading strong { color: #a7f3d0; font-size: 11px; white-space: nowrap; }
+.practice-days { display: grid; grid-template-columns: repeat(20,minmax(30px,1fr)); gap: 5px; overflow-x: auto; padding-bottom: 3px; scrollbar-width: thin; }
+.practice-day { display: flex; min-width: 30px; min-height: 48px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 1px solid rgba(148,163,184,.2); border-radius: 9px; background: rgba(255,255,255,.025); color: #64748b; }
+.practice-day small { font-size: 8px; text-transform: uppercase; }
+.practice-day b { font: 11px monospace; }
+.practice-day.practiced { border-color: rgba(110,231,183,.55); background: rgba(110,231,183,.14); color: #a7f3d0; box-shadow: inset 0 -2px 0 rgba(110,231,183,.35); }
 
 .panel { background: var(--panel-strong); border: 1px solid var(--border); border-radius: 22px; padding: clamp(20px,4vw,34px); backdrop-filter: blur(14px); }
 .field { display: block; margin-bottom: 18px; }
@@ -151,4 +159,5 @@ input::placeholder, textarea::placeholder { color: #64748b; }
   .self-grade { flex-direction: column; }
   .student-group-header { align-items: stretch; flex-direction: column; }
   .student-group-header .button { width: 100%; }
+  .practice-history-heading { align-items: flex-start; flex-direction: column; gap: 4px; }
 }

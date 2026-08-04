@@ -7,6 +7,8 @@
     isTeacher: false,
     decks: [],
     students: [],
+    practiceByStudent: new Map(),
+    practiceRecordedToday: false,
     editingDeckId: null,
     editingOwnerId: null,
     studyDeckId: null,
@@ -91,6 +93,36 @@
     return student && student.name ? student.name : student && student.email ? student.email : "Aluno";
   }
 
+  function saoPauloToday() {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(new Date());
+    const values = {};
+    parts.forEach(function (part) { values[part.type] = part.value; });
+    return values.year + "-" + values.month + "-" + values.day;
+  }
+
+  function dateOffset(isoDate, offset) {
+    const parts = isoDate.split("-").map(Number);
+    const date = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + offset, 12));
+    return date.toISOString().slice(0, 10);
+  }
+
+  function lastPracticeDates() {
+    const today = saoPauloToday();
+    return Array.from({ length: 20 }, function (_, index) {
+      return dateOffset(today, index - 19);
+    });
+  }
+
+  function formatPracticeDate(isoDate, options) {
+    return new Intl.DateTimeFormat("pt-BR", Object.assign({ timeZone: "UTC" }, options))
+      .format(new Date(isoDate + "T12:00:00Z"));
+  }
+
   function createActionButton(label, className, action, deckId) {
     const button = document.createElement("button");
     button.type = "button";
@@ -155,6 +187,48 @@
     container.replaceChildren(empty);
   }
 
+  function createPracticeHistory(student) {
+    const dates = lastPracticeDates();
+    const practicedDates = state.practiceByStudent.get(student.user_id) || new Set();
+    const wrapper = document.createElement("div");
+    wrapper.className = "practice-history";
+
+    const heading = document.createElement("div");
+    heading.className = "practice-history-heading";
+    const title = document.createElement("span");
+    title.textContent = "Prática nos últimos 20 dias";
+    const count = document.createElement("strong");
+    const practicedCount = dates.filter(function (date) { return practicedDates.has(date); }).length;
+    count.textContent = practicedCount + (practicedCount === 1 ? " dia praticado" : " dias praticados");
+    heading.append(title, count);
+    wrapper.appendChild(heading);
+
+    const strip = document.createElement("div");
+    strip.className = "practice-days";
+    strip.setAttribute("role", "list");
+    strip.setAttribute("aria-label", "Dias de prática de " + studentDisplayName(student) + " nos últimos 20 dias");
+
+    dates.forEach(function (isoDate) {
+      const practiced = practicedDates.has(isoDate);
+      const day = document.createElement("span");
+      day.className = "practice-day" + (practiced ? " practiced" : "");
+      day.setAttribute("role", "listitem");
+      const fullDate = formatPracticeDate(isoDate, { day: "2-digit", month: "long", year: "numeric" });
+      day.setAttribute("title", fullDate + (practiced ? " — praticou" : " — sem prática registrada"));
+      day.setAttribute("aria-label", fullDate + (practiced ? ": praticou" : ": sem prática registrada"));
+
+      const weekday = document.createElement("small");
+      weekday.textContent = formatPracticeDate(isoDate, { weekday: "short" }).replace(".", "").slice(0, 3);
+      const number = document.createElement("b");
+      number.textContent = isoDate.slice(8, 10);
+      day.append(weekday, number);
+      strip.appendChild(day);
+    });
+
+    wrapper.appendChild(strip);
+    return wrapper;
+  }
+
   function createStudentGroup(student) {
     const decks = state.decks.filter(function (deck) { return deck.owner_id === student.user_id; });
     const section = document.createElement("section");
@@ -181,6 +255,7 @@
     addButton.dataset.ownerId = student.user_id;
     header.append(identity, addButton);
     section.appendChild(header);
+    section.appendChild(createPracticeHistory(student));
 
     const grid = document.createElement("div");
     grid.className = "deck-grid";
@@ -243,6 +318,41 @@
       return studentDisplayName(a).localeCompare(studentDisplayName(b), "pt-BR");
     });
     populateStudentSelect();
+  }
+
+  async function loadPracticeDays() {
+    if (!state.isTeacher) return;
+    const dates = lastPracticeDates();
+    const response = await state.client
+      .from("flashcard_practice_days")
+      .select("user_id, practice_date")
+      .gte("practice_date", dates[0])
+      .lte("practice_date", dates[dates.length - 1])
+      .order("practice_date", { ascending: true });
+    if (response.error) throw response.error;
+
+    state.practiceByStudent = new Map();
+    (response.data || []).forEach(function (entry) {
+      if (!state.practiceByStudent.has(entry.user_id)) {
+        state.practiceByStudent.set(entry.user_id, new Set());
+      }
+      state.practiceByStudent.get(entry.user_id).add(entry.practice_date);
+    });
+  }
+
+  async function recordPracticeDay() {
+    if (state.isTeacher || state.practiceRecordedToday) return;
+    state.practiceRecordedToday = true;
+    try {
+      const response = await state.client.rpc("record_flashcard_practice_day");
+      if (response.error) {
+        state.practiceRecordedToday = false;
+        console.warn("Não foi possível registrar o dia de prática dos flashcards.", response.error);
+      }
+    } catch (error) {
+      state.practiceRecordedToday = false;
+      console.warn("Não foi possível registrar o dia de prática dos flashcards.", error);
+    }
   }
 
   function populateStudentSelect() {
@@ -486,6 +596,7 @@
     elements.answerResult.className = "answer-result " + (matches ? "correct" : "review");
     elements.answerFeedback.hidden = false;
     elements.nextCardButton.disabled = false;
+    recordPracticeDay();
   }
 
   function gradeCurrentCard(isCorrect) {
@@ -617,6 +728,7 @@
 
     try {
       await loadStudents();
+      await loadPracticeDays();
       await loadDecks();
     } catch (error) {
       if (state.isTeacher) renderEmpty(elements.studentDirectory, "Não foi possível carregar os alunos e seus conjuntos.");
