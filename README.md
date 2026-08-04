@@ -7,8 +7,8 @@ Site oficial e portal acadêmico do Teacher Flávio, disponível em
 
 O projeto deixou de ser apenas uma coleção de atividades estáticas. Atualmente,
 ele reúne matrícula, autenticação, áreas do aluno e do professor, gestão de
-turmas, registro de lições, frequência, exercícios, questionários com correção
-automática, mensalidades, reposições, aulas de gramática, notificações por e-mail
+turmas, registro de lições, frequência, exercícios, mensalidades, reposições,
+aulas de gramática, notificações por e-mail
 e acompanhamento de acessos.
 
 ## Visão geral
@@ -17,9 +17,9 @@ Há três experiências principais:
 
 - **Visitante:** conhece as aulas, inicia uma matrícula e acessa o login.
 - **Aluno autenticado:** consulta sua turma, materiais, frequência, roteiro,
-  exercícios, questionários, reposições, aulas de gramática e perfil.
+  exercícios, reposições, aulas de gramática e perfil.
 - **Professor administrador:** gerencia alunos, turmas, lições, exercícios,
-  questionários, mensalidades, reposições e relatórios de acesso.
+  mensalidades, reposições e relatórios de acesso.
 
 O frontend é estático e hospedado no GitHub Pages. Autenticação, dados, regras de
 acesso e funções remotas ficam no Supabase. As notificações de matrícula e
@@ -71,9 +71,8 @@ na raiz são mantidos por compatibilidade.
 | `/minha-turma/` | Turma, videoaula, material, gravações e grupo |
 | `/reposicoes/` | Consulta, agendamento e cancelamento de reposições |
 | `/frequencia/` | Histórico de lições e frequência |
-| `/exercicios-diarios/` | Portal de exercícios e questionários publicados |
+| `/exercicios-diarios/` | Portal de exercícios publicados |
 | `/roteiro-de-estudos/` | Roteiro e progresso das lições |
-| `/questionario/?id=...` | Execução de um questionário interno |
 | `/aulas-de-gramatica.html` | Videoaulas e exercícios de gramática |
 | `/guia-do-estudante.html` | Orientações para o aluno |
 
@@ -89,7 +88,6 @@ na raiz são mantidos por compatibilidade.
 | `/reposicoes-admin/` | Publicação de horários e acompanhamento de reservas |
 | `/quadro-de-turmas.html` | Visão geral de turmas, horários e tags |
 | `/criar-exercicio/` | Cadastro de links de exercícios |
-| `/questionarios-admin/` | Criação, publicação e resultados de questionários |
 | `/aulas-de-gramatica-interface-do-professor.html` | Gestão das aulas de gramática |
 | `/exercicios-dos-alunos/` | Progresso dos exercícios feitos pelos alunos |
 
@@ -107,9 +105,7 @@ como:
 
 Essas atividades usam `quiz_core.js` e salvam resultados em
 `activity_results` no Supabase. Como o gabarito faz parte do JavaScript entregue
-ao navegador, elas são adequadas para prática, mas não para avaliações sigilosas.
-Para avaliações com gabarito protegido e pontuação calculada no servidor, use o
-módulo de questionários internos.
+ao navegador, elas são adequadas para prática pedagógica e revisão.
 
 ## Funcionalidades
 
@@ -137,19 +133,12 @@ navegador.
 - controle de presença e histórico individual;
 - tags administrativas, como `pacote antigo`.
 
-### Exercícios e questionários
+### Exercícios
 
 - exercícios cadastrados pelo professor;
 - publicação imediata ou programada;
 - marcação de conclusão pelo aluno;
-- roteiro de estudos com progresso individual;
-- questionários com textos, vídeos e múltipla escolha;
-- rascunho, publicação, despublicação e arquivamento;
-- gabarito protegido no banco;
-- correção automática e histórico de tentativas;
-- painel de resultados para o professor.
-
-Detalhes: [CONFIGURAR_QUESTIONARIOS.md](CONFIGURAR_QUESTIONARIOS.md).
+- roteiro de estudos com progresso individual.
 
 ### Reposições
 
@@ -211,7 +200,6 @@ Detalhes: [CONFIGURAR_EMAIL_MATRICULAS.md](CONFIGURAR_EMAIL_MATRICULAS.md) e
 | `professor.html` / `area_do_estudante.html` | Menus principais |
 | `turmas.js` / `turma.js` / `minha_turma.js` | Gestão e visualização das turmas |
 | `reposicoes_admin.js` / `reposicoes.js` | Agenda de reposições |
-| `questionarios_admin.js` / `questionario.js` | Questionários internos |
 | `mensalidades.js` | Controle financeiro |
 | `perfil_dos_alunos.js` | Administração de alunos |
 | `acessos_dos_alunos.js` | Relatório de acessos |
@@ -295,7 +283,6 @@ Ordem de dependência para uma instalação nova:
    - `supabase_roteiro_de_estudos.sql`;
    - `supabase_exercicios_professor.sql`;
    - `supabase_aulas_de_gramatica.sql`;
-   - `supabase_questionarios.sql`;
    - `supabase_reposicoes.sql`;
    - `supabase_mensalidades.sql`;
    - `supabase_acessos_alunos.sql`.
@@ -439,7 +426,6 @@ os carregam para reduzir problemas de cache no navegador.
 - turma e recursos;
 - frequência e roteiro;
 - conclusão de exercícios;
-- questionário e pontuação;
 - agendamento e cancelamento de reposição;
 - logout.
 
@@ -450,7 +436,7 @@ os carregam para reduzir problemas de cache no navegador.
 - criação e ordenação de turmas;
 - troca de turma sem perda do histórico;
 - lições e frequência;
-- exercícios e questionários;
+- exercícios;
 - mensalidades;
 - reposições;
 - relatório de acessos.
@@ -476,7 +462,6 @@ pelos testes manuais dos módulos afetados antes e depois da publicação.
 | Erro de chave duplicada ao trocar turma | Execute `supabase_corrigir_troca_de_turma.sql` |
 | E-mail permanece `pending` | Verifique webhook, URL, segredo, deploy e logs da Edge Function |
 | E-mail fica `failed` | Consulte `last_error` e os logs do Resend/Edge Function |
-| Questionário não aparece | Confirme publicação, matrícula e execução de `supabase_questionarios.sql` |
 | Reposição não aparece | Confirme data futura, vaga, turma ativa e link válido da videoaula |
 | Alteração de JS/CSS não aparece | Atualize o `?v=` e limpe o cache |
 | Rota amigável retorna 404 | Confirme o diretório com `index.html`, configuração do Pages e `CNAME` |
@@ -485,7 +470,6 @@ pelos testes manuais dos módulos afetados antes e depois da publicação.
 
 - [Configuração inicial do Supabase](SUPABASE_SETUP.md)
 - [Segurança do Supabase](SUPABASE_SEGURANCA.md)
-- [Questionários](CONFIGURAR_QUESTIONARIOS.md)
 - [Reposições](CONFIGURAR_REPOSICOES.md)
 - [E-mail de matrícula](CONFIGURAR_EMAIL_MATRICULAS.md)
 
