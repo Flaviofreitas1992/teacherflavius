@@ -31,20 +31,24 @@
           <div>
             <p class="eyebrow">SUA BIBLIOTECA</p>
             <h2 id="libraryTitle">Conjuntos de palavras</h2>
-            <p class="lead">Crie seus próprios cartões ou estude os conjuntos compartilhados pelo professor.</p>
+            <p id="libraryLead" class="lead">Crie seus próprios cartões e pratique sempre que quiser.</p>
           </div>
           <button id="newDeckButton" class="button button-primary" type="button">+ NOVO CONJUNTO</button>
         </div>
 
-        <section id="sharedSection" class="deck-section" hidden>
+        <section id="teacherDirectorySection" class="deck-section" hidden>
           <div class="section-title-row">
-            <h3>Criados pelo professor</h3>
-            <span class="section-icon" aria-hidden="true">🎓</span>
+            <h3>Conjuntos dos alunos</h3>
+            <span class="section-icon" aria-hidden="true">👥</span>
           </div>
-          <div id="sharedDecks" class="deck-grid"></div>
+          <label class="student-search">
+            <span>Localizar aluno</span>
+            <input id="studentSearch" type="search" placeholder="Digite o nome ou o e-mail do aluno">
+          </label>
+          <div id="studentDirectory" class="student-directory"></div>
         </section>
 
-        <section class="deck-section">
+        <section id="ownDeckSection" class="deck-section">
           <div class="section-title-row">
             <h3>Meus conjuntos</h3>
             <span class="section-icon" aria-hidden="true">🗂️</span>
@@ -73,12 +77,11 @@
             <textarea id="deckDescription" name="description" maxlength="500" rows="3" placeholder="Explique o tema ou o objetivo deste conjunto."></textarea>
           </label>
 
-          <label id="sharedField" class="share-option" hidden>
-            <input id="deckShared" name="is_shared" type="checkbox">
-            <span>
-              <strong>Compartilhar com todos os alunos</strong>
-              <small>O conjunto aparecerá na biblioteca dos alunos e só poderá ser editado pelo professor.</small>
-            </span>
+          <label id="deckOwnerField" class="field" hidden>
+            <span>Aluno</span>
+            <select id="deckOwner" name="owner_id">
+              <option value="">Selecione um aluno</option>
+            </select>
           </label>
 
           <div class="cards-heading">
