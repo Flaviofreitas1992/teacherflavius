@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flashcards - Teacher Flávio</title>
+  <link rel="canonical" href="/flashcards/">
+  <script>
+    (async function () {
+      const response = await fetch('/flashcards.html', { cache: 'no-store' });
+      const html = await response.text();
+      document.open();
+      document.write(html);
+      document.close();
+    })();
+  </script>
+</head>
+<body>
+  <p>Carregando flashcards...</p>
+</body>
+</html>
