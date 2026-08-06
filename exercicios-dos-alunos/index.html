@@ -9,8 +9,11 @@
     (async function () {
       const response = await fetch('/exercicios_dos_alunos.html', { cache: 'no-store' });
       const html = await response.text();
+      const versionedHtml = html
+        .replace('<head>', '<head>\n  <base href="/">')
+        .replace('exercicios_dos_alunos.js?v=20260806-1', 'exercicios_dos_alunos.js?v=20260806-2');
       document.open();
-      document.write(html.replace('<head>', '<head>\n  <base href="/">'));
+      document.write(versionedHtml);
       document.close();
     })();
   </script>
