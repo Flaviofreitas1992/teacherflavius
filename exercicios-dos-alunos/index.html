@@ -3,18 +3,26 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Acompanhamento dos Exercícios - Teacher Flávio</title>
   <link rel="canonical" href="/exercicios-dos-alunos/">
   <script>
     (async function () {
-      const response = await fetch('/exercicios_dos_alunos.html', { cache: 'no-store' });
-      const html = await response.text();
-      const versionedHtml = html
-        .replace('<head>', '<head>\n  <base href="/">')
-        .replace('exercicios_dos_alunos.js?v=20260806-1', 'exercicios_dos_alunos.js?v=20260806-2');
-      document.open();
-      document.write(versionedHtml);
-      document.close();
+      try {
+        const response = await fetch('/exercicios_dos_alunos.html?v=20260806-3', { cache: 'no-store' });
+        if (!response.ok) throw new Error('Não foi possível carregar a página administrativa.');
+        const html = await response.text();
+        const versionedHtml = html
+          .replace('<head>', '<head>\n  <base href="/">\n  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">')
+          .replace(/exercicios_dos_alunos\.js\?v=[^\"']+/g, 'exercicios_dos_alunos.js?v=20260806-3');
+        document.open();
+        document.write(versionedHtml);
+        document.close();
+      } catch (error) {
+        document.body.innerHTML = '<p style="padding:24px;font-family:Arial,sans-serif">Não foi possível carregar o acompanhamento dos exercícios. Atualize a página.</p>';
+      }
     })();
   </script>
 </head>
