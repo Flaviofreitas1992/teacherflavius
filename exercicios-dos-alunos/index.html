@@ -8,25 +8,213 @@
   <meta http-equiv="Expires" content="0">
   <title>Acompanhamento dos Exercícios - Teacher Flávio</title>
   <link rel="canonical" href="/exercicios-dos-alunos/">
-  <script>
-    (async function () {
-      try {
-        const response = await fetch('/exercicios_dos_alunos.html?v=20260806-3', { cache: 'no-store' });
-        if (!response.ok) throw new Error('Não foi possível carregar a página administrativa.');
-        const html = await response.text();
-        const versionedHtml = html
-          .replace('<head>', '<head>\n  <base href="/">\n  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">')
-          .replace(/exercicios_dos_alunos\.js\?v=[^\"']+/g, 'exercicios_dos_alunos.js?v=20260806-3');
-        document.open();
-        document.write(versionedHtml);
-        document.close();
-      } catch (error) {
-        document.body.innerHTML = '<p style="padding:24px;font-family:Arial,sans-serif">Não foi possível carregar o acompanhamento dos exercícios. Atualize a página.</p>';
-      }
-    })();
-  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase_config.js?v=20260806-4"></script>
+  <script src="/auth.js?v=20260806-4"></script>
+  <link rel="stylesheet" href="/professor.css?v=20260806-4">
+  <style>
+    .page-intro {
+      max-width: 860px;
+      margin: 0 auto 22px;
+      color: #cbd5e1;
+      font-size: 14px;
+      line-height: 1.65;
+      text-align: center;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .summary-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 14px;
+      padding: 16px;
+      text-align: center;
+    }
+    .summary-card span {
+      display: block;
+      color: #94a3b8;
+      font-size: 12px;
+      line-height: 1.35;
+      margin-bottom: 7px;
+    }
+    .summary-card strong {
+      color: #f8fafc;
+      font-size: 27px;
+    }
+    .summary-card.danger {
+      border-color: rgba(248,113,113,0.38);
+      background: rgba(248,113,113,0.07);
+    }
+    .filter-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+    .filter-row label {
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+    .filter-row select {
+      margin-left: 8px;
+      background: #111827;
+      color: #f1f5f9;
+      border: 1px solid rgba(129,140,248,0.45);
+      border-radius: 9px;
+      padding: 9px 11px;
+      font: inherit;
+    }
+    #visibleStudentsCount {
+      color: #94a3b8;
+      font-size: 13px;
+    }
+    .student-status-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+    }
+    .exercise-status-card {
+      margin: 0;
+      border-left: 4px solid rgba(129,140,248,0.65);
+    }
+    .exercise-status-card.status-late {
+      border-left-color: #f87171;
+      background: rgba(248,113,113,0.055);
+    }
+    .exercise-status-card.status-done {
+      border-left-color: #34d399;
+      background: rgba(52,211,153,0.05);
+    }
+    .exercise-status-card.status-pending {
+      border-left-color: #fbbf24;
+      background: rgba(251,191,36,0.045);
+    }
+    .student-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .student-heading strong {
+      display: block;
+      color: #f8fafc;
+      font-size: 18px;
+      line-height: 1.3;
+    }
+    .student-email {
+      color: #94a3b8;
+      font-size: 12px;
+      margin-top: 4px;
+      overflow-wrap: anywhere;
+    }
+    .exercise-status-pill {
+      flex-shrink: 0;
+      border-radius: 999px;
+      padding: 6px 9px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .exercise-status-pill.late { color: #fecaca; background: rgba(248,113,113,0.17); }
+    .exercise-status-pill.done { color: #a7f3d0; background: rgba(52,211,153,0.16); }
+    .exercise-status-pill.pending { color: #fde68a; background: rgba(251,191,36,0.15); }
+    .exercise-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 9px;
+      margin-bottom: 14px;
+    }
+    .exercise-metric {
+      background: rgba(15,23,42,0.48);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      padding: 10px;
+    }
+    .exercise-metric span {
+      display: block;
+      color: #94a3b8;
+      font-size: 11px;
+      line-height: 1.3;
+      margin-bottom: 4px;
+    }
+    .exercise-metric b { color: #f8fafc; font-size: 20px; }
+    .exercise-metric.danger b { color: #fca5a5; }
+    .student-details {
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .student-details p {
+      color: #cbd5e1;
+      font-size: 13px;
+      line-height: 1.5;
+      margin: 5px 0;
+    }
+    .panel-version {
+      margin-top: 8px;
+      color: #64748b;
+      font-size: 10px;
+      letter-spacing: .4px;
+    }
+    @media (max-width: 520px) {
+      .student-status-grid { grid-template-columns: 1fr; }
+      .student-heading { flex-direction: column; }
+      .exercise-metrics { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
 </head>
-<body>
-  <p>Carregando acompanhamento dos exercícios...</p>
+<body class="auth-checking">
+  <div class="container">
+    <div class="top-links">
+      <a class="top-link" href="/professor.html">ÁREA DO PROFESSOR</a>
+      <a class="top-link" href="/">HOME</a>
+    </div>
+
+    <div class="header">
+      <div><span class="badge">TEACHER FLÁVIO</span></div>
+      <h1>Acompanhamento dos Exercícios</h1>
+      <div id="adminStatus" class="status">Verificando credenciais de professor...</div>
+      <div class="panel-version">PAINEL ADMINISTRATIVO v20260806-4</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <p class="page-intro">
+      Cada aluno deve concluir pelo menos um exercício a cada ciclo de sete dias contado desde a matrícula.
+      Use o botão <strong>GERENCIAR EXERCÍCIOS</strong> para registrar ou corrigir a conclusão e a data de cada atividade.
+    </p>
+
+    <section class="summary-grid" aria-label="Resumo do acompanhamento semanal">
+      <div class="summary-card"><span>Alunos matriculados</span><strong id="totalStudentsCount">—</strong></div>
+      <div class="summary-card danger"><span>Alunos com atraso</span><strong id="lateStudentsCount">—</strong></div>
+      <div class="summary-card danger"><span>Total de semanas atrasadas</span><strong id="overdueWeeksCount">—</strong></div>
+      <div class="summary-card"><span>Semana atual pendente, sem atraso</span><strong id="currentPendingCount">—</strong></div>
+      <div class="summary-card"><span>Semana atual concluída, sem atraso</span><strong id="currentCompletedCount">—</strong></div>
+    </section>
+
+    <div class="panel">
+      <div class="filter-row">
+        <label for="statusFilter">Mostrar:
+          <select id="statusFilter">
+            <option value="all">Todos os alunos</option>
+            <option value="late">Somente atrasados</option>
+            <option value="current_week_pending">Semana atual pendente, sem atraso</option>
+            <option value="up_to_date">Semana atual concluída, sem atraso</option>
+          </select>
+        </label>
+        <span id="visibleStudentsCount">Carregando alunos...</span>
+      </div>
+      <div id="exerciseCompletionList" class="empty">Carregando acompanhamento...</div>
+    </div>
+  </div>
+
+  <script src="/exercicios_dos_alunos.js?v=20260806-4"></script>
+  <script src="/animated_cards.js?v=20260806-4"></script>
 </body>
 </html>
