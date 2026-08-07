@@ -19,7 +19,7 @@
 
     .report-tabs {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 12px;
       margin: 0 0 20px;
     }
@@ -80,11 +80,13 @@
       display: none;
     }
 
-    @media (max-width: 720px) {
+    @media (max-width: 900px) {
       .report-tabs {
         grid-template-columns: 1fr;
       }
+    }
 
+    @media (max-width: 720px) {
       .report-frame {
         min-height: 1350px;
       }
@@ -115,11 +117,16 @@
         <strong>📈 Acessos dos alunos</strong>
         <span>Histórico de páginas acessadas, alunos ativos e filtros por período.</span>
       </button>
+      <button class="report-tab" type="button" data-target="vacancyFrame" role="tab" aria-selected="false">
+        <strong>🪑 Turmas com vagas disponíveis</strong>
+        <span>Grupos com até 3 alunos e quantidade de vagas restantes até o limite de 4.</span>
+      </button>
     </div>
 
     <section class="report-panel">
       <iframe id="syncFrame" class="report-frame" src="/relatorios.html" title="Relatórios de sincronização"></iframe>
       <iframe id="accessFrame" class="report-frame" src="/acessos_dos_alunos.html" title="Acessos dos alunos" hidden></iframe>
+      <iframe id="vacancyFrame" class="report-frame" src="/relatorios_vagas_turmas.html" title="Turmas com vagas disponíveis" hidden></iframe>
     </section>
   </div>
 
