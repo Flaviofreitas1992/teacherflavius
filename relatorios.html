@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatórios - Teacher Flávio</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase_config.js?v=20260715-1"></script>
+  <script src="auth.js?v=20260730-1"></script>
+  <link rel="stylesheet" href="professor.css?v=20260715-1">
+  <style>
+    body.auth-checking .reports-content { display: none; }
+    .reports-toolbar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between; margin:0 0 20px; }
+    .reports-note { color:#94a3b8; font-size:13px; line-height:1.5; }
+    .report-days { display:grid; gap:18px; }
+    .day-card { border:1px solid rgba(255,255,255,.10); border-radius:20px; background:rgba(255,255,255,.035); padding:20px; }
+    .day-head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap; margin-bottom:16px; }
+    .day-title { font-size:22px; margin-bottom:5px; }
+    .day-meta { color:#94a3b8; font-size:13px; }
+    .status-pill { display:inline-flex; align-items:center; border-radius:999px; padding:6px 10px; font-size:12px; font-weight:bold; }
+    .status-success { background:rgba(34,197,94,.14); color:#86efac; border:1px solid rgba(34,197,94,.28); }
+    .status-partial { background:rgba(245,158,11,.14); color:#fde68a; border:1px solid rgba(245,158,11,.30); }
+    .status-error { background:rgba(239,68,68,.14); color:#fca5a5; border:1px solid rgba(239,68,68,.30); }
+    .metrics { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-bottom:15px; }
+    .metric { background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.08); border-radius:14px; padding:13px; text-align:center; }
+    .metric-value { font-size:24px; font-weight:bold; }
+    .metric-label { color:#94a3b8; font-size:11px; text-transform:uppercase; letter-spacing:.7px; margin-top:4px; }
+    .day-summary { color:#cbd5e1; line-height:1.55; margin:8px 0 14px; }
+    details.run { border-top:1px solid rgba(255,255,255,.08); padding:12px 0 0; margin-top:12px; }
+    details.run summary { cursor:pointer; color:#e2e8f0; font-weight:bold; }
+    .run-body { padding:14px 0 2px; color:#cbd5e1; }
+    .run-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:10px 0 14px; }
+    .run-stat { border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:9px; background:rgba(255,255,255,.025); font-size:12px; }
+    .section-title { margin:15px 0 8px; font-size:14px; color:#f1f5f9; }
+    .data-list { display:grid; gap:7px; }
+    .data-item { border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:9px 11px; background:rgba(255,255,255,.025); font-size:12px; line-height:1.5; word-break:break-word; }
+    .table-wrap { overflow:auto; border-radius:12px; border:1px solid rgba(255,255,255,.08); }
+    table { width:100%; border-collapse:collapse; min-width:760px; font-size:12px; }
+    th, td { padding:9px 10px; border-bottom:1px solid rgba(255,255,255,.07); text-align:left; }
+    th { color:#c7d2fe; background:rgba(129,140,248,.08); }
+    .empty-panel { padding:28px; text-align:center; border:1px solid rgba(255,255,255,.09); border-radius:18px; color:#cbd5e1; background:rgba(255,255,255,.035); }
+    @media (max-width:760px) { .metrics { grid-template-columns:repeat(2,minmax(0,1fr)); } .run-grid { grid-template-columns:1fr 1fr; } }
+  </style>
+</head>
+<body class="auth-checking">
+  <div class="container">
+    <div class="top-links">
+      <a class="top-link" href="/">HOME</a>
+      <a class="top-link" href="/professor/">ÁREA DO PROFESSOR</a>
+    </div>
+
+    <div class="header">
+      <div><span class="badge">TEACHER FLÁVIO</span></div>
+      <h1>Relatórios</h1>
+      <div id="reportStatus" class="status">Verificando credenciais e carregando relatórios...</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <main class="reports-content">
+      <div class="reports-toolbar">
+        <p class="reports-note">Relatórios diários da sincronização automática das respostas do Google Drive com o Portal de Exercícios.</p>
+        <button id="refreshButton" class="top-link" type="button" style="cursor:pointer;font-family:inherit;">ATUALIZAR</button>
+      </div>
+      <div id="reportDays" class="report-days"></div>
+    </main>
+  </div>
+
+  <script>
+    const TZ = "America/Sao_Paulo";
+
+    function esc(value) {
+      return String(value == null ? "" : value)
+        .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+        .replace(/\"/g,"&quot;").replace(/'/g,"&#039;");
+    }
+
+    function asArray(value) { return Array.isArray(value) ? value : []; }
+    function num(value) { const n = Number(value); return Number.isFinite(n) ? n : 0; }
+    function pick(obj, keys, fallback="") {
+      if (!obj || typeof obj !== "object") return fallback;
+      for (const key of keys) if (obj[key] !== undefined && obj[key] !== null) return obj[key];
+      return fallback;
+    }
+
+    function formatDay(value) {
+      if (!value) return "Data não disponível";
+      const date = new Date(value + "T12:00:00-03:00");
+      return new Intl.DateTimeFormat("pt-BR", { timeZone:TZ, weekday:"long", day:"2-digit", month:"2-digit", year:"numeric" }).format(date);
+    }
+
+    function formatTime(value) {
+      if (!value) return "—";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "—";
+      return new Intl.DateTimeFormat("pt-BR", { timeZone:TZ, hour:"2-digit", minute:"2-digit", second:"2-digit" }).format(date);
+    }
+
+    function statusLabel(status) {
+      if (status === "error") return "ERRO";
+      if (status === "partial") return "PARCIAL";
+      return "SUCESSO";
+    }
+
+    function statusClass(status) {
+      return status === "error" ? "status-error" : status === "partial" ? "status-partial" : "status-success";
+    }
+
+    function dailyStatus(runs) {
+      if (runs.some(r => r.status === "error")) return "error";
+      if (runs.some(r => r.status === "partial")) return "partial";
+      return "success";
+    }
+
+    function renderActivityTable(items) {
+      if (!items.length) return '<div class="data-item">Sem detalhamento por atividade nesta execução.</div>';
+      const rows = items.map(item => {
+        const activity = pick(item,["activity_number","activity_id","number","identifier","atividade"],"");
+        const title = pick(item,["activity_title","title","exercise_title","titulo"],"");
+        const sheet = pick(item,["spreadsheet_title","sheet_title","planilha"],"");
+        const responses = pick(item,["responses_considered","responses","total_responses","respostas"],0);
+        const exact = pick(item,["exact_matches","exact","correspondencias_exatas"],0);
+        const similar = pick(item,["similarity_matches","similar","correspondencias_similaridade"],0);
+        const unmatched = pick(item,["unmatched","unmatched_emails","nao_correspondidos"],0);
+        const inserted = pick(item,["inserted_records","inserted","inseridos"],0);
+        const updated = pick(item,["updated_records","updated","atualizados"],0);
+        return `<tr><td>${esc(activity)}</td><td>${esc(title)}</td><td>${esc(sheet)}</td><td>${esc(responses)}</td><td>${esc(exact)}</td><td>${esc(similar)}</td><td>${esc(unmatched)}</td><td>${esc(inserted)}</td><td>${esc(updated)}</td></tr>`;
+      }).join("");
+      return `<div class="table-wrap"><table><thead><tr><th>Atividade</th><th>Título</th><th>Planilha</th><th>Respostas</th><th>Exatas</th><th>Similaridade</th><th>Sem match</th><th>Inseridos</th><th>Atualizados</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+
+    function renderSimilarity(items) {
+      if (!items.length) return '<div class="data-item">Nenhuma associação por similaridade.</div>';
+      return '<div class="data-list">' + items.map(item => {
+        const source = pick(item,["source_email","email_origem"],"");
+        const matched = pick(item,["matched_email","profile_email","email_associado"],"");
+        const context = pick(item,["activity","activity_title","spreadsheet","sheet_title","planilha"],"");
+        const reason = pick(item,["reason","justification","motivo"],"");
+        return `<div class="data-item"><strong>${esc(source)}</strong> → <strong>${esc(matched)}</strong>${context ? ` · ${esc(context)}` : ""}${reason ? `<br>${esc(reason)}` : ""}</div>`;
+      }).join("") + '</div>';
+    }
+
+    function renderUnmatched(items) {
+      if (!items.length) return '<div class="data-item">Nenhum e-mail ficou sem correspondência.</div>';
+      return '<div class="data-list">' + items.map(item => {
+        const source = typeof item === "string" ? item : pick(item,["source_email","email","email_origem"],"");
+        const context = typeof item === "string" ? "" : pick(item,["activity","activity_title","spreadsheet","sheet_title","planilha"],"");
+        return `<div class="data-item"><strong>${esc(source)}</strong>${context ? ` · ${esc(context)}` : ""}</div>`;
+      }).join("") + '</div>';
+    }
+
+    function renderErrors(items) {
+      if (!items.length) return '<div class="data-item">Nenhum erro registrado.</div>';
+      return '<div class="data-list">' + items.map(item => `<div class="data-item">${esc(typeof item === "string" ? item : JSON.stringify(item))}</div>`).join("") + '</div>';
+    }
+
+    function renderRun(run) {
+      const activityItems = asArray(run.per_activity);
+      const similarityItems = asArray(run.similarity_match_details);
+      const unmatchedItems = asArray(run.unmatched_email_details);
+      const errors = asArray(run.errors);
+      return `<details class="run">
+        <summary>${formatTime(run.started_at)} — <span class="status-pill ${statusClass(run.status)}">${statusLabel(run.status)}</span></summary>
+        <div class="run-body">
+          <div class="run-grid">
+            <div class="run-stat"><strong>${num(run.spreadsheets_processed)}</strong><br>planilhas processadas</div>
+            <div class="run-stat"><strong>${num(run.activities_processed)}</strong><br>atividades processadas</div>
+            <div class="run-stat"><strong>${num(run.unique_students_synced)}</strong><br>alunos sincronizados</div>
+            <div class="run-stat"><strong>${num(run.exact_matches)}</strong><br>matches exatos</div>
+            <div class="run-stat"><strong>${num(run.similarity_matches)}</strong><br>matches por similaridade</div>
+            <div class="run-stat"><strong>${num(run.unmatched_emails)}</strong><br>e-mails sem match</div>
+            <div class="run-stat"><strong>${num(run.inserted_records)}</strong><br>registros inseridos</div>
+            <div class="run-stat"><strong>${num(run.updated_records)}</strong><br>registros atualizados</div>
+            <div class="run-stat"><strong>${formatTime(run.finished_at)}</strong><br>horário de término</div>
+          </div>
+          ${run.summary_text ? `<div class="day-summary">${esc(run.summary_text)}</div>` : ""}
+          <div class="section-title">Por atividade</div>${renderActivityTable(activityItems)}
+          <div class="section-title">Associações por similaridade</div>${renderSimilarity(similarityItems)}
+          <div class="section-title">E-mails sem correspondência</div>${renderUnmatched(unmatchedItems)}
+          <div class="section-title">Erros</div>${renderErrors(errors)}
+        </div>
+      </details>`;
+    }
+
+    function renderReports(runs) {
+      const root = document.getElementById("reportDays");
+      if (!runs.length) {
+        root.innerHTML = '<div class="empty-panel">Nenhum relatório foi registrado ainda. Os relatórios aparecerão aqui após as próximas sincronizações automáticas.</div>';
+        return;
+      }
+
+      const groups = new Map();
+      runs.forEach(run => {
+        const key = run.report_date || "sem-data";
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(run);
+      });
+
+      root.innerHTML = Array.from(groups.entries()).map(([date, dayRuns]) => {
+        dayRuns.sort((a,b) => new Date(b.started_at) - new Date(a.started_at));
+        const latest = dayRuns[0];
+        const inserted = dayRuns.reduce((sum,r) => sum + num(r.inserted_records), 0);
+        const updated = dayRuns.reduce((sum,r) => sum + num(r.updated_records), 0);
+        const status = dailyStatus(dayRuns);
+        return `<section class="day-card">
+          <div class="day-head">
+            <div><div class="day-title">${esc(formatDay(date))}</div><div class="day-meta">${dayRuns.length} execução(ões) · última às ${esc(formatTime(latest.started_at))}</div></div>
+            <span class="status-pill ${statusClass(status)}">${statusLabel(status)}</span>
+          </div>
+          <div class="metrics">
+            <div class="metric"><div class="metric-value">${num(latest.spreadsheets_processed)}</div><div class="metric-label">Planilhas no último ciclo</div></div>
+            <div class="metric"><div class="metric-value">${num(latest.unique_students_synced)}</div><div class="metric-label">Alunos sincronizados</div></div>
+            <div class="metric"><div class="metric-value">${num(latest.similarity_matches)}</div><div class="metric-label">Matches similares</div></div>
+            <div class="metric"><div class="metric-value">${num(latest.unmatched_emails)}</div><div class="metric-label">Sem correspondência</div></div>
+            <div class="metric"><div class="metric-value">${inserted}</div><div class="metric-label">Inserções no dia</div></div>
+            <div class="metric"><div class="metric-value">${updated}</div><div class="metric-label">Atualizações no dia</div></div>
+            <div class="metric"><div class="metric-value">${num(latest.exact_matches)}</div><div class="metric-label">Matches exatos</div></div>
+            <div class="metric"><div class="metric-value">${num(latest.activities_processed)}</div><div class="metric-label">Atividades no último ciclo</div></div>
+          </div>
+          ${latest.summary_text ? `<div class="day-summary"><strong>Último resumo:</strong> ${esc(latest.summary_text)}</div>` : ""}
+          ${dayRuns.map(renderRun).join("")}
+        </section>`;
+      }).join("");
+    }
+
+    async function guardTeacher() {
+      if (!window.Auth || !Auth.isConfigured()) throw new Error("Supabase não configurado.");
+      const session = await Auth.getSession();
+      if (!session || !session.user) {
+        window.location.href = "login.html?next=" + encodeURIComponent("relatorios.html");
+        return false;
+      }
+      const admin = await Auth.getClient().rpc("is_teacher_admin");
+      if (admin.error) throw admin.error;
+      if (admin.data !== true) throw new Error("Acesso restrito ao professor administrador.");
+      return true;
+    }
+
+    async function loadReports() {
+      const status = document.getElementById("reportStatus");
+      try {
+        const allowed = await guardTeacher();
+        if (!allowed) return;
+        const response = await Auth.getClient()
+          .from("exercise_sync_runs")
+          .select("id,report_date,started_at,finished_at,status,spreadsheets_processed,activities_processed,unique_students_synced,exact_matches,similarity_matches,unmatched_emails,inserted_records,updated_records,per_activity,similarity_match_details,unmatched_email_details,errors,summary_text")
+          .order("started_at", { ascending:false })
+          .limit(500);
+        if (response.error) throw response.error;
+        renderReports(response.data || []);
+        status.textContent = "Relatórios atualizados. Horários exibidos no fuso de Brasília.";
+        document.body.classList.remove("auth-checking");
+      } catch (error) {
+        console.error("Erro ao carregar relatórios:", error);
+        status.textContent = error && error.message ? error.message : "Não foi possível carregar os relatórios.";
+        document.body.classList.remove("auth-checking");
+        document.getElementById("reportDays").innerHTML = '<div class="empty-panel">Não foi possível carregar os relatórios.</div>';
+      }
+    }
+
+    document.getElementById("refreshButton").addEventListener("click", loadReports);
+    loadReports();
+  </script>
+</body>
+</html>
