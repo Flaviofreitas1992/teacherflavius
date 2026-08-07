@@ -117,7 +117,7 @@
     const flashcardStart = addDays(today, -21);
 
     const results = await Promise.all([
-      client.from("profiles").select("id,name,email,enrolled,enrollment_code,exercise_schedule_start_date,created_at").eq("enrolled", true).order("name", { ascending:true }),
+      client.from("profiles").select("id,name,email,enrolled,enrollment_code,exercise_schedule_start_date,created_at").eq("enrolled", true).eq("archived", false).order("name", { ascending:true }),
       client.rpc("get_public_teacher_exercises"),
       client.from("daily_exercise_completion").select("user_id,exercise_id,completed"),
       client.from("flashcard_practice_days").select("user_id,practice_date").gte("practice_date", flashcardStart),
