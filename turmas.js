@@ -80,10 +80,11 @@ function renderClassCard(classItem) {
     '<div class="class-card-title"><span><span class="icon">🏫</span>' + escapeHtml(className) + '</span><span class="class-type-badge ' + typeMeta.css + '">' + typeMeta.label + '</span></div>' +
     '<p class="class-meta">Alunos inscritos: ' + studentCount + ' · ' + escapeHtml(scheduleText) + '</p>' +
     '<div class="config-editor">' +
+      '<label class="full">Nome da turma<input class="class-config-time" data-class-name-input="' + escapeHtml(classNumber) + '" type="text" value="' + escapeHtml(className) + '" maxlength="120"></label>' +
       '<label>Etiqueta da turma<select class="class-config-select" data-class-type-select="' + escapeHtml(classNumber) + '"><option value=""' + (!classItem.class_type ? ' selected' : '') + '>Selecione</option><option value="group"' + (classItem.class_type === 'group' ? ' selected' : '') + '>GRUPO</option><option value="individual"' + (classItem.class_type === 'individual' ? ' selected' : '') + '>INDIVIDUAL</option></select></label>' +
       '<label>Dia semanal<select class="class-config-select" data-class-weekday-select="' + escapeHtml(classNumber) + '">' + weekdayOptions(classItem.class_weekday) + '</select></label>' +
       '<label>Horário<input class="class-config-time" data-class-time-input="' + escapeHtml(classNumber) + '" type="time" value="' + escapeHtml(timeValue) + '"></label>' +
-      '<div class="schedule-help">O horário é usado em MINHA SEMANA para mostrar a próxima aula.</div>' +
+      '<div class="schedule-help">Você pode alterar o nome, o tipo, o dia e o horário sem recriar a turma. O horário é usado em MINHA SEMANA para mostrar a próxima aula.</div>' +
       '<button class="config-save-button full" type="button" data-save-class-config="' + escapeHtml(classNumber) + '">SALVAR CONFIGURAÇÃO</button>' +
     '</div>' +
     '<div class="class-actions"><a class="open-class-button" href="turma.html?id=' + encodeURIComponent(classNumber) + '">ABRIR TURMA</a><button class="remove-class-button" type="button" data-class-number="' + escapeHtml(classNumber) + '" data-class-name="' + escapeHtml(className) + '">EXCLUIR TURMA</button></div>' +
@@ -162,13 +163,16 @@ async function createClass(event) {
 }
 
 async function saveClassConfig(classNumber, button) {
+  const nameInput = document.querySelector('[data-class-name-input="' + CSS.escape(String(classNumber)) + '"]');
   const typeSelect = document.querySelector('[data-class-type-select="' + CSS.escape(String(classNumber)) + '"]');
   const weekdaySelect = document.querySelector('[data-class-weekday-select="' + CSS.escape(String(classNumber)) + '"]');
   const timeInput = document.querySelector('[data-class-time-input="' + CSS.escape(String(classNumber)) + '"]');
+  const className = nameInput ? nameInput.value.trim() : "";
   const classType = typeSelect ? typeSelect.value : "";
   const weekday = weekdaySelect && weekdaySelect.value ? Number(weekdaySelect.value) : null;
   const startTime = timeInput && timeInput.value ? timeInput.value : null;
 
+  if (!className) { alert("Digite um nome para a turma."); return; }
   if (!classType) { alert("Selecione GRUPO ou INDIVIDUAL antes de salvar."); return; }
   if ((weekday && !startTime) || (!weekday && startTime)) { alert("Informe o dia e o horário juntos, ou deixe ambos vazios."); return; }
 
@@ -178,8 +182,13 @@ async function saveClassConfig(classNumber, button) {
     const client = Auth.getClient();
     const typeResponse = await client.rpc("set_teacher_class_type", { target_class_number:Number(classNumber), target_class_type:classType });
     if (typeResponse.error) throw typeResponse.error;
-    const scheduleResponse = await client.from("teacher_classes").update({ class_weekday:weekday, class_start_time:startTime, updated_at:new Date().toISOString() }).eq("class_number", Number(classNumber));
-    if (scheduleResponse.error) throw scheduleResponse.error;
+    const updateResponse = await client.from("teacher_classes").update({
+      class_name: className,
+      class_weekday: weekday,
+      class_start_time: startTime,
+      updated_at: new Date().toISOString()
+    }).eq("class_number", Number(classNumber));
+    if (updateResponse.error) throw updateResponse.error;
     await renderClasses();
   } catch (error) {
     alert("Não foi possível salvar a configuração: " + (error.message || "erro desconhecido") + ".");
