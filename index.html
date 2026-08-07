@@ -84,9 +84,24 @@
       border-color: rgba(129,140,248,0.32);
     }
 
+    .entry-card.professor {
+      border-color: rgba(251,191,36,0.30);
+      background: rgba(251,191,36,0.055);
+    }
+
+    .entry-card.professor .entry-icon {
+      background: linear-gradient(135deg, #d97706, #b45309);
+    }
+
     @media (min-width: 720px) {
       .entry-grid {
         grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (min-width: 1050px) {
+      .entry-grid {
+        grid-template-columns: repeat(3, 1fr);
       }
     }
   </style>
@@ -101,10 +116,10 @@
     <div class="divider"></div>
 
     <div class="entry-grid">
-      <a class="entry-card student" href="/aluno.html">
+      <a class="entry-card student" href="/area-do-estudante/">
         <span>
           <strong>JÁ SOU ALUNO</strong>
-          <span class="description">Acesse matrícula, área do estudante, links das aulas e conteúdos do curso.</span>
+          <span class="description">Acesse diretamente sua Área do Estudante, turma, atividades e conteúdos do curso.</span>
         </span>
         <span class="entry-icon">🎓</span>
       </a>
@@ -115,6 +130,14 @@
           <span class="description">Veja as opções para começar seus estudos de inglês com o Teacher Flávio.</span>
         </span>
         <span class="entry-icon">✨</span>
+      </a>
+
+      <a class="entry-card professor" href="/professor/">
+        <span>
+          <strong>ÁREA DO PROFESSOR</strong>
+          <span class="description">Acesso administrativo para gerenciamento de alunos, turmas e atividades.</span>
+        </span>
+        <span class="entry-icon">👨‍🏫</span>
       </a>
     </div>
   </div>
