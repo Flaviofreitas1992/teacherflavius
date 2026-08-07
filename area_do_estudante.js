@@ -2,6 +2,7 @@ let currentSession = null;
 
 const EXERCISE_SCHEDULE_CUTOFF = "2026-07-30";
 const EXERCISE_TIME_ZONE = "America/Sao_Paulo";
+const PROFESSOR_EMAIL = "flaviofreitas@ufu.br";
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function redirectToLogin() {
@@ -77,6 +78,17 @@ function getCurrentExerciseWeek(profile) {
   return Math.floor(elapsedDays / 7) + 1;
 }
 
+function updateProfessorAreaVisibility() {
+  const professorSection = document.getElementById("professorAreaSection");
+  if (!professorSection) return;
+
+  const loggedEmail = currentSession && currentSession.user && currentSession.user.email
+    ? String(currentSession.user.email).trim().toLowerCase()
+    : "";
+
+  professorSection.hidden = loggedEmail !== PROFESSOR_EMAIL;
+}
+
 function closeOverdueModal() {
   const modal = document.getElementById("overdueModal");
   if (modal) modal.hidden = true;
@@ -121,6 +133,7 @@ async function guardStudentArea() {
     return false;
   }
 
+  updateProfessorAreaVisibility();
   document.body.classList.remove("auth-checking");
   return true;
 }
