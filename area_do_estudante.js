@@ -51,6 +51,14 @@ function dateKeyToUtcMs(dateKey) {
 }
 
 function getExerciseScheduleStartDate(profile) {
+  const storedStartDate = profile && profile.exercise_schedule_start_date
+    ? String(profile.exercise_schedule_start_date).slice(0, 10)
+    : "";
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(storedStartDate)) {
+    return storedStartDate;
+  }
+
   const profileCreatedDate = profile && profile.created_at ? dateKeyInSaoPaulo(profile.created_at) : "";
   if (!profileCreatedDate || profileCreatedDate <= EXERCISE_SCHEDULE_CUTOFF) {
     return EXERCISE_SCHEDULE_CUTOFF;
@@ -150,7 +158,6 @@ async function showOverdueActivityIfNeeded(profile) {
   try {
     const currentWeek = getCurrentExerciseWeek(profile);
 
-    // Na Semana 1 existe uma atividade da semana, mas ainda não há atividade atrasada.
     if (currentWeek <= 1) {
       modal.hidden = true;
       return;
