@@ -22,7 +22,10 @@ async function guardStudentArea() {
 
   if (!resourcesReady) {
     document.body.classList.remove("auth-checking");
-    if (status) status.textContent = "Não foi possível carregar a autenticação. Atualize a página ou limpe o cache do navegador.";
+    if (status) {
+      status.hidden = false;
+      status.textContent = "Não foi possível carregar a autenticação. Atualize a página ou limpe o cache do navegador.";
+    }
     return false;
   }
 
@@ -42,8 +45,10 @@ async function updateStatus() {
   if (!isAllowed) return;
 
   const status = document.getElementById("loginStatus");
-  const profile = await Auth.getProfile();
-  status.textContent = `Logado como ${profile && profile.name ? profile.name : currentSession.user.email}.`;
+  if (status) {
+    status.textContent = "";
+    status.hidden = true;
+  }
 }
 
 updateStatus();
