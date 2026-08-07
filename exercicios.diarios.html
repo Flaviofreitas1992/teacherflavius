@@ -22,13 +22,21 @@
     .divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(129,140,248,0.3), transparent); margin-bottom: 32px; }
     .menu-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
     .exercise-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px; transition: transform 0.2s, border-color 0.2s, background 0.2s; backdrop-filter: blur(12px); }
+    .exercise-card.overdue:not(.done) { border-color: rgba(248,113,113,0.58); background: rgba(127,29,29,0.22); }
+    .exercise-card.current:not(.done) { border-color: rgba(251,191,36,0.58); background: rgba(120,53,15,0.18); }
     .exercise-card.done { border-color: rgba(110,231,183,0.45); background: rgba(110,231,183,0.07); }
-    .exercise-card:hover { transform: translateY(-3px); border-color: rgba(129,140,248,0.5); background: rgba(129,140,248,0.07); }
+    .exercise-card:hover { transform: translateY(-3px); border-color: rgba(129,140,248,0.5); }
     .exercise-link { display: flex; align-items: center; justify-content: space-between; gap: 18px; color: #f1f5f9; font-size: 17px; font-weight: bold; letter-spacing: 0.5px; text-decoration: none; }
     .exercise-link span:first-child { display: flex; align-items: center; gap: 12px; }
     .icon { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, #818cf8, #a78bfa); display: inline-flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
     .arrow { color: #475569; font-size: 22px; transition: color 0.2s, transform 0.2s; }
     .exercise-card:hover .arrow { color: #818cf8; transform: translateX(4px); }
+    .week-row { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-top:-4px; }
+    .week-badge { display:inline-flex; align-items:center; border-radius:999px; padding:5px 9px; font-size:11px; font-weight:bold; border:1px solid rgba(255,255,255,0.12); color:#cbd5e1; background:rgba(255,255,255,0.04); }
+    .week-badge.overdue { color:#fecaca; border-color:rgba(248,113,113,0.35); background:rgba(248,113,113,0.11); }
+    .week-badge.current { color:#fde68a; border-color:rgba(251,191,36,0.35); background:rgba(251,191,36,0.10); }
+    .week-badge.done { color:#86efac; border-color:rgba(74,222,128,0.30); background:rgba(74,222,128,0.10); }
+    .week-badge.future { color:#cbd5e1; }
     .completion-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); }
     .completion-label { display: inline-flex; align-items: center; gap: 10px; color: #cbd5e1; font-size: 14px; cursor: pointer; user-select: none; }
     .completion-label input { width: 22px; height: 22px; accent-color: #818cf8; cursor: pointer; }
@@ -58,9 +66,16 @@
   </div>
 
   <script>
+    const EXERCISE_SCHEDULE_CUTOFF = "2026-07-30";
+    const EXERCISE_TIME_ZONE = "America/Sao_Paulo";
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
     let dailyExercises = [];
     let currentUser = null;
+    let currentProfile = null;
     let completedExercises = new Map();
+    let currentExerciseWeek = 0;
+    let exerciseScheduleStartDate = EXERCISE_SCHEDULE_CUTOFF;
 
     function escapeHtml(value) {
       return String(value || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;").replace(/'/g, "&#039;");
@@ -68,6 +83,66 @@
 
     function setPageStatus(text) { document.getElementById("pageStatus").textContent = text; }
     function isEnrolledProfile(profile) { return !!profile && (profile.enrolled === true || profile.enrolled === "true" || !!profile.enrollment_code); }
+
+    function extractActivityNumber(title) {
+      const match = String(title || "").match(/ATIVIDADE\s+(\d+)/i);
+      return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+    }
+
+    function dateKeyInSaoPaulo(value) {
+      const date = value instanceof Date ? value : new Date(value);
+      if (Number.isNaN(date.getTime())) return "";
+      const parts = new Intl.DateTimeFormat("en-CA", {
+        timeZone: EXERCISE_TIME_ZONE,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).formatToParts(date);
+      const values = {};
+      parts.forEach(function (part) {
+        if (part.type !== "literal") values[part.type] = part.value;
+      });
+      return values.year + "-" + values.month + "-" + values.day;
+    }
+
+    function dateKeyToUtcMs(dateKey) {
+      const match = String(dateKey || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!match) return NaN;
+      return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+    }
+
+    function getExerciseScheduleStartDate(profile) {
+      const profileCreatedDate = profile && profile.created_at ? dateKeyInSaoPaulo(profile.created_at) : "";
+      if (!profileCreatedDate || profileCreatedDate <= EXERCISE_SCHEDULE_CUTOFF) return EXERCISE_SCHEDULE_CUTOFF;
+      return profileCreatedDate;
+    }
+
+    function getCurrentExerciseWeek(profile) {
+      const startDateKey = getExerciseScheduleStartDate(profile);
+      const todayKey = dateKeyInSaoPaulo(new Date());
+      const startMs = dateKeyToUtcMs(startDateKey);
+      const todayMs = dateKeyToUtcMs(todayKey);
+      if (!Number.isFinite(startMs) || !Number.isFinite(todayMs) || todayMs < startMs) return 0;
+      const elapsedDays = Math.floor((todayMs - startMs) / MS_PER_DAY);
+      return Math.floor(elapsedDays / 7) + 1;
+    }
+
+    function formatDateKey(dateKey) {
+      const match = String(dateKey || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if (!match) return dateKey || "—";
+      return match[3] + "/" + match[2] + "/" + match[1];
+    }
+
+    function getWeekState(exercise, isDone) {
+      const activityNumber = extractActivityNumber(exercise.title);
+      if (!Number.isFinite(activityNumber) || activityNumber === Number.MAX_SAFE_INTEGER) {
+        return { className: isDone ? "done" : "future", label: isDone ? "Concluída" : "Disponível" };
+      }
+      if (isDone) return { className: "done", label: "Concluída · Semana " + activityNumber };
+      if (currentExerciseWeek > 0 && activityNumber < currentExerciseWeek) return { className: "overdue", label: "Atrasada · Semana " + activityNumber };
+      if (currentExerciseWeek > 0 && activityNumber === currentExerciseWeek) return { className: "current", label: "Semana atual · Atividade " + activityNumber };
+      return { className: "future", label: "Programada · Semana " + activityNumber };
+    }
 
     function blockPage(message) {
       const grid = document.getElementById("exerciseGrid");
@@ -90,6 +165,9 @@
         if (!exercise.id || seen.has(exercise.id)) return false;
         seen.add(exercise.id);
         return true;
+      }).sort(function (a, b) {
+        const numberDiff = extractActivityNumber(a.title) - extractActivityNumber(b.title);
+        return numberDiff !== 0 ? numberDiff : String(a.title || "").localeCompare(String(b.title || ""), "pt-BR");
       });
     }
 
@@ -104,10 +182,12 @@
       grid.className = "menu-grid";
       grid.innerHTML = dailyExercises.map(function (exercise) {
         const isDone = completedExercises.get(exercise.id) === true;
-        return '<div class="exercise-card ' + (isDone ? 'done' : '') + '" data-exercise-id="' + escapeHtml(exercise.id) + '">' +
+        const weekState = getWeekState(exercise, isDone);
+        return '<div class="exercise-card ' + (isDone ? 'done ' : '') + weekState.className + '" data-exercise-id="' + escapeHtml(exercise.id) + '">' +
           '<a class="exercise-link" href="' + escapeHtml(exercise.url) + '" target="_blank" rel="noopener noreferrer">' +
             '<span><span class="icon">📝</span>' + escapeHtml(exercise.title) + '</span><span class="arrow">›</span>' +
           '</a>' +
+          '<div class="week-row"><span class="week-badge ' + weekState.className + '">' + escapeHtml(weekState.label) + '</span></div>' +
           '<div class="completion-row">' +
             '<label class="completion-label"><input class="completion-checkbox" type="checkbox" data-exercise-id="' + escapeHtml(exercise.id) + '" ' + (isDone ? 'checked' : '') + ' /><span>Já fiz este exercício</span></label>' +
             '<span class="completion-status ' + (isDone ? 'saved' : '') + '" id="status-' + escapeHtml(exercise.id) + '">' + (isDone ? 'Feito' : 'Não feito') + '</span>' +
@@ -130,7 +210,6 @@
     async function saveExerciseCompletion(exerciseId, completed, checkbox) {
       const exercise = dailyExercises.find(function (item) { return item.id === exerciseId; });
       const status = document.getElementById("status-" + exerciseId);
-      const card = document.querySelector('[data-exercise-id="' + exerciseId + '"]');
       const client = Auth.getClient();
       checkbox.disabled = true;
       status.className = "completion-status";
@@ -149,15 +228,11 @@
 
         if (response.error) throw response.error;
         completedExercises.set(exerciseId, completed);
-        if (card) card.classList.toggle("done", completed);
-        status.className = "completion-status saved";
-        status.textContent = completed ? "Feito" : "Não feito";
+        renderExercises();
       } catch (error) {
         checkbox.checked = !completed;
-        if (card) card.classList.toggle("done", !completed);
         status.className = "completion-status error";
         status.textContent = "Erro ao salvar";
-      } finally {
         checkbox.disabled = false;
       }
     }
@@ -188,6 +263,10 @@
           return;
         }
 
+        currentProfile = profile;
+        exerciseScheduleStartDate = getExerciseScheduleStartDate(profile);
+        currentExerciseWeek = getCurrentExerciseWeek(profile);
+
         try {
           const createdExercises = await loadTeacherCreatedExercises();
           mergeExercises(createdExercises);
@@ -202,7 +281,7 @@
         }
 
         renderExercises();
-        setPageStatus("Aluno conectado: " + currentUser.email + ".");
+        setPageStatus("Semana " + currentExerciseWeek + " do seu ciclo de exercícios · início em " + formatDateKey(exerciseScheduleStartDate) + ".");
       } catch (error) {
         setPageStatus("Não foi possível carregar seus registros.");
         blockPage("Não foi possível verificar sua matrícula ou carregar seus exercícios.");
