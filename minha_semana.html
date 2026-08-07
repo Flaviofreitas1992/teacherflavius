@@ -196,6 +196,7 @@
     const CUTOFF = "2026-07-30";
     const DAY_MS = 86400000;
     const ROADMAP_LESSON_COUNT = 24;
+    const FLASHCARD_WEEKLY_GOAL = 3;
     let currentUser = null;
 
     function esc(value) {
@@ -358,7 +359,8 @@
       const currentActivity = exercises.find(function (item) { return item.number === info.week; }) || null;
       const overdue = exercises.filter(function (item) { return item.number < info.week && completions.get(item.id) !== true; });
       const currentDone = !!currentActivity && completions.get(currentActivity.id) === true;
-      const practicedThisWeek = practiceDates.length > 0;
+      const flashcardGoalMet = practiceDates.length >= FLASHCARD_WEEKLY_GOAL;
+      const remainingFlashcardPractices = Math.max(0, FLASHCARD_WEEKLY_GOAL - practiceDates.length);
 
       document.getElementById("weekIntro").innerHTML = '<strong>SEMANA ' + info.week + '</strong> · ' + esc(formatDate(info.weekStart)) + ' a ' + esc(formatDate(info.weekEnd)) + '<br>Seu ciclo de exercícios começou em ' + esc(formatDate(info.start)) + '/'+ esc(info.start.slice(0,4)) + '.';
 
@@ -366,7 +368,7 @@
       if (currentActivity) goals.push({ label:"Concluir a atividade da semana", done:currentDone, neutral:false });
       else goals.push({ label:"Atividade da semana ainda não publicada", done:false, neutral:true });
       goals.push({ label:"Manter as atividades anteriores em dia", done:overdue.length === 0, neutral:false });
-      goals.push({ label:"Praticar flashcards pelo menos uma vez na semana", done:practicedThisWeek, neutral:false });
+      goals.push({ label:"Praticar flashcards em pelo menos 3 dias da semana", done:flashcardGoalMet, neutral:false });
 
       const countable = goals.filter(function (goal) { return !goal.neutral; });
       const doneCount = countable.filter(function (goal) { return goal.done; }).length;
@@ -411,8 +413,8 @@
       }
 
       const flashcardCard = document.getElementById("flashcardCard");
-      flashcardCard.className = "week-card " + (practicedThisWeek ? "good" : "");
-      flashcardCard.innerHTML = '<div class="card-kicker">Flashcards</div><div class="card-title">' + practiceDates.length + ' dia(s) de prática nesta semana</div><div class="card-text">Cada círculo representa um dia do seu ciclo semanal.</div>' + renderPracticeDays(info,practiceDates) + statusPill(practicedThisWeek ? "PRÁTICA REGISTRADA" : "PRATICAR ESTA SEMANA", practicedThisWeek ? "done" : "warning") + '<a class="card-action" href="/flashcards/">PRATICAR FLASHCARDS</a>';
+      flashcardCard.className = "week-card " + (flashcardGoalMet ? "good" : "");
+      flashcardCard.innerHTML = '<div class="card-kicker">Flashcards</div><div class="card-title">' + Math.min(practiceDates.length, FLASHCARD_WEEKLY_GOAL) + ' de ' + FLASHCARD_WEEKLY_GOAL + ' dias de prática</div><div class="card-text">A meta semanal é praticar flashcards em pelo menos três dias distintos. Cada círculo representa um dia do seu ciclo semanal.</div>' + renderPracticeDays(info,practiceDates) + statusPill(flashcardGoalMet ? "META SEMANAL CUMPRIDA" : "FALTAM " + remainingFlashcardPractices + " PRÁTICA(S)", flashcardGoalMet ? "done" : "warning") + '<a class="card-action" href="/flashcards/">PRATICAR FLASHCARDS</a>';
 
       const grammarCard = document.getElementById("grammarCard");
       if (!grammar.total) {
