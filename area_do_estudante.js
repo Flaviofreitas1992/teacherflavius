@@ -1,4 +1,5 @@
 let currentSession = null;
+let currentUserIsProfessor = false;
 
 const EXERCISE_SCHEDULE_CUTOFF = "2026-07-30";
 const EXERCISE_TIME_ZONE = "America/Sao_Paulo";
@@ -85,7 +86,23 @@ function getLoggedEmail() {
 }
 
 function isProfessorSession() {
-  return getLoggedEmail() === PROFESSOR_EMAIL;
+  return currentUserIsProfessor || getLoggedEmail() === PROFESSOR_EMAIL;
+}
+
+async function detectProfessorSession() {
+  currentUserIsProfessor = getLoggedEmail() === PROFESSOR_EMAIL;
+
+  try {
+    const client = Auth.getClient();
+    const response = await client.rpc("is_teacher_admin");
+    if (!response.error && response.data === true) {
+      currentUserIsProfessor = true;
+    }
+  } catch (error) {
+    console.warn("Não foi possível confirmar credenciais de professor no banco:", error);
+  }
+
+  return currentUserIsProfessor;
 }
 
 function updateProfessorAreaVisibility() {
@@ -138,7 +155,13 @@ async function guardStudentArea() {
     return false;
   }
 
+  await detectProfessorSession();
   updateProfessorAreaVisibility();
+
+  if (isProfessorSession()) {
+    closeOverdueModal();
+  }
+
   document.body.classList.remove("auth-checking");
   return true;
 }
@@ -191,6 +214,11 @@ async function showOverdueActivityIfNeeded(profile) {
       loadStudentCompletions()
     ]);
 
+    if (isProfessorSession()) {
+      modal.hidden = true;
+      return;
+    }
+
     const exercises = results[0];
     const completions = results[1];
     const completedMap = new Map();
@@ -210,7 +238,7 @@ async function showOverdueActivityIfNeeded(profile) {
         return numberDiff !== 0 ? numberDiff : String(a.title || "").localeCompare(String(b.title || ""), "pt-BR");
       });
 
-    if (!overdue.length) {
+    if (!overdue.length || isProfessorSession()) {
       modal.hidden = true;
       return;
     }
@@ -238,11 +266,17 @@ async function updateStatus() {
     status.hidden = true;
   }
 
+  if (isProfessorSession()) {
+    closeOverdueModal();
+    return;
+  }
+
   try {
     const profile = await Auth.getProfile();
     await showOverdueActivityIfNeeded(profile);
   } catch (error) {
     console.error("Não foi possível carregar o ciclo semanal do aluno:", error);
+    closeOverdueModal();
   }
 }
 
