@@ -143,12 +143,15 @@
       if (!Number.isFinite(classNumber)) return;
 
       var row = classTypeCache.get(classNumber);
-      var visual = getClassTypeVisual(row ? row.class_type : null);
+      var typeValue = row && row.class_type ? row.class_type : "unset";
       var existing = title.querySelector(".generated-class-type-badge");
+      if (existing && existing.dataset.classType === typeValue) return;
       if (existing) existing.remove();
 
+      var visual = getClassTypeVisual(row ? row.class_type : null);
       var badge = document.createElement("span");
       badge.className = "generated-class-type-badge";
+      badge.dataset.classType = typeValue;
       badge.textContent = visual.label;
       badge.style.cssText = "display:inline-flex;margin-left:7px;vertical-align:middle;border-radius:999px;padding:3px 7px;font-size:9px;font-weight:bold;letter-spacing:.4px;color:" + visual.color + ";background:" + visual.background + ";border:1px solid " + visual.border + ";";
       title.appendChild(badge);
