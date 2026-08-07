@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alunos Arquivados - Teacher Flávio</title>
+  <link rel="canonical" href="/alunos-arquivados/">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase_config.js?v=20260807-1"></script>
+  <script src="/auth.js?v=20260807-1"></script>
+  <link rel="stylesheet" href="/professor.css?v=20260807-1">
+  <style>
+    .intro {
+      max-width: 820px;
+      margin: 0 auto 22px;
+      color: #cbd5e1;
+      line-height: 1.65;
+      text-align: center;
+      font-size: 14px;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      padding: 18px;
+      margin-bottom: 18px;
+      border: 1px solid rgba(129,140,248,.28);
+      border-radius: 18px;
+      background: rgba(255,255,255,.04);
+    }
+    .summary h2 { margin: 0 0 5px; color: #f8fafc; font-size: 18px; }
+    .summary p { margin: 0; color: #94a3b8; font-size: 13px; }
+    .summary-count {
+      min-width: 70px;
+      height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 18px;
+      border: 1px solid rgba(196,181,253,.32);
+      background: rgba(129,140,248,.13);
+      color: #f8fafc;
+      font-size: 30px;
+      font-weight: bold;
+    }
+    .toolbar { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
+    .toolbar input {
+      flex: 1 1 260px;
+      min-height: 44px;
+      padding: 10px 13px;
+      border-radius: 11px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: #111827;
+      color: #f8fafc;
+      font: inherit;
+    }
+    .toolbar button {
+      min-height: 44px;
+      padding: 10px 14px;
+      border-radius: 11px;
+      border: 1px solid rgba(129,140,248,.38);
+      background: rgba(129,140,248,.10);
+      color: #c4b5fd;
+      font: inherit;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .archive-list { display:grid; gap:14px; }
+    .archive-card {
+      padding: 18px;
+      border: 1px solid rgba(255,255,255,.10);
+      border-left: 4px solid #94a3b8;
+      border-radius: 16px;
+      background: rgba(255,255,255,.04);
+    }
+    .archive-head { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; }
+    .archive-name { color:#f8fafc; font-size:18px; font-weight:bold; }
+    .archive-email { color:#94a3b8; font-size:13px; margin-top:4px; overflow-wrap:anywhere; }
+    .archive-meta { margin-top:13px; display:grid; gap:6px; color:#cbd5e1; font-size:13px; line-height:1.45; }
+    .unarchive-button {
+      flex: 0 0 auto;
+      border: 1px solid rgba(74,222,128,.48);
+      background: rgba(74,222,128,.10);
+      color: #86efac;
+      border-radius: 11px;
+      padding: 10px 13px;
+      font-family: Georgia, serif;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .unarchive-button:disabled { opacity:.55; cursor:not-allowed; }
+    .empty {
+      padding: 24px;
+      border: 1px solid rgba(255,255,255,.09);
+      border-radius: 16px;
+      background: rgba(255,255,255,.035);
+      color: #94a3b8;
+      text-align:center;
+      line-height:1.6;
+    }
+    #content[hidden] { display:none; }
+    @media (max-width:620px) {
+      .summary { grid-template-columns:1fr; }
+      .summary-count { width:100%; }
+      .archive-head { flex-direction:column; }
+      .unarchive-button { width:100%; }
+    }
+  </style>
+</head>
+<body class="auth-checking">
+  <div class="container">
+    <div class="top-links">
+      <a class="top-link" href="/professor.html">ÁREA DO PROFESSOR</a>
+      <a class="top-link" href="/perfil-dos-alunos/">ALUNOS ATIVOS</a>
+      <a class="top-link" href="/">HOME</a>
+    </div>
+
+    <div class="header">
+      <div><span class="badge">TEACHER FLÁVIO</span></div>
+      <h1>Alunos Arquivados</h1>
+      <div id="pageStatus" class="status">Verificando credenciais de professor...</div>
+    </div>
+
+    <div class="divider"></div>
+
+    <main id="content" hidden>
+      <p class="intro">Alunos arquivados permanecem no banco com matrícula, atividades, frequência, flashcards e demais históricos preservados. Desarquivar faz o aluno voltar às listas de alunos ativos.</p>
+
+      <section class="summary">
+        <div><h2>Alunos arquivados</h2><p>Registros fora das listas operacionais de alunos ativos.</p></div>
+        <div id="archiveCount" class="summary-count">0</div>
+      </section>
+
+      <div class="toolbar">
+        <input id="archiveSearch" type="search" placeholder="Buscar por nome ou e-mail" autocomplete="off">
+        <button id="refreshArchived" type="button">ATUALIZAR</button>
+      </div>
+
+      <div id="archiveList" class="archive-list"><div class="empty">Carregando alunos arquivados...</div></div>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      let archivedStudents = [];
+
+      function esc(value) {
+        return String(value == null ? "" : value)
+          .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+          .replace(/\"/g,"&quot;").replace(/'/g,"&#039;");
+      }
+
+      function formatDateTime(value) {
+        if (!value) return "Não informado";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return String(value);
+        return new Intl.DateTimeFormat("pt-BR", {
+          timeZone: "America/Sao_Paulo",
+          dateStyle: "short",
+          timeStyle: "short"
+        }).format(date);
+      }
+
+      async function waitForResources() {
+        for (let i = 0; i < 15; i++) {
+          if (window.Auth && window.SUPABASE_CONFIG && Auth.isConfigured()) return true;
+          await new Promise(function (resolve) { setTimeout(resolve, 150); });
+        }
+        return !!(window.Auth && window.SUPABASE_CONFIG && Auth.isConfigured());
+      }
+
+      function render() {
+        const query = document.getElementById("archiveSearch").value.trim().toLowerCase();
+        const list = document.getElementById("archiveList");
+        const rows = archivedStudents.filter(function (student) {
+          return !query || String(student.name || "").toLowerCase().includes(query) || String(student.email || "").toLowerCase().includes(query);
+        });
+
+        document.getElementById("archiveCount").textContent = String(archivedStudents.length);
+
+        if (!rows.length) {
+          list.innerHTML = '<div class="empty">' + (archivedStudents.length ? 'Nenhum aluno corresponde à busca.' : 'Nenhum aluno está arquivado no momento.') + '</div>';
+          return;
+        }
+
+        list.innerHTML = rows.map(function (student) {
+          return '<article class="archive-card">' +
+            '<div class="archive-head"><div><div class="archive-name">' + esc(student.name || "Aluno sem nome") + '</div><div class="archive-email">' + esc(student.email || "E-mail não informado") + '</div></div>' +
+            '<button class="unarchive-button" type="button" data-user-id="' + esc(student.id) + '" data-student-name="' + esc(student.name || student.email || "Aluno") + '">DESARQUIVAR</button></div>' +
+            '<div class="archive-meta">' +
+              '<div><b>Arquivado em:</b> ' + esc(formatDateTime(student.archived_at)) + '</div>' +
+              '<div><b>Matrícula original:</b> ' + esc(formatDateTime(student.created_at)) + '</div>' +
+              '<div><b>Código de matrícula:</b> ' + esc(student.enrollment_code || "Não informado") + '</div>' +
+            '</div>' +
+          '</article>';
+        }).join("");
+
+        list.querySelectorAll(".unarchive-button").forEach(function (button) {
+          button.addEventListener("click", function () { unarchive(button); });
+        });
+      }
+
+      async function loadArchived() {
+        const button = document.getElementById("refreshArchived");
+        const list = document.getElementById("archiveList");
+        button.disabled = true;
+        list.innerHTML = '<div class="empty">Carregando alunos arquivados...</div>';
+
+        try {
+          const response = await Auth.getClient().from("profiles")
+            .select("id,name,email,enrollment_code,enrolled,created_at,archived_at")
+            .eq("archived", true)
+            .order("archived_at", { ascending:false });
+          if (response.error) throw response.error;
+          archivedStudents = response.data || [];
+          render();
+          document.getElementById("pageStatus").textContent = "Lista de arquivados atualizada.";
+        } catch (error) {
+          list.innerHTML = '<div class="empty">Não foi possível carregar os alunos arquivados: ' + esc(error.message || "erro desconhecido") + '.</div>';
+          document.getElementById("pageStatus").textContent = "Erro ao carregar os alunos arquivados.";
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      async function unarchive(button) {
+        const userId = button.dataset.userId;
+        const studentName = button.dataset.studentName || "este aluno";
+        if (!window.confirm("Desarquivar " + studentName + "? O aluno voltará a aparecer nas listas de alunos ativos.")) return;
+
+        button.disabled = true;
+        button.textContent = "DESARQUIVANDO...";
+        try {
+          const response = await Auth.getClient().rpc("unarchive_teacher_student", { target_user_id: userId });
+          if (response.error) throw response.error;
+          archivedStudents = archivedStudents.filter(function (student) { return student.id !== userId; });
+          render();
+        } catch (error) {
+          alert("Não foi possível desarquivar o aluno: " + (error.message || "erro desconhecido") + ".");
+          button.disabled = false;
+          button.textContent = "DESARQUIVAR";
+        }
+      }
+
+      async function init() {
+        const ready = await waitForResources();
+        if (!ready) {
+          document.body.classList.remove("auth-checking");
+          document.getElementById("pageStatus").textContent = "Não foi possível carregar a autenticação.";
+          return;
+        }
+
+        const session = await Auth.getSession();
+        if (!session || !session.user) {
+          window.location.href = "/login.html?next=" + encodeURIComponent("/alunos-arquivados/");
+          return;
+        }
+
+        try {
+          const admin = await Auth.getClient().rpc("is_teacher_admin");
+          if (admin.error) throw admin.error;
+          if (admin.data !== true) {
+            document.body.classList.remove("auth-checking");
+            document.getElementById("pageStatus").textContent = "Acesso negado. Esta página é exclusiva do professor.";
+            return;
+          }
+          document.getElementById("content").hidden = false;
+          document.body.classList.remove("auth-checking");
+          await loadArchived();
+        } catch (error) {
+          document.body.classList.remove("auth-checking");
+          document.getElementById("pageStatus").textContent = "Não foi possível confirmar as credenciais administrativas.";
+        }
+      }
+
+      document.getElementById("archiveSearch").addEventListener("input", render);
+      document.getElementById("refreshArchived").addEventListener("click", loadArchived);
+      init();
+    })();
+  </script>
+</body>
+</html>
