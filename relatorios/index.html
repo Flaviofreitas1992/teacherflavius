@@ -7,90 +7,19 @@
   <link rel="canonical" href="/relatorios/">
   <link rel="stylesheet" href="/professor.css?v=20260715-1">
   <style>
-    body {
-      min-height: 100vh;
-    }
-
-    .reports-shell {
-      width: 100%;
-      max-width: 1180px;
-      margin: 0 auto;
-    }
-
-    .report-tabs {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-      margin: 0 0 20px;
-    }
-
-    .report-tab {
-      min-height: 64px;
-      padding: 14px 18px;
-      border: 1.5px solid rgba(129,140,248,0.32);
-      border-radius: 16px;
-      background: rgba(255,255,255,0.04);
-      color: #cbd5e1;
-      font: inherit;
-      text-align: left;
-      cursor: pointer;
-      transition: border-color .2s ease, background .2s ease, transform .2s ease;
-    }
-
-    .report-tab:hover {
-      transform: translateY(-2px);
-      border-color: rgba(129,140,248,0.65);
-    }
-
-    .report-tab.active {
-      border-color: rgba(129,140,248,0.85);
-      background: rgba(129,140,248,0.12);
-      color: #f8fafc;
-    }
-
-    .report-tab strong {
-      display: block;
-      margin-bottom: 4px;
-      font-size: 16px;
-    }
-
-    .report-tab span {
-      display: block;
-      color: #94a3b8;
-      font-size: 12px;
-      line-height: 1.45;
-    }
-
-    .report-panel {
-      border: 1px solid rgba(255,255,255,0.09);
-      border-radius: 20px;
-      background: rgba(255,255,255,0.025);
-      overflow: hidden;
-    }
-
-    .report-frame {
-      display: block;
-      width: 100%;
-      min-height: 1100px;
-      border: 0;
-      background: transparent;
-    }
-
-    .report-frame[hidden] {
-      display: none;
-    }
-
-    @media (max-width: 900px) {
-      .report-tabs {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 720px) {
-      .report-frame {
-        min-height: 1350px;
-      }
-    }
+    body { min-height: 100vh; }
+    .reports-shell { width: 100%; max-width: 1180px; margin: 0 auto; }
+    .report-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 20px; }
+    .report-tab { min-height: 64px; padding: 14px 18px; border: 1.5px solid rgba(129,140,248,0.32); border-radius: 16px; background: rgba(255,255,255,0.04); color: #cbd5e1; font: inherit; text-align: left; cursor: pointer; transition: border-color .2s ease, background .2s ease, transform .2s ease; }
+    .report-tab:hover { transform: translateY(-2px); border-color: rgba(129,140,248,0.65); }
+    .report-tab.active { border-color: rgba(129,140,248,0.85); background: rgba(129,140,248,0.12); color: #f8fafc; }
+    .report-tab strong { display: block; margin-bottom: 4px; font-size: 16px; }
+    .report-tab span { display: block; color: #94a3b8; font-size: 12px; line-height: 1.45; }
+    .report-panel { border: 1px solid rgba(255,255,255,0.09); border-radius: 20px; background: rgba(255,255,255,0.025); overflow: hidden; }
+    .report-frame { display: block; width: 100%; min-height: 1100px; border: 0; background: transparent; }
+    .report-frame[hidden] { display: none; }
+    @media (max-width: 900px) { .report-tabs { grid-template-columns: 1fr; } }
+    @media (max-width: 720px) { .report-frame { min-height: 1350px; } }
   </style>
 </head>
 <body>
@@ -99,15 +28,12 @@
       <a class="top-link" href="/">HOME</a>
       <a class="top-link" href="/professor/">ÁREA DO PROFESSOR</a>
     </div>
-
     <div class="header">
       <div><span class="badge">TEACHER FLÁVIO</span></div>
       <h1>Relatórios</h1>
       <div class="status">Central de acompanhamento administrativo.</div>
     </div>
-
     <div class="divider"></div>
-
     <div class="report-tabs" role="tablist" aria-label="Tipos de relatório">
       <button class="report-tab active" type="button" data-target="syncFrame" role="tab" aria-selected="true">
         <strong>📋 Sincronização de exercícios</strong>
@@ -119,61 +45,37 @@
       </button>
       <button class="report-tab" type="button" data-target="vacancyFrame" role="tab" aria-selected="false">
         <strong>🪑 Turmas com vagas disponíveis</strong>
-        <span>Grupos com até 3 alunos e quantidade de vagas restantes até o limite de 4.</span>
+        <span>Turmas QUARTETO com até 3 alunos e quantidade de vagas restantes até o limite de 4.</span>
       </button>
     </div>
-
     <section class="report-panel">
       <iframe id="syncFrame" class="report-frame" src="/relatorios.html" title="Relatórios de sincronização"></iframe>
       <iframe id="accessFrame" class="report-frame" src="/acessos_dos_alunos.html" title="Acessos dos alunos" hidden></iframe>
-      <iframe id="vacancyFrame" class="report-frame" src="/relatorios_vagas_turmas.html" title="Turmas com vagas disponíveis" hidden></iframe>
+      <iframe id="vacancyFrame" class="report-frame" src="/relatorios_vagas_turmas.html?v=20260807-2" title="Turmas com vagas disponíveis" hidden></iframe>
     </section>
   </div>
-
   <script>
     const tabs = Array.from(document.querySelectorAll('.report-tab'));
     const frames = Array.from(document.querySelectorAll('.report-frame'));
-
     function activateTab(targetId) {
       tabs.forEach(function (tab) {
         const active = tab.dataset.target === targetId;
         tab.classList.toggle('active', active);
         tab.setAttribute('aria-selected', active ? 'true' : 'false');
       });
-
-      frames.forEach(function (frame) {
-        frame.hidden = frame.id !== targetId;
-      });
+      frames.forEach(function (frame) { frame.hidden = frame.id !== targetId; });
     }
-
-    tabs.forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        activateTab(tab.dataset.target);
-      });
-    });
-
+    tabs.forEach(function (tab) { tab.addEventListener('click', function () { activateTab(tab.dataset.target); }); });
     function cleanEmbeddedPage(frame) {
       try {
         const doc = frame.contentDocument;
         if (!doc || !doc.head) return;
-
         const style = doc.createElement('style');
-        style.textContent = `
-          body { background: transparent !important; padding-top: 8px !important; }
-          .top-links, .header, .divider { display: none !important; }
-          .container { max-width: none !important; width: 100% !important; padding-left: 14px !important; padding-right: 14px !important; }
-        `;
+        style.textContent = `body { background: transparent !important; padding-top: 8px !important; } .top-links, .header, .divider { display: none !important; } .container { max-width: none !important; width: 100% !important; padding-left: 14px !important; padding-right: 14px !important; }`;
         doc.head.appendChild(style);
-      } catch (error) {
-        console.warn('Não foi possível ajustar o relatório incorporado.', error);
-      }
+      } catch (error) { console.warn('Não foi possível ajustar o relatório incorporado.', error); }
     }
-
-    frames.forEach(function (frame) {
-      frame.addEventListener('load', function () {
-        cleanEmbeddedPage(frame);
-      });
-    });
+    frames.forEach(function (frame) { frame.addEventListener('load', function () { cleanEmbeddedPage(frame); }); });
   </script>
 </body>
 </html>
