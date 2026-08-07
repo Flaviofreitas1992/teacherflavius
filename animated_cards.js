@@ -1,4 +1,7 @@
 (function () {
+  var classTypeCache = null;
+  var classTypeLoading = false;
+
   function injectBackground() {
     if (!document.getElementById("particles")) {
       var canvas = document.createElement("canvas");
@@ -116,15 +119,79 @@
     });
   }
 
+  function isClassBoardPage() {
+    return /(^|\/)quadro-de-turmas\.html$/.test(window.location.pathname);
+  }
+
+  function getClassTypeVisual(value) {
+    if (value === "group") return { label: "GRUPO", color: "#bfdbfe", background: "rgba(59,130,246,.15)", border: "rgba(96,165,250,.35)" };
+    if (value === "individual") return { label: "INDIVIDUAL", color: "#d8b4fe", background: "rgba(168,85,247,.14)", border: "rgba(192,132,252,.35)" };
+    return { label: "TIPO NÃO DEFINIDO", color: "#fde68a", background: "rgba(245,158,11,.12)", border: "rgba(251,191,36,.30)" };
+  }
+
+  function annotateClassTypeBadges() {
+    if (!isClassBoardPage() || !classTypeCache) return;
+
+    document.querySelectorAll('.class-item[href*="turma.html?id="]').forEach(function (card) {
+      var title = card.querySelector(".class-title");
+      if (!title) return;
+
+      var classNumber = null;
+      try {
+        classNumber = Number(new URL(card.getAttribute("href"), window.location.href).searchParams.get("id"));
+      } catch (error) {}
+      if (!Number.isFinite(classNumber)) return;
+
+      var row = classTypeCache.get(classNumber);
+      var visual = getClassTypeVisual(row ? row.class_type : null);
+      var existing = title.querySelector(".generated-class-type-badge");
+      if (existing) existing.remove();
+
+      var badge = document.createElement("span");
+      badge.className = "generated-class-type-badge";
+      badge.textContent = visual.label;
+      badge.style.cssText = "display:inline-flex;margin-left:7px;vertical-align:middle;border-radius:999px;padding:3px 7px;font-size:9px;font-weight:bold;letter-spacing:.4px;color:" + visual.color + ";background:" + visual.background + ";border:1px solid " + visual.border + ";";
+      title.appendChild(badge);
+    });
+  }
+
+  async function loadClassTypeBadges() {
+    if (!isClassBoardPage() || classTypeCache || classTypeLoading) {
+      annotateClassTypeBadges();
+      return;
+    }
+    if (!(window.Auth && window.SUPABASE_CONFIG && Auth.isConfigured())) {
+      setTimeout(loadClassTypeBadges, 250);
+      return;
+    }
+
+    classTypeLoading = true;
+    try {
+      var response = await Auth.getClient().rpc("get_teacher_classes_with_type");
+      if (response.error) throw response.error;
+      classTypeCache = new Map((response.data || []).map(function (row) {
+        return [Number(row.class_number), row];
+      }));
+      annotateClassTypeBadges();
+    } catch (error) {
+      console.error("Não foi possível carregar etiquetas das turmas:", error);
+    } finally {
+      classTypeLoading = false;
+    }
+  }
+
   function init() {
     injectBackground();
     loadClassRecordedLessonsExtension();
     loadGlobalLogout();
     initParticles();
     initTiltAndRipple();
+    loadClassTypeBadges();
 
     var observer = new MutationObserver(function () {
       initTiltAndRipple();
+      if (classTypeCache) annotateClassTypeBadges();
+      else loadClassTypeBadges();
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
