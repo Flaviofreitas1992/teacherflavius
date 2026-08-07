@@ -5,17 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Minha Semana - Teacher Flávio</title>
   <link rel="canonical" href="/minha-semana/">
-  <script>
-    (async function () {
-      const response = await fetch('/minha_semana.html', { cache: 'no-store' });
-      const html = await response.text();
-      document.open();
-      document.write(html.replace('<head>', '<head>\n  <base href="/">'));
-      document.close();
-    })();
-  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase_config.js?v=20260715-1"></script>
+  <script src="/auth.js?v=20260730-1"></script>
+  <link rel="stylesheet" href="/aula_template.css?v=20260430-3">
+  <style>
+    :root{--panel:rgba(255,255,255,.04);--border:rgba(255,255,255,.1);--muted:#94a3b8;--text:#f1f5f9;--green:#86efac;--red:#fca5a5;--purple:#c4b5fd;--amber:#fde68a}
+    .container{max-width:980px}.week-intro{text-align:center;margin:-4px auto 22px;color:#cbd5e1;line-height:1.6}.progress-panel{border:1px solid rgba(129,140,248,.32);border-radius:22px;padding:22px;background:rgba(129,140,248,.07);margin-bottom:18px}.progress-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}.progress-title{font-size:20px;color:var(--text);font-weight:bold}.progress-number{font-size:32px;font-weight:bold;color:var(--purple)}.progress-caption{color:var(--muted);font-size:13px;margin-top:6px}.progress-track{height:12px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.08);margin-top:14px}.progress-fill{height:100%;width:0;border-radius:inherit;background:linear-gradient(90deg,#818cf8,#a78bfa);transition:width .3s ease}.checklist{display:grid;gap:10px;margin-bottom:22px}.check-item{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 15px;border:1px solid var(--border);border-radius:14px;background:var(--panel)}.check-main{display:flex;align-items:flex-start;gap:11px;min-width:0}.check-icon{font-size:20px}.check-text{color:#e2e8f0;line-height:1.4}.check-sub{display:block;color:var(--muted);font-size:11px;margin-top:3px}.check-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}.check-state{font-size:11px;font-weight:bold;white-space:nowrap}.check-state.done{color:var(--green)}.check-state.pending{color:var(--red)}.check-state.neutral{color:var(--amber)}.mini-button{border:1px solid rgba(129,140,248,.38);background:rgba(129,140,248,.1);color:#e0e7ff;border-radius:9px;padding:7px 9px;font:inherit;font-size:10px;font-weight:bold;cursor:pointer}.mini-button:disabled{opacity:.55;cursor:wait}.week-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.week-card{display:flex;flex-direction:column;min-height:210px;padding:19px;border:1px solid var(--border);border-radius:18px;background:var(--panel)}.week-card.overdue{border-color:rgba(248,113,113,.45);background:rgba(127,29,29,.2)}.week-card.good{border-color:rgba(74,222,128,.38);background:rgba(20,83,45,.18)}.week-card.current{border-color:rgba(129,140,248,.45);background:rgba(67,56,202,.13)}.card-kicker{color:var(--muted);font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-bottom:8px}.card-title{color:var(--text);font-size:18px;line-height:1.35;margin-bottom:9px}.card-text{color:#cbd5e1;font-size:13px;line-height:1.55;margin-bottom:14px}.card-status{display:inline-flex;align-self:flex-start;border-radius:999px;padding:6px 9px;font-size:11px;font-weight:bold;margin-bottom:14px}.card-status.done{color:var(--green);background:rgba(74,222,128,.13)}.card-status.pending{color:var(--red);background:rgba(248,113,113,.13)}.card-status.info{color:var(--purple);background:rgba(167,139,250,.13)}.card-status.warning{color:var(--amber);background:rgba(245,158,11,.13)}.card-action{margin-top:auto;display:inline-flex;align-items:center;justify-content:center;min-height:42px;border-radius:11px;border:1px solid rgba(129,140,248,.35);color:#e0e7ff;background:rgba(129,140,248,.08);text-decoration:none;font-weight:bold;font-size:13px;padding:9px 12px}.practice-days{display:flex;gap:7px;flex-wrap:wrap;margin:2px 0 15px}.practice-day{width:29px;height:29px;display:flex;align-items:center;justify-content:center;border-radius:50%;border:1px solid rgba(255,255,255,.12);color:var(--muted);font-size:10px}.practice-day.done{color:#052e16;background:var(--green);border-color:var(--green);font-weight:bold}.loading-panel{padding:25px;border:1px solid var(--border);border-radius:18px;background:var(--panel);color:#cbd5e1;text-align:center;line-height:1.6}.custom-list{display:grid;gap:8px;margin-bottom:14px}.custom-line{padding:9px 10px;border-radius:10px;background:rgba(15,23,42,.45);color:#cbd5e1;font-size:12px}.custom-line.done{text-decoration:line-through;color:#86efac}#dashboard[hidden]{display:none}@media(max-width:720px){.week-grid{grid-template-columns:1fr}.check-item{align-items:flex-start;flex-direction:column}.check-actions{width:100%;justify-content:space-between}.check-state{white-space:normal}}
+  </style>
 </head>
-<body>
-  <p>Carregando Minha Semana...</p>
+<body class="auth-checking">
+  <div class="container">
+    <div class="top-links"><a class="top-link" href="/">HOME</a><a class="top-link" href="/area-do-estudante/">ÁREA DO ESTUDANTE</a></div>
+    <div class="header"><div><span class="badge">TEACHER FLÁVIO</span></div><h1>Minha Semana</h1><div id="pageStatus" class="status">Carregando seu plano semanal...</div></div>
+    <div class="divider"></div>
+    <div id="loadingPanel" class="loading-panel">Organizando suas metas, atividades e tarefas desta semana...</div>
+    <main id="dashboard" hidden>
+      <p id="weekIntro" class="week-intro"></p>
+      <section class="progress-panel" aria-label="Progresso semanal"><div class="progress-head"><div><div class="progress-title">Plano semanal</div><div id="progressCaption" class="progress-caption"></div></div><div id="progressNumber" class="progress-number">0%</div></div><div class="progress-track"><div id="progressFill" class="progress-fill"></div></div></section>
+      <section id="checklist" class="checklist" aria-label="Tarefas da semana"></section>
+      <section class="week-grid">
+        <article id="exerciseCard" class="week-card current"></article>
+        <article id="overdueCard" class="week-card"></article>
+        <article id="roadmapCard" class="week-card"></article>
+        <article id="flashcardCard" class="week-card"></article>
+        <article id="customCard" class="week-card"></article>
+        <article id="grammarCard" class="week-card"></article>
+        <article id="classCard" class="week-card"></article>
+        <article class="week-card"><div class="card-kicker">Acompanhamento</div><div class="card-title">Seu progresso completo</div><div class="card-text">Veja todas as atividades concluídas e pendentes no painel de progresso.</div><span class="card-status info">VISÃO GERAL</span><a class="card-action" href="/meu_progresso.html">ABRIR MEU PROGRESSO</a></article>
+      </section>
+    </main>
+  </div>
+  <script src="/minha_semana_v2.js?v=20260807-1"></script>
 </body>
 </html>
