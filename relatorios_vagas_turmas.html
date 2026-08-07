@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Turmas com vagas disponíveis - Teacher Flávio</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase_config.js?v=20260715-1"></script>
+  <script src="auth.js?v=20260730-1"></script>
+  <link rel="stylesheet" href="professor.css?v=20260715-1">
+  <style>
+    .container{max-width:1050px}.intro{color:#cbd5e1;line-height:1.6;text-align:center;margin:-4px auto 20px;max-width:780px}.summary-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:20px}.summary-card{padding:16px;border:1px solid rgba(255,255,255,.09);border-radius:16px;background:rgba(255,255,255,.04);text-align:center}.summary-card span{display:block;color:#94a3b8;font-size:11px;margin-bottom:6px}.summary-card strong{display:block;color:#f8fafc;font-size:28px}.vacancy-list{display:grid;gap:12px}.vacancy-card{display:grid;grid-template-columns:1fr auto;gap:16px;align-items:center;padding:17px;border:1px solid rgba(255,255,255,.09);border-radius:17px;background:rgba(255,255,255,.035)}.class-name{color:#f8fafc;font-size:18px;font-weight:bold;line-height:1.35}.class-meta{color:#94a3b8;font-size:12px;line-height:1.55;margin-top:5px}.spots{min-width:110px;text-align:center;border-radius:14px;padding:12px;background:rgba(74,222,128,.10);border:1px solid rgba(74,222,128,.25)}.spots strong{display:block;color:#86efac;font-size:27px}.spots span{display:block;color:#bbf7d0;font-size:10px;margin-top:3px}.empty,.error{padding:20px;border:1px solid rgba(255,255,255,.08);border-radius:15px;text-align:center;color:#94a3b8;background:rgba(255,255,255,.035);line-height:1.6}.error{color:#fca5a5}.refresh-row{text-align:right;margin-bottom:12px}.refresh-button{border:1px solid rgba(129,140,248,.38);border-radius:10px;background:rgba(129,140,248,.1);color:#e0e7ff;padding:9px 12px;font:inherit;font-size:11px;font-weight:bold;cursor:pointer}.refresh-button:disabled{opacity:.55;cursor:wait}@media(max-width:650px){.summary-grid{grid-template-columns:1fr}.vacancy-card{grid-template-columns:1fr}.spots{min-width:0}}
+  </style>
+</head>
+<body class="auth-checking">
+  <div class="container">
+    <div class="top-links"><a class="top-link" href="/professor.html">ÁREA DO PROFESSOR</a><a class="top-link" href="/turmas/">TURMAS</a><a class="top-link" href="/">HOME</a></div>
+    <div class="header"><div><span class="badge">TEACHER FLÁVIO</span></div><h1>Turmas com vagas disponíveis</h1><div id="pageStatus" class="status">Verificando credenciais de professor...</div></div>
+    <div class="divider"></div>
+    <main id="content" hidden>
+      <p class="intro">Turmas classificadas como GRUPO com menos de 4 alunos. Cada grupo pode ter no máximo 4 alunos.</p>
+      <section class="summary-grid">
+        <div class="summary-card"><span>Turmas com vagas</span><strong id="classesWithSpots">0</strong></div>
+        <div class="summary-card"><span>Vagas disponíveis</span><strong id="totalSpots">0</strong></div>
+        <div class="summary-card"><span>Capacidade por grupo</span><strong>4</strong></div>
+      </section>
+      <div class="refresh-row"><button id="refreshButton" class="refresh-button" type="button">ATUALIZAR</button></div>
+      <section id="vacancyList" class="vacancy-list"><div class="empty">Carregando turmas...</div></section>
+    </main>
+  </div>
+  <script>
+    function sleep(ms){return new Promise(function(resolve){setTimeout(resolve,ms);});}
+    async function waitForResources(){for(let i=0;i<15;i++){if(window.Auth&&window.SUPABASE_CONFIG&&Auth.isConfigured())return true;await sleep(150);}return !!(window.Auth&&window.SUPABASE_CONFIG&&Auth.isConfigured());}
+    function esc(value){return String(value==null?'':value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');}
+    function weekdayLabel(value){return ({1:'Segunda-feira',2:'Terça-feira',3:'Quarta-feira',4:'Quinta-feira',5:'Sexta-feira',6:'Sábado',7:'Domingo'})[Number(value)]||'Dia não definido';}
+    function timeLabel(value){const m=String(value||'').match(/^(\d{2}):(\d{2})/);if(!m)return 'horário não definido';const h=Number(m[1]),min=Number(m[2]);return min===0?h+'h':h+'h'+String(min).padStart(2,'0');}
+    async function verifyTeacher(){const response=await Auth.getClient().rpc('is_teacher_admin');if(response.error)throw response.error;return response.data===true;}
+    async function loadVacancies(){const response=await Auth.getClient().rpc('get_group_classes_with_available_spots');if(response.error)throw response.error;return response.data||[];}
+    function render(rows){document.getElementById('classesWithSpots').textContent=String(rows.length);document.getElementById('totalSpots').textContent=String(rows.reduce(function(sum,row){return sum+Number(row.available_spots||0);},0));const list=document.getElementById('vacancyList');if(!rows.length){list.innerHTML='<div class="empty">Nenhuma turma em grupo possui vagas disponíveis no momento.</div>';return;}list.innerHTML=rows.map(function(row){const occupied=Number(row.occupied_spots||0);const spots=Number(row.available_spots||0);const schedule=row.class_weekday&&row.class_start_time?weekdayLabel(row.class_weekday)+', '+timeLabel(row.class_start_time):'Horário semanal não configurado';return '<article class="vacancy-card"><div><div class="class-name">'+esc(row.class_name||('Turma '+row.class_number))+'</div><div class="class-meta">'+esc(schedule)+' · '+occupied+' de 4 alunos · Turma nº '+esc(row.class_number)+'</div></div><div class="spots"><strong>'+spots+'</strong><span>'+(spots===1?'VAGA DISPONÍVEL':'VAGAS DISPONÍVEIS')+'</span></div></article>';}).join('');}
+    async function refresh(){const button=document.getElementById('refreshButton');button.disabled=true;document.getElementById('vacancyList').innerHTML='<div class="empty">Atualizando turmas...</div>';try{const rows=await loadVacancies();render(rows);document.getElementById('pageStatus').textContent='Dados atualizados.';}catch(error){document.getElementById('vacancyList').innerHTML='<div class="error">Não foi possível carregar as vagas: '+esc(error.message||'erro desconhecido')+'.</div>';document.getElementById('pageStatus').textContent='Erro ao carregar o relatório.';}finally{button.disabled=false;}}
+    async function init(){const ready=await waitForResources();if(!ready){document.body.classList.remove('auth-checking');document.getElementById('pageStatus').textContent='Não foi possível carregar a autenticação.';return;}const session=await Auth.getSession();if(!session||!session.user){window.location.href='/login.html?next='+encodeURIComponent('/relatorios/');return;}try{const admin=await verifyTeacher();if(!admin){document.getElementById('pageStatus').textContent='Acesso negado.';document.body.classList.remove('auth-checking');return;}document.getElementById('content').hidden=false;document.body.classList.remove('auth-checking');await refresh();}catch(error){document.getElementById('pageStatus').textContent='Não foi possível validar o acesso.';document.body.classList.remove('auth-checking');}}
+    document.getElementById('refreshButton').addEventListener('click',refresh);
+    init();
+  </script>
+</body>
+</html>
