@@ -78,15 +78,20 @@ function getCurrentExerciseWeek(profile) {
   return Math.floor(elapsedDays / 7) + 1;
 }
 
+function getLoggedEmail() {
+  return currentSession && currentSession.user && currentSession.user.email
+    ? String(currentSession.user.email).trim().toLowerCase()
+    : "";
+}
+
+function isProfessorSession() {
+  return getLoggedEmail() === PROFESSOR_EMAIL;
+}
+
 function updateProfessorAreaVisibility() {
   const professorSection = document.getElementById("professorAreaSection");
   if (!professorSection) return;
-
-  const loggedEmail = currentSession && currentSession.user && currentSession.user.email
-    ? String(currentSession.user.email).trim().toLowerCase()
-    : "";
-
-  professorSection.hidden = loggedEmail !== PROFESSOR_EMAIL;
+  professorSection.hidden = !isProfessorSession();
 }
 
 function closeOverdueModal() {
@@ -167,6 +172,11 @@ async function showOverdueActivityIfNeeded(profile) {
   const modal = document.getElementById("overdueModal");
   const link = document.getElementById("overdueActivityLink");
   if (!modal || !link) return;
+
+  if (isProfessorSession()) {
+    modal.hidden = true;
+    return;
+  }
 
   try {
     const currentWeek = getCurrentExerciseWeek(profile);
