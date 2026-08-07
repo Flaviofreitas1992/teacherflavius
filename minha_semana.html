@@ -176,6 +176,7 @@
       <section class="week-grid">
         <article id="exerciseCard" class="week-card current"></article>
         <article id="overdueCard" class="week-card"></article>
+        <article id="roadmapCard" class="week-card"></article>
         <article id="flashcardCard" class="week-card"></article>
         <article id="grammarCard" class="week-card"></article>
         <article id="classCard" class="week-card"></article>
@@ -194,6 +195,7 @@
     const TZ = "America/Sao_Paulo";
     const CUTOFF = "2026-07-30";
     const DAY_MS = 86400000;
+    const ROADMAP_LESSON_COUNT = 24;
     let currentUser = null;
 
     function esc(value) {
@@ -272,6 +274,38 @@
       return new Map((response.data || []).map(function (row) { return [row.exercise_id, row.completed === true]; }));
     }
 
+    async function loadRoadmap() {
+      const response = await Auth.getClient().from("study_roadmap_completion")
+        .select("lesson_id, lesson_number, lesson_title, completed")
+        .eq("user_id", currentUser.id);
+      if (response.error) throw response.error;
+
+      const completedByNumber = new Map();
+      (response.data || []).forEach(function (row) {
+        const number = Number(row.lesson_number || String(row.lesson_id || "").replace("lesson-", ""));
+        if (Number.isFinite(number)) completedByNumber.set(number, row.completed === true);
+      });
+
+      let nextNumber = null;
+      for (let number = 1; number <= ROADMAP_LESSON_COUNT; number++) {
+        if (completedByNumber.get(number) !== true) {
+          nextNumber = number;
+          break;
+        }
+      }
+
+      let completed = 0;
+      for (let number = 1; number <= ROADMAP_LESSON_COUNT; number++) {
+        if (completedByNumber.get(number) === true) completed++;
+      }
+
+      return {
+        total: ROADMAP_LESSON_COUNT,
+        completed: completed,
+        next: nextNumber ? { number:nextNumber, title:"Lição " + nextNumber } : null
+      };
+    }
+
     async function loadFlashcards(weekStart, weekEnd) {
       const response = await Auth.getClient().from("flashcard_practice_days")
         .select("practice_date")
@@ -320,7 +354,7 @@
       }).join("") + '</div>';
     }
 
-    function renderDashboard(profile, info, exercises, completions, practiceDates, grammar, classInfo) {
+    function renderDashboard(profile, info, exercises, completions, practiceDates, grammar, classInfo, roadmap) {
       const currentActivity = exercises.find(function (item) { return item.number === info.week; }) || null;
       const overdue = exercises.filter(function (item) { return item.number < info.week && completions.get(item.id) !== true; });
       const currentDone = !!currentActivity && completions.get(currentActivity.id) === true;
@@ -363,6 +397,17 @@
       } else {
         overdueCard.className = "week-card overdue";
         overdueCard.innerHTML = '<div class="card-kicker">Pendências anteriores</div><div class="card-title">' + overdue.length + ' atividade(s) atrasada(s)</div><div class="card-text">A mais antiga é <strong>' + esc(overdue[0].title) + '</strong>. Priorize as atividades na ordem numérica.</div>' + statusPill("PRECISA DE ATENÇÃO","pending") + '<a class="card-action" href="' + esc(overdue[0].url || "/exercicios-diarios/") + '" ' + (overdue[0].url ? 'target="_blank" rel="noopener noreferrer"' : '') + '>FAZER A MAIS ANTIGA</a>';
+      }
+
+      const roadmapCard = document.getElementById("roadmapCard");
+      if (!roadmap || !roadmap.total) {
+        roadmapCard.innerHTML = '<div class="card-kicker">Roteiro de Estudos</div><div class="card-title">Progresso indisponível</div><div class="card-text">Não foi possível identificar suas lições do roteiro neste momento.</div>' + statusPill("VERIFICAR ROTEIRO","warning") + '<a class="card-action" href="/roteiro-de-estudos/">ABRIR ROTEIRO DE ESTUDOS</a>';
+      } else if (!roadmap.next) {
+        roadmapCard.className = "week-card good";
+        roadmapCard.innerHTML = '<div class="card-kicker">Roteiro de Estudos</div><div class="card-title">Todas as lições concluídas</div><div class="card-text">Você concluiu as ' + roadmap.total + ' lições atualmente disponíveis no roteiro.</div>' + statusPill("ROTEIRO CONCLUÍDO","done") + '<a class="card-action" href="/roteiro-de-estudos/">REVER ROTEIRO</a>';
+      } else {
+        roadmapCard.className = "week-card current";
+        roadmapCard.innerHTML = '<div class="card-kicker">Roteiro de Estudos</div><div class="card-title">Próxima: ' + esc(roadmap.next.title) + '</div><div class="card-text">Você concluiu ' + roadmap.completed + ' de ' + roadmap.total + ' lições. Prepare <strong>' + esc(roadmap.next.title) + '</strong> para apresentar em aula.</div>' + statusPill("PRÓXIMA LIÇÃO","info") + '<a class="card-action" href="/roteiro-de-estudos/">ABRIR ROTEIRO DE ESTUDOS</a>';
       }
 
       const flashcardCard = document.getElementById("flashcardCard");
@@ -415,11 +460,12 @@
 
         const info = getWeekInfo(profile);
         const baseResults = await Promise.all([loadExercises(), loadCompletions()]);
-        const optionalResults = await Promise.allSettled([loadFlashcards(info.weekStart,info.weekEnd), loadGrammar(), loadClass()]);
+        const optionalResults = await Promise.allSettled([loadFlashcards(info.weekStart,info.weekEnd), loadGrammar(), loadClass(), loadRoadmap()]);
         const practiceDates = optionalResults[0].status === "fulfilled" ? optionalResults[0].value : [];
         const grammar = optionalResults[1].status === "fulfilled" ? optionalResults[1].value : { total:0, completed:0, next:null };
         const classInfo = optionalResults[2].status === "fulfilled" ? optionalResults[2].value : null;
-        renderDashboard(profile,info,baseResults[0],baseResults[1],practiceDates,grammar,classInfo);
+        const roadmap = optionalResults[3].status === "fulfilled" ? optionalResults[3].value : null;
+        renderDashboard(profile,info,baseResults[0],baseResults[1],practiceDates,grammar,classInfo,roadmap);
       } catch (error) {
         console.error("Erro ao carregar Minha Semana:", error);
         document.getElementById("pageStatus").textContent = "Não foi possível carregar sua semana.";
