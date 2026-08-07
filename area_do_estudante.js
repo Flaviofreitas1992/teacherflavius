@@ -1,5 +1,9 @@
 let currentSession = null;
 
+const EXERCISE_SCHEDULE_CUTOFF = "2026-07-30";
+const EXERCISE_TIME_ZONE = "America/Sao_Paulo";
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
 function redirectToLogin() {
   window.location.href = "login.html?next=" + encodeURIComponent("area_do_estudante.html");
 }
@@ -19,6 +23,50 @@ async function waitForAuthResources() {
 function extractActivityNumber(title) {
   const match = String(title || "").match(/ATIVIDADE\s+(\d+)/i);
   return match ? Number(match[1]) : Number.MAX_SAFE_INTEGER;
+}
+
+function dateKeyInSaoPaulo(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: EXERCISE_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+
+  const values = {};
+  parts.forEach(function (part) {
+    if (part.type !== "literal") values[part.type] = part.value;
+  });
+
+  return values.year + "-" + values.month + "-" + values.day;
+}
+
+function dateKeyToUtcMs(dateKey) {
+  const match = String(dateKey || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return NaN;
+  return Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
+function getExerciseScheduleStartDate(profile) {
+  const profileCreatedDate = profile && profile.created_at ? dateKeyInSaoPaulo(profile.created_at) : "";
+  if (!profileCreatedDate || profileCreatedDate <= EXERCISE_SCHEDULE_CUTOFF) {
+    return EXERCISE_SCHEDULE_CUTOFF;
+  }
+  return profileCreatedDate;
+}
+
+function getCurrentExerciseWeek(profile) {
+  const startDateKey = getExerciseScheduleStartDate(profile);
+  const todayKey = dateKeyInSaoPaulo(new Date());
+  const startMs = dateKeyToUtcMs(startDateKey);
+  const todayMs = dateKeyToUtcMs(todayKey);
+
+  if (!Number.isFinite(startMs) || !Number.isFinite(todayMs) || todayMs < startMs) return 0;
+  const elapsedDays = Math.floor((todayMs - startMs) / MS_PER_DAY);
+  return Math.floor(elapsedDays / 7) + 1;
 }
 
 function closeOverdueModal() {
@@ -94,12 +142,20 @@ async function loadStudentCompletions() {
   return response.data || [];
 }
 
-async function showOverdueActivityIfNeeded() {
+async function showOverdueActivityIfNeeded(profile) {
   const modal = document.getElementById("overdueModal");
   const link = document.getElementById("overdueActivityLink");
   if (!modal || !link) return;
 
   try {
+    const currentWeek = getCurrentExerciseWeek(profile);
+
+    // Na Semana 1 existe uma atividade da semana, mas ainda não há atividade atrasada.
+    if (currentWeek <= 1) {
+      modal.hidden = true;
+      return;
+    }
+
     const results = await Promise.all([
       loadPublishedExercises(),
       loadStudentCompletions()
@@ -113,25 +169,27 @@ async function showOverdueActivityIfNeeded() {
       completedMap.set(row.exercise_id, row.completed === true);
     });
 
-    const pending = exercises
+    const overdue = exercises
       .filter(function (exercise) {
-        return exercise.id && completedMap.get(exercise.id) !== true;
+        if (!exercise.id || completedMap.get(exercise.id) === true) return false;
+        const activityNumber = extractActivityNumber(exercise.title);
+        return Number.isFinite(activityNumber) && activityNumber < currentWeek;
       })
       .sort(function (a, b) {
         const numberDiff = extractActivityNumber(a.title) - extractActivityNumber(b.title);
         return numberDiff !== 0 ? numberDiff : String(a.title || "").localeCompare(String(b.title || ""), "pt-BR");
       });
 
-    if (!pending.length) {
+    if (!overdue.length) {
       modal.hidden = true;
       return;
     }
 
-    const overdueExercise = pending.find(function (exercise) {
+    const overdueExercise = overdue.find(function (exercise) {
       return !!exercise.url;
-    }) || pending[0];
+    }) || overdue[0];
 
-    link.textContent = overdueExercise.title || "Abrir atividade pendente";
+    link.textContent = overdueExercise.title || "Abrir atividade atrasada";
     link.href = overdueExercise.url || "/exercicios-diarios/";
     modal.hidden = false;
   } catch (error) {
@@ -150,7 +208,12 @@ async function updateStatus() {
     status.hidden = true;
   }
 
-  await showOverdueActivityIfNeeded();
+  try {
+    const profile = await Auth.getProfile();
+    await showOverdueActivityIfNeeded(profile);
+  } catch (error) {
+    console.error("Não foi possível carregar o ciclo semanal do aluno:", error);
+  }
 }
 
 bindOverdueModal();
