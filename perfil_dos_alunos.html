@@ -115,6 +115,21 @@
       cursor: not-allowed;
     }
 
+    .archived-students-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: 10px 14px;
+      border: 1px solid rgba(148,163,184,.32);
+      border-radius: 11px;
+      background: rgba(148,163,184,.08);
+      color: #cbd5e1;
+      text-decoration: none;
+      font-weight: bold;
+      font-size: 13px;
+    }
+
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -246,6 +261,7 @@
   <div class="container">
     <div class="top-links">
       <a class="top-link" href="professor.html">ÁREA DO PROFESSOR</a>
+      <a class="top-link" href="/alunos-arquivados/">ALUNOS ARQUIVADOS</a>
       <a class="top-link" href="index.html">HOME</a>
     </div>
 
@@ -266,8 +282,8 @@
     </div>
 
     <div class="student-filter-panel">
-      <h2>Filtrar alunos</h2>
-      <p>Selecione uma categoria para visualizar rapidamente alunos sem turma, matriculados, com disponibilidade informada ou pré-matriculados.</p>
+      <h2>Filtrar alunos ativos</h2>
+      <p>Selecione uma categoria para visualizar alunos ativos. Alunos arquivados permanecem salvos e podem ser consultados ou desarquivados separadamente.</p>
       <div class="student-filter-controls">
         <label class="student-filter-label" for="studentStatusFilter">Categoria</label>
         <select id="studentStatusFilter" class="student-filter-select" onchange="if (window.applyStudentFilter) window.applyStudentFilter(this.value);">
@@ -280,6 +296,7 @@
         <button id="downloadEnrolledStudentsButton" class="download-students-button" type="button" disabled>
           BAIXAR ALUNOS MATRICULADOS EM EXCEL
         </button>
+        <a class="archived-students-link" href="/alunos-arquivados/">VER ALUNOS ARQUIVADOS</a>
       </div>
     </div>
 
@@ -313,7 +330,8 @@
     </div>
   </div>
 
-  <script src="perfil_dos_alunos.js?v=20260714-1"></script>
+  <script src="perfil_dos_alunos.js?v=20260807-archive-1"></script>
+  <script src="perfil_dos_alunos_archive.js?v=20260807-archive-1"></script>
   <script src="animated_cards.js?v=20260429-8"></script>
 </body>
 </html>
