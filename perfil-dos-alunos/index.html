@@ -9,8 +9,11 @@
     (async function () {
       const response = await fetch('/perfil_dos_alunos.html', { cache: 'no-store' });
       const html = await response.text();
+      const enhancedHtml = html
+        .replace('<head>', '<head>\n  <base href="/">')
+        .replace('</body>', '<script src="/tipo_turma_alunos.js?v=20260807-1"><\/script>\n</body>');
       document.open();
-      document.write(html.replace('<head>', '<head>\n  <base href="/">'));
+      document.write(enhancedHtml);
       document.close();
     })();
   </script>
