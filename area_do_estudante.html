@@ -9,102 +9,19 @@
   <script src="auth.js?v=20260430-3"></script>
   <link rel="stylesheet" href="aula_template.css?v=20260430-3">
   <style>
-    .menu-groups {
-      display: grid;
-      gap: 26px;
-    }
-
-    .menu-group {
-      padding: 18px;
-      border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 22px;
-      background: rgba(255,255,255,0.035);
-    }
-
-    .menu-group .menu-grid {
-      margin: 0;
-    }
-
-    .menu-group.single .menu-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .overdue-modal {
-      position: fixed;
-      inset: 0;
-      z-index: 1000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background: rgba(2, 6, 23, 0.78);
-      backdrop-filter: blur(7px);
-    }
-
-    .overdue-modal[hidden] {
-      display: none;
-    }
-
-    .overdue-dialog {
-      width: min(100%, 520px);
-      padding: 28px;
-      border: 1.5px solid rgba(248,113,113,0.70);
-      border-radius: 22px;
-      background: #2b1015;
-      box-shadow: 0 24px 70px rgba(0,0,0,0.45);
-      text-align: center;
-    }
-
-    .overdue-icon {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 58px;
-      height: 58px;
-      margin: 0 auto 16px;
-      border-radius: 50%;
-      background: rgba(248,113,113,0.16);
-      font-size: 30px;
-    }
-
-    .overdue-title {
-      margin-bottom: 12px;
-      color: #fecaca;
-      font-size: 22px;
-      line-height: 1.35;
-    }
-
-    .overdue-text {
-      color: #f8fafc;
-      font-size: 17px;
-      line-height: 1.6;
-    }
-
-    .overdue-activity-link {
-      display: block;
-      margin: 18px 0;
-      padding: 13px 16px;
-      border: 1px solid rgba(248,113,113,0.55);
-      border-radius: 12px;
-      background: rgba(127,29,29,0.48);
-      color: #fff;
-      font-weight: bold;
-      text-decoration: none;
-    }
-
-    .overdue-activity-link:hover {
-      background: rgba(153,27,27,0.72);
-    }
-
-    .overdue-close {
-      border: 1px solid rgba(255,255,255,0.24);
-      border-radius: 10px;
-      background: transparent;
-      color: #cbd5e1;
-      padding: 9px 16px;
-      font-family: Georgia, serif;
-      cursor: pointer;
-    }
+    .menu-groups { display: grid; gap: 26px; }
+    .menu-group { padding: 18px; border: 1px solid rgba(255,255,255,0.10); border-radius: 22px; background: rgba(255,255,255,0.035); }
+    .menu-group .menu-grid { margin: 0; }
+    .menu-group.single .menu-grid { grid-template-columns: 1fr; }
+    .overdue-modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(2, 6, 23, 0.78); backdrop-filter: blur(7px); }
+    .overdue-modal[hidden] { display: none; }
+    .overdue-dialog { width: min(100%, 520px); padding: 28px; border: 1.5px solid rgba(248,113,113,0.70); border-radius: 22px; background: #2b1015; box-shadow: 0 24px 70px rgba(0,0,0,0.45); text-align: center; }
+    .overdue-icon { display: flex; align-items: center; justify-content: center; width: 58px; height: 58px; margin: 0 auto 16px; border-radius: 50%; background: rgba(248,113,113,0.16); font-size: 30px; }
+    .overdue-title { margin-bottom: 12px; color: #fecaca; font-size: 22px; line-height: 1.35; }
+    .overdue-text { color: #f8fafc; font-size: 17px; line-height: 1.6; }
+    .overdue-activity-link { display: block; margin: 18px 0; padding: 13px 16px; border: 1px solid rgba(248,113,113,0.55); border-radius: 12px; background: rgba(127,29,29,0.48); color: #fff; font-weight: bold; text-decoration: none; }
+    .overdue-activity-link:hover { background: rgba(153,27,27,0.72); }
+    .overdue-close { border: 1px solid rgba(255,255,255,0.24); border-radius: 10px; background: transparent; color: #cbd5e1; padding: 9px 16px; font-family: Georgia, serif; cursor: pointer; }
   </style>
 </head>
 <body class="auth-checking">
@@ -125,6 +42,7 @@
     <div class="menu-groups">
       <section class="menu-group" aria-label="Acompanhamento do aluno">
         <div class="menu-grid">
+          <a class="menu-button" href="/minha-semana/"><span><span class="icon">📅</span>MINHA SEMANA</span><span class="arrow">›</span></a>
           <a class="menu-button" href="meu_progresso.html"><span><span class="icon">📊</span>MEU PROGRESSO</span><span class="arrow">›</span></a>
           <a class="menu-button" href="/minha-turma/"><span><span class="icon">👥</span>MINHA TURMA</span><span class="arrow">›</span></a>
           <a class="menu-button" href="/frequencia/"><span><span class="icon">✅</span>FREQUÊNCIA</span><span class="arrow">›</span></a>
