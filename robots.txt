@@ -1,0 +1,32 @@
+User-agent: *
+Allow: /
+
+Disallow: /professor/
+Disallow: /professor.html
+Disallow: /login/
+Disallow: /login.html
+Disallow: /area-do-estudante/
+Disallow: /area_do_estudante.html
+Disallow: /perfil/
+Disallow: /perfil.html
+Disallow: /minha-turma/
+Disallow: /minha_turma.html
+Disallow: /frequencia/
+Disallow: /frequencia_aluno.html
+Disallow: /reposicoes/
+Disallow: /perfil-dos-alunos/
+Disallow: /perfil_dos_alunos.html
+Disallow: /editar-aluno/
+Disallow: /acessos-dos-alunos/
+Disallow: /acessos_dos_alunos.html
+Disallow: /mensalidades/
+Disallow: /turmas/
+Disallow: /reposicoes-admin/
+Disallow: /reposicoes_admin.html
+Disallow: /criar-exercicio/
+Disallow: /exercicios-dos-alunos/
+Disallow: /relatorios/
+Disallow: /radar-de-alunos/
+Disallow: /alunos-arquivados/
+
+Sitemap: https://teacherflavius.com/sitemap.xml
