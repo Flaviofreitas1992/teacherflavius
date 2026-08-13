@@ -271,7 +271,8 @@ Ordem de dependência para uma instalação nova:
 6. Instale os complementos de turma:
    - `supabase_aulas_gravadas.sql`;
    - `supabase_ordem_turmas.sql`;
-   - `supabase_student_tags.sql`.
+   - `supabase_student_tags.sql`;
+   - `supabase_limite_excepcional_quinta_21h.sql`.
 7. Instale o registro de lições:
    - `supabase_licoes_turma.sql`;
    - `supabase_licoes_pre_matriculas_fix.sql`;

@@ -105,6 +105,10 @@ function getClassStudents() {
   });
 }
 
+function getCurrentClassCapacity() {
+  return Number(currentClassNumber) === 73 ? 5 : 4;
+}
+
 function getAvailableStudents() {
   return allStudents.filter(function (student) {
     return !classStudentIds.has(getStudentKey(student));
@@ -246,6 +250,18 @@ async function addSelectedStudentsToClass() {
     return;
   }
 
+  const remainingSpots = getCurrentClassCapacity() - getClassStudents().length;
+  if (remainingSpots <= 0) {
+    message.className = "error";
+    message.textContent = "Esta turma já atingiu o limite máximo de " + getCurrentClassCapacity() + " alunos.";
+    return;
+  }
+  if (selected.length > remainingSpots) {
+    message.className = "error";
+    message.textContent = "Selecione no máximo " + remainingSpots + (remainingSpots === 1 ? " aluno. Há somente uma vaga disponível." : " alunos. Esse é o número de vagas disponíveis.");
+    return;
+  }
+
   button.disabled = true;
   button.textContent = "ADICIONANDO...";
   message.className = "empty";
@@ -265,7 +281,7 @@ async function addSelectedStudentsToClass() {
     closeStudentsModal();
   } catch (error) {
     message.className = "error";
-    message.textContent = "Não foi possível adicionar os alunos: " + (error.message || "erro desconhecido") + ". Execute supabase_pre_matriculas_turmas.sql no Supabase.";
+    message.textContent = "Não foi possível adicionar os alunos: " + (error.message || "erro desconhecido") + ".";
   } finally {
     button.disabled = false;
     button.textContent = "ADICIONAR ALUNOS SELECIONADOS";
@@ -335,6 +351,13 @@ function renderAvailableStudentsModal() {
   const list = document.getElementById("availableStudentsList");
   const message = document.getElementById("modalStudentsMessage");
   if (!list) return;
+  const remainingSpots = getCurrentClassCapacity() - getClassStudents().length;
+  if (remainingSpots <= 0) {
+    list.className = "empty";
+    list.textContent = "Esta turma já atingiu o limite máximo de " + getCurrentClassCapacity() + " alunos.";
+    if (message) message.textContent = "";
+    return;
+  }
   const availableStudents = getAvailableStudents().filter(function (student) {
     return studentMatchesSearch(student, modalSearchTerm);
   });
@@ -348,7 +371,7 @@ function renderAvailableStudentsModal() {
   list.innerHTML = availableStudents.map(renderModalStudentOption).join("");
   if (message) {
     message.className = "empty";
-    message.textContent = availableStudents.length + " aluno(s) disponível(is).";
+    message.textContent = availableStudents.length + " aluno(s) disponível(is). Restam " + remainingSpots + (remainingSpots === 1 ? " vaga nesta turma." : " vagas nesta turma.");
   }
 }
 
@@ -413,6 +436,12 @@ function renderLists() {
   } else {
     classList.className = "";
     classList.innerHTML = classStudents.map(function (student) { return renderStudentCard(student, "remove"); }).join("");
+  }
+  const addButton = document.getElementById("openStudentsModalButton");
+  if (addButton) {
+    const isFull = classStudents.length >= getCurrentClassCapacity();
+    addButton.disabled = isFull;
+    addButton.title = isFull ? "Turma com limite máximo de alunos atingido" : "Adicionar alunos à turma";
   }
   renderAttendanceStudents();
   renderAvailableStudentsModal();
