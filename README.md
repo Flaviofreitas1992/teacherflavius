@@ -195,6 +195,7 @@ Detalhes: [CONFIGURAR_EMAIL_MATRICULAS.md](CONFIGURAR_EMAIL_MATRICULAS.md) e
 | Arquivo ou diretório | Responsabilidade |
 | --- | --- |
 | `index.html` | Entrada pública do site |
+| `site_footer.js` | Rodapé institucional compartilhado entre todas as páginas |
 | `auth.js` | Autenticação, matrícula, perfil e resultados |
 | `supabase_config.js` | URL e chave pública do Supabase |
 | `professor.html` / `area_do_estudante.html` | Menus principais |
