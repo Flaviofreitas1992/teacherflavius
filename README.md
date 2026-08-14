@@ -70,6 +70,7 @@ na raiz são mantidos por compatibilidade.
 | `/perfil/` | Dados pessoais e histórico de atividades |
 | `/minha-turma/` | Turma, videoaula, material, gravações e grupo |
 | `/reposicoes/` | Consulta, agendamento e cancelamento de reposições |
+| `/pagamento/` | Pagamento de mensalidades com Pix ou cartão de crédito |
 | `/frequencia/` | Histórico de lições e frequência |
 | `/exercicios-diarios/` | Portal de exercícios publicados |
 | `/roteiro-de-estudos/` | Roteiro e progresso das lições |
@@ -160,8 +161,13 @@ Detalhes: [CONFIGURAR_REPOSICOES.md](CONFIGURAR_REPOSICOES.md).
 - definição e identificação do valor individual diretamente em `/perfil-dos-alunos/`;
 - geração das mensalidades do mês;
 - registro e estorno de pagamento;
+- pagamento pelo aluno com Pix ou cartão de crédito em `/pagamento/`;
+- faixa global e pop-up para cobranças em aberto;
+- confirmação automática por Webhook do Mercado Pago;
 - histórico de eventos financeiros;
-- acesso restrito ao professor.
+- administração restrita ao professor e consulta individual pelo aluno.
+
+Configuração: [CONFIGURAR_MERCADO_PAGO.md](CONFIGURAR_MERCADO_PAGO.md).
 
 ### Acessos dos alunos
 
@@ -177,16 +183,19 @@ Os registros são restritos ao professor e mantidos por no máximo 90 dias.
 
 ### E-mails transacionais
 
-Há duas Edge Functions versionadas:
+As Edge Functions relacionadas a notificações e pagamentos incluem:
 
 | Função | Origem | Finalidade |
 | --- | --- | --- |
 | `notify-new-enrollment` | Inserção em `enrollment_email_notifications` | Avisar o professor sobre uma nova matrícula |
 | `notify-makeup-booking` | Inserção em `makeup_class_email_notifications` | Confirmar agendamento ou cancelamento de reposição |
+| `create-mercado-pago-payment` | Aluno autenticado | Criar Pix ou pagamento por cartão com valor validado no banco |
+| `mercado-pago-webhook` | Webhook assinado do Mercado Pago | Atualizar, confirmar ou reverter o pagamento da mensalidade |
 
-As duas são chamadas por Database Webhooks. Elas são publicadas com validação JWT
-desativada porque a origem é o banco, mas exigem o cabeçalho privado
-`x-webhook-secret`.
+As funções de e-mail são chamadas por Database Webhooks e exigem o cabeçalho
+privado `x-webhook-secret`. A criação de pagamentos exige JWT do aluno. O
+webhook do Mercado Pago não recebe JWT do Supabase e valida a assinatura HMAC
+`x-signature` antes de consultar e aplicar qualquer pagamento.
 
 Detalhes: [CONFIGURAR_EMAIL_MATRICULAS.md](CONFIGURAR_EMAIL_MATRICULAS.md) e
 [CONFIGURAR_REPOSICOES.md](CONFIGURAR_REPOSICOES.md).
@@ -197,12 +206,14 @@ Detalhes: [CONFIGURAR_EMAIL_MATRICULAS.md](CONFIGURAR_EMAIL_MATRICULAS.md) e
 | --- | --- |
 | `index.html` | Entrada pública do site |
 | `site_footer.js` | Rodapé institucional compartilhado entre todas as páginas |
+| `student_payment_notice.js` | Faixa e pop-up globais de mensalidade pendente |
 | `auth.js` | Autenticação, matrícula, perfil e resultados |
 | `supabase_config.js` | URL e chave pública do Supabase |
 | `professor.html` / `area_do_estudante.html` | Menus principais |
 | `turmas.js` / `turma.js` / `minha_turma.js` | Gestão e visualização das turmas |
 | `reposicoes_admin.js` / `reposicoes.js` | Agenda de reposições |
 | `mensalidades.js` | Controle financeiro |
+| `pagamento/` | Checkout do aluno com Mercado Pago Checkout Bricks |
 | `perfil_dos_alunos.js` | Administração de alunos |
 | `acessos_dos_alunos.js` | Relatório de acessos |
 | `student_access_tracker.js` | Registro de páginas acessadas |
@@ -336,7 +347,14 @@ Publicação:
 ```bash
 npx supabase functions deploy notify-new-enrollment --no-verify-jwt
 npx supabase functions deploy notify-makeup-booking --no-verify-jwt
+npx supabase functions deploy create-mercado-pago-payment
+npx supabase functions deploy mercado-pago-webhook --no-verify-jwt
 ```
+
+Mercado Pago exige os Secrets `MERCADO_PAGO_PUBLIC_KEY`,
+`MERCADO_PAGO_ACCESS_TOKEN`, `MERCADO_PAGO_WEBHOOK_SECRET` e
+`SITE_URL=https://teacherflavius.com`. Veja o procedimento completo em
+[CONFIGURAR_MERCADO_PAGO.md](CONFIGURAR_MERCADO_PAGO.md).
 
 Database Webhooks:
 
@@ -430,6 +448,7 @@ os carregam para reduzir problemas de cache no navegador.
 - frequência e roteiro;
 - conclusão de exercícios;
 - agendamento e cancelamento de reposição;
+- aviso de mensalidade, pagamento por Pix e cartão e confirmação automática;
 - logout.
 
 ### Professor
@@ -450,6 +469,7 @@ os carregam para reduzir problemas de cache no navegador.
 - Database Webhooks;
 - logs das Edge Functions;
 - entrega no Resend;
+- criação de pagamento e assinatura do Webhook do Mercado Pago;
 - Security e Performance Advisors do Supabase.
 
 Não existe atualmente uma suíte automatizada de testes. Mudanças devem passar
@@ -465,6 +485,8 @@ pelos testes manuais dos módulos afetados antes e depois da publicação.
 | Erro de chave duplicada ao trocar turma | Execute `supabase_corrigir_troca_de_turma.sql` |
 | E-mail permanece `pending` | Verifique webhook, URL, segredo, deploy e logs da Edge Function |
 | E-mail fica `failed` | Consulte `last_error` e os logs do Resend/Edge Function |
+| Pagamento informa que o Mercado Pago não está configurado | Confirme os quatro Secrets descritos em `CONFIGURAR_MERCADO_PAGO.md` |
+| Pagamento aprovado continua pendente | Confira o Webhook de produção, a assinatura secreta e os logs de `mercado-pago-webhook` |
 | Reposição não aparece | Confirme data futura, vaga, turma ativa e link válido da videoaula |
 | Alteração de JS/CSS não aparece | Atualize o `?v=` e limpe o cache |
 | Rota amigável retorna 404 | Confirme o diretório com `index.html`, configuração do Pages e `CNAME` |
@@ -475,6 +497,7 @@ pelos testes manuais dos módulos afetados antes e depois da publicação.
 - [Segurança do Supabase](SUPABASE_SEGURANCA.md)
 - [Reposições](CONFIGURAR_REPOSICOES.md)
 - [E-mail de matrícula](CONFIGURAR_EMAIL_MATRICULAS.md)
+- [Pagamentos com Mercado Pago](CONFIGURAR_MERCADO_PAGO.md)
 
 ## Público-alvo
 
