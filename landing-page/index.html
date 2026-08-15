@@ -380,10 +380,23 @@
       line-height: 1;
     }
 
-    .trial-note {
-      margin: 20px 0 0;
-      color: rgba(255, 255, 255, 0.8);
-      font-size: 0.95rem;
+    .cta-options {
+      display: grid;
+      max-width: 780px;
+      margin: 0 auto;
+      gap: 32px;
+    }
+
+    .cta-option + .cta-option {
+      padding-top: 32px;
+      border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .cta-copy {
+      margin: 0 auto 20px;
+      color: rgba(255, 255, 255, 0.86);
+      font-size: clamp(1rem, 2.2vw, 1.15rem);
+      line-height: 1.6;
     }
 
     .video-section {
@@ -580,18 +593,37 @@
     </section>
 
     <section class="cta-section" aria-label="Agendamento da aula experimental">
-      <a
-        class="whatsapp-button"
-        href="https://wa.me/5534998349756?text=Ol%C3%A1%2C%20gostaria%20de%20marcar%20uma%20aula%20experimental."
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Marcar aula experimental gratuita pelo WhatsApp"
-      >
-        <span class="whatsapp-icon" aria-hidden="true">💬</span>
-        <span>MARCAR AULA EXPERIMENTAL GRATUITA</span>
-      </a>
+      <div class="cta-options">
+        <div class="cta-option">
+          <p class="cta-copy">Se você assistiu o vídeo da aula experimental e gostou do método, mande uma mensagem no WhatsApp para você escolher seu horário.</p>
 
-      <p class="trial-note">Conheça a dinâmica da aula antes de se matricular.</p>
+          <a
+            class="whatsapp-button"
+            href="https://wa.me/5534998349756?text=Ol%C3%A1%2C%20assisti%20o%20v%C3%ADdeo%20da%20aula%20experimental%20e%20gostaria%20de%20escolher%20um%20hor%C3%A1rio."
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Escolher meu horário pelo WhatsApp"
+          >
+            <span class="whatsapp-icon" aria-hidden="true">💬</span>
+            <span>ESCOLHER MEU HORÁRIO</span>
+          </a>
+        </div>
+
+        <div class="cta-option">
+          <p class="cta-copy">Se você não assistiu o vídeo da aula experimental gratuita e quiser marcar uma aula experimental ao vivo, clique no botão abaixo.</p>
+
+          <a
+            class="whatsapp-button"
+            href="https://wa.me/5534998349756?text=Ol%C3%A1%2C%20gostaria%20de%20marcar%20uma%20aula%20experimental."
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Marcar aula experimental gratuita pelo WhatsApp"
+          >
+            <span class="whatsapp-icon" aria-hidden="true">💬</span>
+            <span>MARCAR AULA EXPERIMENTAL GRATUITA</span>
+          </a>
+        </div>
+      </div>
     </section>
   </main>
 
