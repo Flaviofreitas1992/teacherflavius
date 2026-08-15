@@ -8,8 +8,8 @@ Site oficial e portal acadêmico do Teacher Flávio, disponível em
 O projeto deixou de ser apenas uma coleção de atividades estáticas. Atualmente,
 ele reúne matrícula, autenticação, áreas do aluno e do professor, gestão de
 turmas, registro de lições, frequência, exercícios, mensalidades, reposições,
-aulas de gramática, notificações por e-mail
-e acompanhamento de acessos.
+aulas de gramática, pagamentos online, notificações por e-mail, rodapé
+institucional compartilhado e acompanhamento de acessos.
 
 ## Visão geral
 
@@ -30,8 +30,11 @@ flowchart TB
   Pages["GitHub Pages<br>teacherflavius.com"] --> Browser["HTML, CSS e JavaScript<br>no navegador"]
   Browser --> Auth["Supabase Auth"]
   Browser --> Database["PostgreSQL<br>RLS e RPCs"]
+  Browser --> MercadoPagoJS["Mercado Pago.js v2<br>Checkout Bricks"]
   Database --> Functions["Database Webhooks<br>Edge Functions"]
   Functions --> Resend["Resend<br>e-mails transacionais"]
+  Functions -->|"Criação e consulta"| MercadoPagoAPI["Mercado Pago<br>Payments API"]
+  MercadoPagoAPI -->|"Webhook assinado"| Functions
 ```
 
 ## Tecnologias
@@ -47,6 +50,7 @@ flowchart TB
 | Autorização | Row Level Security (RLS) e RPCs PostgreSQL |
 | Funções de servidor | Supabase Edge Functions em TypeScript/Deno |
 | E-mail | Resend |
+| Pagamentos | Mercado Pago Checkout Bricks e Payments API (`/v1/payments`) |
 
 ## Rotas principais
 
@@ -167,6 +171,11 @@ Detalhes: [CONFIGURAR_REPOSICOES.md](CONFIGURAR_REPOSICOES.md).
 - histórico de eventos financeiros;
 - administração restrita ao professor e consulta individual pelo aluno.
 
+A integração atual usa **Checkout Bricks com a Payments API**, por meio do
+endpoint `/v1/payments`. Ela não usa a Orders API. Ao criar a aplicação no
+Mercado Pago, escolha Checkout Transparente/Checkout Bricks e a opção
+**Payments API (Legacy)** para manter compatibilidade com o backend existente.
+
 Configuração: [CONFIGURAR_MERCADO_PAGO.md](CONFIGURAR_MERCADO_PAGO.md).
 
 ### Acessos dos alunos
@@ -193,9 +202,10 @@ As Edge Functions relacionadas a notificações e pagamentos incluem:
 | `mercado-pago-webhook` | Webhook assinado do Mercado Pago | Atualizar, confirmar ou reverter o pagamento da mensalidade |
 
 As funções de e-mail são chamadas por Database Webhooks e exigem o cabeçalho
-privado `x-webhook-secret`. A criação de pagamentos exige JWT do aluno. O
-webhook do Mercado Pago não recebe JWT do Supabase e valida a assinatura HMAC
-`x-signature` antes de consultar e aplicar qualquer pagamento.
+privado `x-webhook-secret`. A criação de pagamentos exige JWT do aluno e usa a
+Payments API do Mercado Pago. O webhook do Mercado Pago não recebe JWT do
+Supabase e valida a assinatura HMAC `x-signature` antes de consultar e aplicar
+qualquer pagamento.
 
 Detalhes: [CONFIGURAR_EMAIL_MATRICULAS.md](CONFIGURAR_EMAIL_MATRICULAS.md) e
 [CONFIGURAR_REPOSICOES.md](CONFIGURAR_REPOSICOES.md).
@@ -356,6 +366,12 @@ Mercado Pago exige os Secrets `MERCADO_PAGO_PUBLIC_KEY`,
 `SITE_URL=https://teacherflavius.com`. Veja o procedimento completo em
 [CONFIGURAR_MERCADO_PAGO.md](CONFIGURAR_MERCADO_PAGO.md).
 
+`MERCADO_PAGO_PUBLIC_KEY` e `MERCADO_PAGO_ACCESS_TOKEN` devem pertencer à mesma
+aplicação e ao mesmo ambiente. Para produção, ative as credenciais produtivas,
+cadastre `https://teacherflavius.com` como site e mantenha uma chave Pix ativa
+na conta vendedora. Não use credenciais de uma aplicação configurada somente
+para Orders API com a função atual.
+
 Database Webhooks:
 
 | Nome | Tabela | Evento | URL |
@@ -369,6 +385,24 @@ Inclua em ambos:
 Content-Type: application/json
 x-webhook-secret: mesmo valor de ENROLLMENT_WEBHOOK_SECRET
 ```
+
+### 4. Testar pagamentos
+
+1. Defina um valor de mensalidade para um aluno de teste.
+2. Entre na conta desse aluno e abra `/pagamento/`.
+3. Escolha Pix e confirme que o Mercado Pago gera o QR Code e o código copia e
+   cola.
+4. Confira em `tuition_payment_attempts` se o registro recebeu
+   `payment_method = pix`, um `provider_payment_id` e o status
+   `pending_waiting_transfer`.
+5. Para validar o fluxo completo, use uma mensalidade de valor reduzido, pague
+   o Pix e confirme a transição para `approved`, o registro da data de pagamento
+   e a remoção dos avisos de cobrança.
+
+Com credenciais de produção, o QR Code é **real** (`live_mode = true`). Gerar o
+Pix não movimenta dinheiro, mas pagá-lo realiza uma transferência verdadeira.
+Não pague uma cobrança de teste com valor integral apenas para validar a criação
+do código.
 
 ## Modelo de segurança
 
@@ -470,6 +504,7 @@ os carregam para reduzir problemas de cache no navegador.
 - logs das Edge Functions;
 - entrega no Resend;
 - criação de pagamento e assinatura do Webhook do Mercado Pago;
+- transição de Pix de `pending_waiting_transfer` para `approved` após pagamento;
 - Security e Performance Advisors do Supabase.
 
 Não existe atualmente uma suíte automatizada de testes. Mudanças devem passar
@@ -486,6 +521,8 @@ pelos testes manuais dos módulos afetados antes e depois da publicação.
 | E-mail permanece `pending` | Verifique webhook, URL, segredo, deploy e logs da Edge Function |
 | E-mail fica `failed` | Consulte `last_error` e os logs do Resend/Edge Function |
 | Pagamento informa que o Mercado Pago não está configurado | Confirme os quatro Secrets descritos em `CONFIGURAR_MERCADO_PAGO.md` |
+| Mercado Pago retorna `401 unauthorized` | Confirme que o Access Token é da aplicação correta, que Public Key e Access Token são do mesmo ambiente e que a aplicação foi criada para Payments API, não somente Orders API |
+| Pix está em `pending_waiting_transfer` | O código foi criado corretamente e aguarda a transferência; não marque a mensalidade como paga antes do Webhook confirmar `approved` |
 | Pagamento aprovado continua pendente | Confira o Webhook de produção, a assinatura secreta e os logs de `mercado-pago-webhook` |
 | Reposição não aparece | Confirme data futura, vaga, turma ativa e link válido da videoaula |
 | Alteração de JS/CSS não aparece | Atualize o `?v=` e limpe o cache |
