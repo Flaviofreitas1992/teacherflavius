@@ -232,7 +232,7 @@
       '  <div class="tf-site-footer__grid">',
       '    <section class="tf-site-footer__brand" aria-labelledby="tf-footer-title">',
       '      <h2 class="tf-site-footer__title" id="tf-footer-title">Teacher Flávio</h2>',
-      '      <p class="tf-site-footer__description">Aulas de inglês online e ao vivo.</p>',
+      '      <p class="tf-site-footer__description">Aulas ao vivo</p>',
       '      <div class="tf-site-footer__credentials" aria-label="Credenciais profissionais">',
       '        <div class="tf-site-footer__credential"><strong>15+</strong><span>anos ensinando idiomas</span></div>',
       '        <div class="tf-site-footer__credential"><strong>PhD</strong><span>Doutor em Linguística</span></div>',
