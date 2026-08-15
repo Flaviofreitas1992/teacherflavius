@@ -157,6 +157,7 @@ Detalhes: [CONFIGURAR_REPOSICOES.md](CONFIGURAR_REPOSICOES.md).
 ### Mensalidades
 
 - valor, vencimento, situação e observações por aluno;
+- definição e identificação do valor individual diretamente em `/perfil-dos-alunos/`;
 - geração das mensalidades do mês;
 - registro e estorno de pagamento;
 - histórico de eventos financeiros;
