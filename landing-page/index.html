@@ -391,8 +391,17 @@
 
     .video-section h2 {
       max-width: 820px;
-      margin: 0 auto clamp(26px, 4vw, 38px);
+      margin: 0 auto 10px;
       font-size: clamp(2rem, 4.8vw, 3.7rem);
+    }
+
+    .video-subtitle {
+      max-width: 680px;
+      margin: 0 auto clamp(26px, 4vw, 38px);
+      color: var(--muted);
+      font-size: clamp(1rem, 2.3vw, 1.3rem);
+      font-weight: 600;
+      line-height: 1.5;
     }
 
     .video-frame {
@@ -545,7 +554,8 @@
     </section>
 
     <section class="video-section" aria-labelledby="free-class-title">
-      <h2 id="free-class-title">Assista uma aula gratuita e entenda como o curso funciona.</h2>
+      <h2 id="free-class-title">Assista uma aula gratuita!</h2>
+      <p class="video-subtitle">Entenda como o curso funciona.</p>
 
       <div class="video-frame">
         <iframe
