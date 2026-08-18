@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Treino de Pronúncia - Teacher Flávio</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase_config.js?v=20260430-3"></script>
+  <script src="/auth.js?v=20260430-3"></script>
+  <style>
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;background:linear-gradient(135deg,#0f172a,#1e1b4b 50%,#0f172a);color:#f8fafc;font-family:Georgia,serif;padding:28px 16px 48px}.container{max-width:900px;margin:auto}.top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:24px}.btn,button{border:1px solid rgba(129,140,248,.45);background:rgba(255,255,255,.05);color:#c7d2fe;padding:11px 16px;border-radius:12px;font:inherit;cursor:pointer;text-decoration:none}.primary{background:linear-gradient(90deg,#6366f1,#8b5cf6);color:#fff;border:0;font-weight:bold}.danger{border-color:rgba(248,113,113,.55);color:#fecaca}.card{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);border-radius:20px;padding:22px;margin-bottom:18px}.badge{display:inline-block;background:linear-gradient(90deg,#818cf8,#a78bfa);padding:5px 14px;border-radius:20px;font:11px monospace;letter-spacing:2px}.header{text-align:center;margin-bottom:24px}h1{font-size:34px;margin:12px 0 8px}.muted{color:#94a3b8;line-height:1.55}.reading{font-size:22px;line-height:1.8;color:#f8fafc}.controls{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.status{margin-top:14px;color:#cbd5e1;min-height:24px}.timer{font:700 28px monospace;color:#c4b5fd}.scores{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:18px}.score{padding:16px;border-radius:16px;background:rgba(129,140,248,.09);text-align:center}.score strong{display:block;font-size:28px}.words{display:flex;flex-wrap:wrap;gap:7px;line-height:2.2}.word{padding:4px 8px;border-radius:8px;background:rgba(255,255,255,.06)}.word.low{background:rgba(248,113,113,.18);color:#fecaca}.word.mid{background:rgba(250,204,21,.15);color:#fde68a}.word.good{background:rgba(52,211,153,.14);color:#a7f3d0}select{width:100%;padding:12px;border-radius:12px;background:#111827;color:#fff;border:1px solid rgba(255,255,255,.15);margin-top:8px}audio{width:100%;margin-top:14px} [hidden]{display:none!important}
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="top"><a class="btn" href="/area_do_estudante.html">← ÁREA DO ESTUDANTE</a><button onclick="Auth.signOut()">SAIR</button></div>
+  <div class="header"><span class="badge">TEACHER FLÁVIO</span><h1>Treino de Pronúncia</h1><p class="muted">Leia o texto em voz alta. Sua gravação será analisada automaticamente e ficará disponível para revisão do professor.</p></div>
+
+  <div class="card">
+    <label for="assignment"><strong>Texto para leitura</strong></label>
+    <select id="assignment"><option>Carregando atividades...</option></select>
+  </div>
+
+  <div class="card">
+    <div id="readingText" class="reading">Carregando...</div>
+    <div class="controls">
+      <button id="startBtn" class="primary" type="button">🎙️ COMEÇAR GRAVAÇÃO</button>
+      <button id="stopBtn" class="danger" type="button" disabled>■ PARAR</button>
+      <span id="timer" class="timer">00:00</span>
+    </div>
+    <audio id="preview" controls hidden></audio>
+    <div class="controls"><button id="sendBtn" class="primary" type="button" hidden>ENVIAR PARA CORREÇÃO</button><button id="redoBtn" type="button" hidden>GRAVAR NOVAMENTE</button></div>
+    <div id="status" class="status"></div>
+  </div>
+
+  <div id="resultCard" class="card" hidden>
+    <h2>Resultado</h2>
+    <div id="scores" class="scores"></div>
+    <h3>Palavras</h3><div id="words" class="words"></div>
+    <p class="muted">Verde: boa precisão · amarelo: atenção · vermelho: precisa praticar.</p>
+  </div>
+</div>
+<script>
+const assignmentSelect=document.getElementById('assignment'),readingText=document.getElementById('readingText'),startBtn=document.getElementById('startBtn'),stopBtn=document.getElementById('stopBtn'),sendBtn=document.getElementById('sendBtn'),redoBtn=document.getElementById('redoBtn'),preview=document.getElementById('preview'),statusEl=document.getElementById('status'),timerEl=document.getElementById('timer');
+let client,user,assignments=[],audioContext,source,processor,stream,chunks=[],startedAt,timerHandle,wavBlob,durationSeconds=0;
+function setStatus(t){statusEl.textContent=t||''}
+function fmt(n){return Number.isFinite(Number(n))?Math.round(Number(n)):'—'}
+function downsample(buffer,inRate,outRate){if(outRate===inRate)return buffer;const ratio=inRate/outRate,len=Math.round(buffer.length/ratio),out=new Float32Array(len);let pos=0;for(let i=0;i<len;i++){const next=Math.round((i+1)*ratio);let sum=0,count=0;for(let j=pos;j<next&&j<buffer.length;j++){sum+=buffer[j];count++}out[i]=count?sum/count:0;pos=next}return out}
+function encodeWav(samples,rate){const ab=new ArrayBuffer(44+samples.length*2),v=new DataView(ab);const s=(o,t)=>{for(let i=0;i<t.length;i++)v.setUint8(o+i,t.charCodeAt(i))};s(0,'RIFF');v.setUint32(4,36+samples.length*2,true);s(8,'WAVE');s(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,rate,true);v.setUint32(28,rate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);s(36,'data');v.setUint32(40,samples.length*2,true);let o=44;for(let i=0;i<samples.length;i++,o+=2){const x=Math.max(-1,Math.min(1,samples[i]));v.setInt16(o,x<0?x*32768:x*32767,true)}return new Blob([v],{type:'audio/wav'})}
+async function loadAssignments(){user=await Auth.requireAuth();if(!user)return;client=window.teacherFlavioSupabase;const {data,error}=await client.from('pronunciation_assignments').select('id,title,reference_text,locale,max_recording_seconds').eq('is_active',true).order('created_at',{ascending:false});if(error){setStatus('Não foi possível carregar as atividades.');return}assignments=data||[];assignmentSelect.innerHTML=assignments.length?assignments.map((a,i)=>`<option value="${i}">${a.title}</option>`).join(''):'<option>Nenhuma atividade disponível</option>';showAssignment()}
+function showAssignment(){const a=assignments[Number(assignmentSelect.value)||0];readingText.textContent=a?a.reference_text:'Nenhum texto disponível.'}
+assignmentSelect.addEventListener('change',()=>{resetRecording();showAssignment()});
+startBtn.addEventListener('click',async()=>{if(!assignments.length)return;try{stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:false,noiseSuppression:false,autoGainControl:false}});audioContext=new (window.AudioContext||window.webkitAudioContext)();source=audioContext.createMediaStreamSource(stream);processor=audioContext.createScriptProcessor(4096,1,1);chunks=[];processor.onaudioprocess=e=>chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));source.connect(processor);processor.connect(audioContext.destination);startedAt=Date.now();timerHandle=setInterval(()=>{const s=Math.floor((Date.now()-startedAt)/1000);timerEl.textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');const max=assignments[Number(assignmentSelect.value)||0].max_recording_seconds||300;if(s>=max)stopRecording()},250);startBtn.disabled=true;stopBtn.disabled=false;assignmentSelect.disabled=true;setStatus('Gravando...') }catch(e){setStatus('Não foi possível acessar o microfone. Verifique a permissão do navegador.')}});
+async function stopRecording(){if(!audioContext)return;clearInterval(timerHandle);durationSeconds=(Date.now()-startedAt)/1000;processor.disconnect();source.disconnect();stream.getTracks().forEach(t=>t.stop());const total=chunks.reduce((n,c)=>n+c.length,0),merged=new Float32Array(total);let o=0;chunks.forEach(c=>{merged.set(c,o);o+=c.length});const pcm=downsample(merged,audioContext.sampleRate,16000);wavBlob=encodeWav(pcm,16000);await audioContext.close();audioContext=null;preview.src=URL.createObjectURL(wavBlob);preview.hidden=false;sendBtn.hidden=false;redoBtn.hidden=false;stopBtn.disabled=true;setStatus('Gravação pronta para envio.')}
+stopBtn.addEventListener('click',stopRecording);redoBtn.addEventListener('click',resetRecording);
+function resetRecording(){if(stream)stream.getTracks().forEach(t=>t.stop());if(timerHandle)clearInterval(timerHandle);wavBlob=null;preview.hidden=true;sendBtn.hidden=true;redoBtn.hidden=true;startBtn.disabled=false;stopBtn.disabled=true;assignmentSelect.disabled=false;timerEl.textContent='00:00';document.getElementById('resultCard').hidden=true;setStatus('')}
+sendBtn.addEventListener('click',async()=>{if(!wavBlob)return;const a=assignments[Number(assignmentSelect.value)||0];sendBtn.disabled=true;setStatus('Analisando sua pronúncia...');try{const {data:{session}}=await client.auth.getSession();const form=new FormData();form.append('audio',wavBlob,'reading.wav');form.append('assignment_id',a.id);form.append('reference_text',a.reference_text);form.append('locale',a.locale||'en-US');form.append('duration_seconds',String(durationSeconds));const r=await fetch(`${window.SUPABASE_CONFIG.url}/functions/v1/pronunciation-assess`,{method:'POST',headers:{Authorization:`Bearer ${session.access_token}`},body:form});const data=await r.json();if(!r.ok)throw new Error(data.error||'Falha na análise.');renderResult(data);setStatus('Análise concluída.');}catch(e){setStatus(e.message||'Não foi possível analisar a gravação.')}finally{sendBtn.disabled=false}});
+function renderResult(d){const rc=document.getElementById('resultCard');rc.hidden=false;document.getElementById('scores').innerHTML=[['Pronúncia',d.pronunciation_score],['Precisão',d.accuracy_score],['Fluência',d.fluency_score],['Completude',d.completeness_score]].map(([l,v])=>`<div class="score"><span>${l}</span><strong>${fmt(v)}</strong></div>`).join('');document.getElementById('words').innerHTML=(d.words||[]).map(w=>{const sc=Number(w.accuracy_score||0),c=sc>=80?'good':sc>=60?'mid':'low';return `<span class="word ${c}" title="${w.error_type||'None'} · ${fmt(sc)}">${w.word}</span>`}).join('');rc.scrollIntoView({behavior:'smooth',block:'start'})}
+loadAssignments();
+</script>
+<script defer src="/site_footer.js?v=20260814-1"></script>
+</body>
+</html>
