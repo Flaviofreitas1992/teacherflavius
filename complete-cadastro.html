@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Complete seu cadastro - Teacher Flávio</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase_config.js?v=20260429-9"></script>
+  <script src="auth.js?v=20260818-google-auth-1"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { min-height: 100vh; background: linear-gradient(135deg,#0f172a 0%,#1e1b4b 50%,#0f172a 100%); display:flex; align-items:center; justify-content:center; padding:32px 16px; font-family:Georgia,serif; color:#f1f5f9; }
+    .box { width:100%; max-width:760px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); border-radius:20px; padding:28px; backdrop-filter:blur(12px); }
+    .header { text-align:center; margin-bottom:24px; }
+    .badge { display:inline-block; background:linear-gradient(90deg,#818cf8,#a78bfa); color:#fff; font-size:11px; font-family:monospace; letter-spacing:3px; padding:4px 14px; border-radius:20px; margin-bottom:12px; }
+    h1 { font-size:32px; margin-bottom:8px; }
+    p { color:#94a3b8; font-size:14px; line-height:1.6; }
+    .intro { margin-top:10px; }
+    label.field-label { display:block; color:#cbd5e1; font-size:13px; margin:10px 0 6px; }
+    input { width:100%; background:rgba(255,255,255,.06); border:1.5px solid rgba(255,255,255,.12); border-radius:12px; padding:13px 14px; color:#f1f5f9; font-size:15px; font-family:Georgia,serif; margin-bottom:8px; }
+    input:focus { outline:none; border-color:#818cf8; }
+    input[readonly] { opacity:.75; cursor:not-allowed; }
+    .field-note { color:#cbd5e1; background:rgba(129,140,248,.08); border:1px solid rgba(129,140,248,.22); border-radius:12px; padding:11px 13px; font-size:13px; line-height:1.5; margin:4px 0 12px; }
+    .availability-block { margin:20px 0 18px; }
+    .availability-title { color:#f1f5f9; font-size:18px; font-weight:bold; margin-bottom:8px; }
+    .availability-help { margin-bottom:14px; }
+    .availability-grid { width:100%; display:grid; grid-template-columns:82px repeat(5,minmax(0,1fr)); gap:8px 6px; align-items:center; }
+    .grid-head { color:#cbd5e1; text-align:center; font-size:13px; font-weight:bold; white-space:nowrap; }
+    .time-label { color:#f1f5f9; font-size:13px; white-space:nowrap; }
+    .slot { display:flex; justify-content:center; align-items:center; min-height:38px; }
+    .slot input { position:absolute; opacity:0; width:1px; height:1px; margin:0; }
+    .slot-box { width:28px; height:28px; border:3px solid rgba(203,213,225,.55); border-radius:7px; background:rgba(255,255,255,.04); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
+    .slot input:checked + .slot-box { background:linear-gradient(135deg,#818cf8,#a78bfa); border-color:#c4b5fd; box-shadow:0 0 0 4px rgba(129,140,248,.16); }
+    .slot input:checked + .slot-box::after { content:"✓"; color:#fff; font-size:18px; font-weight:bold; }
+    button { width:100%; display:inline-flex; justify-content:center; align-items:center; padding:14px; border-radius:12px; border:none; background:linear-gradient(90deg,#818cf8,#a78bfa); color:#fff; font-size:16px; font-weight:bold; cursor:pointer; font-family:Georgia,serif; margin-top:6px; }
+    button:disabled { opacity:.65; cursor:wait; }
+    .message { min-height:20px; color:#fca5a5; font-size:13px; margin:10px 0; line-height:1.5; }
+    .account-note { margin:0 0 18px; padding:12px 14px; border:1px solid rgba(110,231,183,.28); border-radius:12px; background:rgba(110,231,183,.08); color:#d1fae5; font-size:13px; line-height:1.55; }
+    @media (max-width:520px) { body{padding:20px 8px}.box{padding:18px 12px}.availability-grid{grid-template-columns:68px repeat(5,minmax(0,1fr));gap:8px 3px}.grid-head,.time-label{font-size:12px}.slot-box{width:25px;height:25px} }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="header">
+      <div><span class="badge">TEACHER FLÁVIO</span></div>
+      <h1>Complete seu cadastro</h1>
+      <p class="intro">Seu login Google foi criado. Antes de continuar, informe os dados usados no cadastro de estudante.</p>
+    </div>
+
+    <div class="account-note">Você não precisa criar uma senha. Nos próximos acessos, poderá entrar diretamente com sua conta Google.</div>
+
+    <form id="completeProfileForm">
+      <label class="field-label" for="name">Nome completo</label>
+      <input id="name" type="text" autocomplete="name" required />
+
+      <label class="field-label" for="email">E-mail da conta Google</label>
+      <input id="email" type="email" readonly />
+
+      <label class="field-label" for="cpf">CPF</label>
+      <input id="cpf" type="text" inputmode="numeric" maxlength="14" required />
+
+      <label class="field-label" for="whatsapp">WhatsApp</label>
+      <input id="whatsapp" type="tel" inputmode="tel" required />
+
+      <label class="field-label" for="pixKey">Chave PIX</label>
+      <input id="pixKey" type="text" required />
+      <div class="field-note">A chave PIX é usada apenas em situações em que o professor precise fazer reembolso de algum valor.</div>
+
+      <div class="availability-block">
+        <div class="availability-title">Disponibilidade para aulas</div>
+        <p class="availability-help">Marque todos os dias e horários, de segunda a sexta, em que você estará disponível para fazer aulas de inglês.</p>
+        <div class="availability-grid" id="availabilityGrid"></div>
+      </div>
+
+      <div id="message" class="message"></div>
+      <button id="submitButton" type="submit">CONCLUIR CADASTRO</button>
+    </form>
+  </div>
+
+  <script>
+    const availabilityDays = [
+      { key: "seg", label: "Seg", full: "Segunda" },
+      { key: "ter", label: "Ter", full: "Terça" },
+      { key: "qua", label: "Qua", full: "Quarta" },
+      { key: "qui", label: "Qui", full: "Quinta" },
+      { key: "sex", label: "Sex", full: "Sexta" }
+    ];
+    const availabilityHours = [
+      { key: "09", label: "9h - 10h" }, { key: "10", label: "10h - 11h" },
+      { key: "12", label: "12h - 13h" }, { key: "13", label: "13h - 14h" },
+      { key: "15", label: "15h - 16h" }, { key: "17", label: "17h - 18h" },
+      { key: "18", label: "18h - 19h" }, { key: "20", label: "20h - 21h" },
+      { key: "21", label: "21h - 22h" }
+    ];
+
+    function onlyDigits(value) { return String(value || "").replace(/\D/g, ""); }
+    function formatCpf(value) {
+      const digits = onlyDigits(value).slice(0, 11);
+      return digits.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    }
+    function getNextPath() {
+      const params = new URLSearchParams(window.location.search);
+      return Auth.normalizeNextPath(params.get("next"), "/area-do-estudante/");
+    }
+    function buildAvailabilityGrid() {
+      const grid = document.getElementById("availabilityGrid");
+      grid.innerHTML = '<div></div>' + availabilityDays.map(day => `<div class="grid-head">${day.label}</div>`).join("");
+      availabilityHours.forEach(hour => {
+        grid.insertAdjacentHTML("beforeend", `<div class="time-label">${hour.label}</div>`);
+        availabilityDays.forEach(day => {
+          const id = `availability_${day.key}_${hour.key}`;
+          grid.insertAdjacentHTML("beforeend", `<label class="slot" for="${id}" title="${day.full}, ${hour.label}"><input type="checkbox" id="${id}" name="availability" data-day="${day.key}" data-hour="${hour.key}" /><span class="slot-box"></span></label>`);
+        });
+      });
+    }
+    function getAvailability() {
+      const availability = { seg: [], ter: [], qua: [], qui: [], sex: [] };
+      document.querySelectorAll('input[name="availability"]:checked').forEach(input => availability[input.dataset.day].push(input.dataset.hour));
+      return availability;
+    }
+    function setAvailability(availability) {
+      document.querySelectorAll('input[name="availability"]').forEach(input => input.checked = false);
+      availabilityDays.forEach(day => {
+        const hours = Array.isArray(availability && availability[day.key]) ? availability[day.key] : [];
+        hours.forEach(hour => {
+          const input = document.getElementById(`availability_${day.key}_${hour}`);
+          if (input) input.checked = true;
+        });
+      });
+    }
+
+    async function initialize() {
+      const user = await Auth.requireAuth({ skipProfileCheck: true });
+      if (!user) return;
+      const profile = await Auth.ensureProfileForUser(user);
+      if (profile && profile.profile_completed === true) {
+        window.location.replace(getNextPath());
+        return;
+      }
+      document.getElementById("name").value = profile.name || user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name) || "";
+      document.getElementById("email").value = user.email || profile.email || "";
+      document.getElementById("cpf").value = formatCpf(profile.cpf || "");
+      document.getElementById("whatsapp").value = profile.whatsapp || "";
+      document.getElementById("pixKey").value = profile.pix_key || "";
+      setAvailability(profile.availability || {});
+    }
+
+    document.getElementById("cpf").addEventListener("input", function () { this.value = formatCpf(this.value); });
+    document.getElementById("completeProfileForm").addEventListener("submit", async function (event) {
+      event.preventDefault();
+      const message = document.getElementById("message");
+      const button = document.getElementById("submitButton");
+      message.textContent = "";
+      button.disabled = true;
+      button.textContent = "SALVANDO...";
+      try {
+        await Auth.completeProfile({
+          name: document.getElementById("name").value.trim(),
+          cpf: document.getElementById("cpf").value.trim(),
+          whatsapp: document.getElementById("whatsapp").value.trim(),
+          pix_key: document.getElementById("pixKey").value.trim(),
+          availability: getAvailability()
+        });
+        window.location.replace(getNextPath());
+      } catch (error) {
+        message.textContent = error.message || "Não foi possível concluir o cadastro.";
+        button.disabled = false;
+        button.textContent = "CONCLUIR CADASTRO";
+      }
+    });
+
+    buildAvailabilityGrid();
+    initialize();
+  </script>
+  <script defer src="/site_footer.js?v=20260814-1"></script>
+</body>
+</html>
