@@ -13,6 +13,7 @@ Function.
 | `student_payment_notice.js` | Faixa vermelha e pop-up de mensalidade pendente |
 | `create-mercado-pago-payment` | Valida aluno e valor, cria o pagamento e aplica aprovações imediatas |
 | `mercado-pago-webhook` | Valida a assinatura do Mercado Pago e sincroniza mudanças de status |
+| `reconcile-mercado-pago-payments` | Reconsulta pagamentos pendentes quando uma notificação não chega e aplica a confirmação com segurança |
 | `supabase_mercado_pago.sql` | Tentativas, RPC do aluno e processamento financeiro atômico |
 
 O valor enviado ao Mercado Pago sempre vem de `public.monthly_tuition`. Valores
@@ -68,11 +69,17 @@ O `MERCADO_PAGO_WEBHOOK_SECRET` será obtido no próximo passo.
 ```bash
 npx supabase functions deploy create-mercado-pago-payment
 npx supabase functions deploy mercado-pago-webhook --no-verify-jwt
+npx supabase functions deploy reconcile-mercado-pago-payments
 ```
 
 `create-mercado-pago-payment` exige a sessão JWT do aluno. O webhook não recebe
 JWT do Supabase, por isso a verificação da plataforma é desativada; a própria
 função exige e valida a assinatura HMAC do Mercado Pago.
+
+`reconcile-mercado-pago-payments` exige JWT e limita a consulta às cobranças do
+próprio aluno. Um administrador autenticado pode reconciliar as tentativas
+pendentes exibidas no controle de mensalidades. Essa recuperação automática
+consulta sempre o status real na API do Mercado Pago antes de baixar a cobrança.
 
 ## 5. Configurar o Webhook
 

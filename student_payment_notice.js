@@ -169,6 +169,28 @@
       var response = await Auth.getClient().rpc("get_my_pending_tuitions");
       if (response.error) throw response.error;
       var tuitions = Array.isArray(response.data) ? response.data : [];
+      var hasPaymentWaitingForConfirmation = tuitions.some(function (tuition) {
+        return !!tuition.provider_payment_id
+          && ["created", "pending", "authorized", "in_process", "in_mediation"].includes(tuition.attempt_status);
+      });
+
+      if (hasPaymentWaitingForConfirmation) {
+        try {
+          var reconciliation = await Auth.getClient().functions.invoke("reconcile-mercado-pago-payments", {
+            body: {}
+          });
+          if (!reconciliation.error) {
+            response = await Auth.getClient().rpc("get_my_pending_tuitions");
+            if (response.error) throw response.error;
+            tuitions = Array.isArray(response.data) ? response.data : [];
+          }
+        } catch (reconciliationError) {
+          console.warn(
+            "Não foi possível reconciliar o pagamento pendente:",
+            reconciliationError && reconciliationError.message ? reconciliationError.message : reconciliationError
+          );
+        }
+      }
       if (!tuitions.length) return;
 
       installStyles();

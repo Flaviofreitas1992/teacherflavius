@@ -200,6 +200,7 @@ As Edge Functions relacionadas a notificações e pagamentos incluem:
 | `notify-makeup-booking` | Inserção em `makeup_class_email_notifications` | Confirmar agendamento ou cancelamento de reposição |
 | `create-mercado-pago-payment` | Aluno autenticado | Criar Pix ou pagamento por cartão com valor validado no banco |
 | `mercado-pago-webhook` | Webhook assinado do Mercado Pago | Atualizar, confirmar ou reverter o pagamento da mensalidade |
+| `reconcile-mercado-pago-payments` | Aluno ou professor autenticado | Recuperar confirmações quando o webhook estiver atrasado ou ausente |
 
 As funções de e-mail são chamadas por Database Webhooks e exigem o cabeçalho
 privado `x-webhook-secret`. A criação de pagamentos exige JWT do aluno e usa a
@@ -359,6 +360,7 @@ npx supabase functions deploy notify-new-enrollment --no-verify-jwt
 npx supabase functions deploy notify-makeup-booking --no-verify-jwt
 npx supabase functions deploy create-mercado-pago-payment
 npx supabase functions deploy mercado-pago-webhook --no-verify-jwt
+npx supabase functions deploy reconcile-mercado-pago-payments
 ```
 
 Mercado Pago exige os Secrets `MERCADO_PAGO_PUBLIC_KEY`,

@@ -9,7 +9,7 @@
     if (!document.body || document.getElementById(PAYMENT_NOTICE_SCRIPT_ID)) return;
     var script = document.createElement("script");
     script.id = PAYMENT_NOTICE_SCRIPT_ID;
-    script.src = "/student_payment_notice.js?v=20260814-1";
+    script.src = "/student_payment_notice.js?v=20260819-1";
     script.async = true;
     document.body.appendChild(script);
   }

@@ -107,6 +107,14 @@ async function loadPendingTuitions() {
   return pendingTuitions;
 }
 
+async function reconcilePendingPayments(tuitionId) {
+  const response = await Auth.getClient().functions.invoke("reconcile-mercado-pago-payments", {
+    body: tuitionId ? { tuition_id: tuitionId } : {}
+  });
+  if (response.error) throw response.error;
+  return response.data || {};
+}
+
 function renderTuitionList() {
   const list = document.getElementById("tuitionList");
   list.innerHTML = pendingTuitions.map(function (tuition) {
@@ -253,6 +261,7 @@ function showAllPaid(message) {
 
 async function refreshAfterPayment(paidTuitionId) {
   const previousCount = pendingTuitions.length;
+  await reconcilePendingPayments(paidTuitionId);
   await loadPendingTuitions();
   const stillPending = pendingTuitions.some(function (tuition) {
     return String(tuition.tuition_id) === String(paidTuitionId);
@@ -280,7 +289,7 @@ async function refreshAfterPayment(paidTuitionId) {
 
 function startPaymentPolling(tuitionId, attempt) {
   stopPaymentPolling();
-  if (attempt >= 60) {
+  if (attempt >= 24) {
     setPageMessage("O pagamento ainda está aguardando confirmação. Você pode voltar mais tarde; a atualização será automática.", "warning");
     return;
   }
@@ -293,7 +302,7 @@ function startPaymentPolling(tuitionId, attempt) {
       console.warn("Não foi possível atualizar o status da mensalidade:", error);
       startPaymentPolling(tuitionId, attempt + 1);
     }
-  }, 3000);
+  }, 5000);
 }
 
 async function initializePage() {
@@ -313,6 +322,14 @@ async function initializePage() {
 
   try {
     await loadPendingTuitions();
+    if (pendingTuitions.some(function (tuition) { return !!tuition.provider_payment_id; })) {
+      try {
+        await reconcilePendingPayments();
+        await loadPendingTuitions();
+      } catch (error) {
+        console.warn("Não foi possível reconciliar pagamentos pendentes:", error);
+      }
+    }
     if (!pendingTuitions.length) {
       showAllPaid();
       return;
