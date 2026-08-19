@@ -1,6 +1,8 @@
 User-agent: *
 Allow: /
 
+Disallow: /matricula/
+Disallow: /matricula.html
 Disallow: /professor/
 Disallow: /professor.html
 Disallow: /login/
