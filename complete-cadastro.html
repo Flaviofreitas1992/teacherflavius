@@ -56,6 +56,10 @@
       <label class="field-label" for="email">E-mail da conta Google</label>
       <input id="email" type="email" readonly />
 
+      <label class="field-label" for="birthDate">Data de nascimento</label>
+      <input id="birthDate" type="text" inputmode="numeric" autocomplete="bday" maxlength="10" placeholder="DD/MM/AAAA" required />
+      <div class="field-note">Informe a data no formato DD/MM/AAAA.</div>
+
       <label class="field-label" for="cpf">CPF</label>
       <input id="cpf" type="text" inputmode="numeric" maxlength="14" required />
 
@@ -98,6 +102,35 @@
       const digits = onlyDigits(value).slice(0, 11);
       return digits.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
     }
+    function formatBirthDateInput(value) {
+      const digits = onlyDigits(value).slice(0, 8);
+      if (digits.length <= 2) return digits;
+      if (digits.length <= 4) return digits.slice(0, 2) + "/" + digits.slice(2);
+      return digits.slice(0, 2) + "/" + digits.slice(2, 4) + "/" + digits.slice(4);
+    }
+    function formatBirthDateFromIso(value) {
+      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || ""));
+      return match ? match[3] + "/" + match[2] + "/" + match[1] : "";
+    }
+    function parseBirthDate(value) {
+      const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(value || "").trim());
+      if (!match) throw new Error("Informe a data de nascimento no formato DD/MM/AAAA.");
+      const day = Number(match[1]);
+      const month = Number(match[2]);
+      const year = Number(match[3]);
+      if (year < 1900) throw new Error("Informe uma data de nascimento válida.");
+      const date = new Date(Date.UTC(year, month - 1, day));
+      if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
+        throw new Error("Informe uma data de nascimento válida.");
+      }
+      const iso = match[3] + "-" + match[2] + "-" + match[1];
+      const todayParts = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(new Date());
+      const today = {};
+      todayParts.forEach(function (part) { today[part.type] = part.value; });
+      const todayIso = today.year + "-" + today.month + "-" + today.day;
+      if (iso > todayIso) throw new Error("A data de nascimento não pode estar no futuro.");
+      return iso;
+    }
     function getNextPath() {
       const params = new URLSearchParams(window.location.search);
       return Auth.normalizeNextPath(params.get("next"), "/area-do-estudante/");
@@ -139,6 +172,7 @@
       }
       document.getElementById("name").value = profile.name || user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name) || "";
       document.getElementById("email").value = user.email || profile.email || "";
+      document.getElementById("birthDate").value = formatBirthDateFromIso(profile.date_of_birth || "");
       document.getElementById("cpf").value = formatCpf(profile.cpf || "");
       document.getElementById("whatsapp").value = profile.whatsapp || "";
       document.getElementById("pixKey").value = profile.pix_key || "";
@@ -146,6 +180,7 @@
     }
 
     document.getElementById("cpf").addEventListener("input", function () { this.value = formatCpf(this.value); });
+    document.getElementById("birthDate").addEventListener("input", function () { this.value = formatBirthDateInput(this.value); });
     document.getElementById("completeProfileForm").addEventListener("submit", async function (event) {
       event.preventDefault();
       const message = document.getElementById("message");
@@ -154,6 +189,18 @@
       button.disabled = true;
       button.textContent = "SALVANDO...";
       try {
+        const birthDate = parseBirthDate(document.getElementById("birthDate").value);
+        const user = await Auth.getUser();
+        if (!user) throw new Error("Sua sessão expirou. Entre novamente com Google.");
+
+        const birthResponse = await Auth.getClient()
+          .from("profiles")
+          .update({ date_of_birth: birthDate })
+          .eq("id", user.id)
+          .select("date_of_birth")
+          .single();
+        if (birthResponse.error) throw birthResponse.error;
+
         await Auth.completeProfile({
           name: document.getElementById("name").value.trim(),
           cpf: document.getElementById("cpf").value.trim(),
@@ -172,6 +219,6 @@
     buildAvailabilityGrid();
     initialize();
   </script>
-  <script defer src="/site_footer.js?v=20260814-1"></script>
+  <script defer src="/site_footer.js?v=20260819-4"></script>
 </body>
 </html>
