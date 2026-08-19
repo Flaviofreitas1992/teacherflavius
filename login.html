@@ -6,9 +6,10 @@
   <title>Login - Teacher Flávio</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase_config.js?v=20260429-4"></script>
-  <script src="auth.js?v=20260429-4"></script>
+  <script src="auth.js?v=20260819-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
     body { min-height: 100vh; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%); display: flex; align-items: center; justify-content: center; padding: 32px 16px; font-family: Georgia, serif; color: #f1f5f9; }
     .box { width: 100%; max-width: 440px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 28px; backdrop-filter: blur(12px); }
     .header { text-align: center; margin-bottom: 24px; }
@@ -17,14 +18,20 @@
     p { color: #94a3b8; font-size: 14px; line-height: 1.6; }
     input { width: 100%; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 13px 14px; color: #f1f5f9; font-size: 15px; font-family: Georgia, serif; margin-bottom: 12px; }
     input:focus { outline: none; border-color: #818cf8; }
+    input[readonly] { color: #cbd5e1; background: rgba(255,255,255,0.035); }
     .password-field { position: relative; }
     .password-field input { padding-right: 112px; }
     .toggle-password { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: auto; margin: 0; padding: 7px 10px; border-radius: 9px; border: 1px solid rgba(129,140,248,0.35); background: rgba(255,255,255,0.05); color: #cbd5e1; font-size: 12px; font-weight: bold; cursor: pointer; font-family: Georgia, serif; }
     button, a.btn { width: 100%; display: inline-flex; justify-content: center; align-items: center; padding: 14px; border-radius: 12px; border: none; background: linear-gradient(90deg,#818cf8,#a78bfa); color: #fff; font-size: 16px; font-weight: bold; cursor: pointer; font-family: Georgia, serif; text-decoration: none; margin-top: 6px; }
+    button:disabled { opacity: .6; cursor: wait; }
     .secondary { background: rgba(255,255,255,0.05) !important; border: 1.5px solid rgba(129,140,248,0.35) !important; color: #cbd5e1 !important; }
+    .small-button { margin-top: 12px; padding: 10px 12px; font-size: 13px; }
     .error { min-height: 20px; color: #fca5a5; font-size: 13px; margin: 8px 0; line-height: 1.5; }
     .notice { margin: 0 0 16px; padding: 11px 13px; border: 1px solid rgba(110,231,183,0.35); border-radius: 10px; background: rgba(110,231,183,0.10); color: #a7f3d0; font-size: 13px; line-height: 1.5; text-align: center; }
+    .route-message { margin: 0 0 14px; padding: 11px 13px; border: 1px solid rgba(129,140,248,0.28); border-radius: 10px; background: rgba(129,140,248,0.08); color: #cbd5e1; font-size: 13px; line-height: 1.5; text-align: center; }
     .links { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+    #googleLoginBlock { display: none; }
+    #googleLoginBlock.is-visible { display: block; }
   </style>
 </head>
 <body>
@@ -32,20 +39,30 @@
     <div class="header">
       <div><span class="badge">TEACHER FLÁVIO</span></div>
       <h1>Entrar</h1>
-      <p>Acesse sua conta para responder às atividades e acompanhar seu histórico.</p>
+      <p>Informe seu e-mail para exibirmos a forma de acesso disponível para sua conta.</p>
     </div>
 
     <div id="loginNotice" class="notice" role="status" hidden>Você saiu da conta anterior. Agora pode entrar com outro e-mail.</div>
 
-    <form id="loginForm">
-      <input id="email" type="email" placeholder="E-mail" required>
+    <form id="loginGateForm">
+      <input id="loginLookupEmail" type="email" placeholder="E-mail da matrícula" autocomplete="email" required>
+      <div id="gateError" class="error"></div>
+      <button id="checkLoginMethodButton" type="submit">CONTINUAR</button>
+    </form>
+
+    <div id="routeMessage" class="route-message" hidden></div>
+
+    <form id="loginForm" hidden>
+      <input id="email" type="email" placeholder="E-mail" autocomplete="email" readonly required>
       <div class="password-field">
-        <input id="password" type="password" placeholder="Senha" required>
+        <input id="password" type="password" placeholder="Senha" autocomplete="current-password" required>
         <button type="button" class="toggle-password" data-target="password">MOSTRAR</button>
       </div>
       <div id="error" class="error"></div>
-      <button type="submit">ENTRAR</button>
+      <button type="submit">ENTRAR COM E-MAIL E SENHA</button>
     </form>
+
+    <button id="changeEmailButton" class="secondary small-button" type="button" hidden>USAR OUTRO E-MAIL</button>
 
     <div class="links">
       <a class="btn secondary" href="/matricula/">FAZER MATRÍCULA</a>
@@ -62,7 +79,64 @@
 
     function getNextPage() {
       const params = new URLSearchParams(window.location.search);
-      return params.get("next") || "index.html";
+      return params.get("next") || "/area-do-estudante/";
+    }
+
+    function getGoogleBlock() {
+      return document.getElementById("googleLoginBlock");
+    }
+
+    function configureGoogleBlock(route) {
+      const block = getGoogleBlock();
+      if (!block) return false;
+      block.classList.add("is-visible");
+
+      const note = block.querySelector(".google-auth-note");
+      const divider = block.querySelector(".google-auth-divider");
+      if (route === "password_allowed") {
+        if (note) note.textContent = "Você já acessou o portal anteriormente. Pode entrar com Google ou usar sua senha abaixo.";
+        if (divider) divider.style.display = "flex";
+      } else {
+        if (note) note.textContent = "Primeiro acesso: entre com Google usando a conta que corresponde ao e-mail da sua matrícula.";
+        if (divider) divider.style.display = "none";
+      }
+      return true;
+    }
+
+    function showRoute(route, email) {
+      const gate = document.getElementById("loginGateForm");
+      const loginForm = document.getElementById("loginForm");
+      const routeMessage = document.getElementById("routeMessage");
+      const changeButton = document.getElementById("changeEmailButton");
+      const passwordEmail = document.getElementById("email");
+
+      gate.hidden = true;
+      changeButton.hidden = false;
+      passwordEmail.value = email;
+      configureGoogleBlock(route);
+
+      if (route === "password_allowed") {
+        loginForm.hidden = false;
+        routeMessage.hidden = false;
+        routeMessage.textContent = "Este aluno já possui acesso registrado. Escolha Google ou e-mail e senha.";
+      } else {
+        loginForm.hidden = true;
+        routeMessage.hidden = false;
+        routeMessage.textContent = "Como ainda não há acesso registrado para este aluno, o primeiro login deve ser feito com Google.";
+      }
+    }
+
+    function resetRoute() {
+      const googleBlock = getGoogleBlock();
+      if (googleBlock) googleBlock.classList.remove("is-visible");
+      document.getElementById("loginGateForm").hidden = false;
+      document.getElementById("loginForm").hidden = true;
+      document.getElementById("routeMessage").hidden = true;
+      document.getElementById("changeEmailButton").hidden = true;
+      document.getElementById("password").value = "";
+      document.getElementById("error").textContent = "";
+      document.getElementById("gateError").textContent = "";
+      document.getElementById("loginLookupEmail").focus();
     }
 
     showLogoutNotice();
@@ -75,6 +149,39 @@
         button.textContent = isHidden ? "OCULTAR" : "MOSTRAR";
       });
     });
+
+    document.getElementById("loginGateForm").addEventListener("submit", async function (event) {
+      event.preventDefault();
+      const error = document.getElementById("gateError");
+      const button = document.getElementById("checkLoginMethodButton");
+      const email = document.getElementById("loginLookupEmail").value.trim().toLowerCase();
+      error.textContent = "";
+
+      if (!window.Auth || !Auth.isConfigured()) {
+        if (window.Auth && Auth.showConfigWarning) Auth.showConfigWarning();
+        error.textContent = "Não foi possível carregar a autenticação. Atualize a página ou limpe o cache do navegador.";
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = "VERIFICANDO...";
+      try {
+        const response = await Auth.getClient().functions.invoke("student-login-route", { body: { email: email } });
+        if (response.error) throw response.error;
+        const route = response.data && response.data.route === "password_allowed" ? "password_allowed" : "google_only";
+        showRoute(route, email);
+      } catch (err) {
+        console.error("Não foi possível verificar o histórico de acesso:", err);
+        showRoute("google_only", email);
+        const routeMessage = document.getElementById("routeMessage");
+        routeMessage.textContent = "Não foi possível consultar o histórico agora. Por segurança, use o login com Google.";
+      } finally {
+        button.disabled = false;
+        button.textContent = "CONTINUAR";
+      }
+    });
+
+    document.getElementById("changeEmailButton").addEventListener("click", resetRoute);
 
     document.getElementById("loginForm").addEventListener("submit", async function (event) {
       event.preventDefault();
