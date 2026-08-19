@@ -37,6 +37,8 @@ const KNOWN_PAYMENT_STATUSES = new Set([
   "charged_back",
 ]);
 
+const ALTERNATIVE_PIX_KEY = "flaviofreitas@ufu.br";
+
 function getAllowedOrigin(request: Request): string {
   const configuredOrigin = (Deno.env.get("SITE_URL") ?? "https://teacherflavius.com").replace(/\/$/, "");
   const origin = request.headers.get("Origin") ?? "";
@@ -69,6 +71,122 @@ function isRecord(value: unknown): value is JsonRecord {
 
 function cleanString(value: unknown, maxLength: number): string {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
+}
+
+function normalizeAccessToken(value: string | undefined): string {
+  let token = (value ?? "").trim();
+
+  if (/^MERCADO_PAGO_ACCESS_TOKEN\s*=/i.test(token)) {
+    token = token.replace(/^MERCADO_PAGO_ACCESS_TOKEN\s*=\s*/i, "").trim();
+  }
+
+  if (/^Bearer\s+/i.test(token)) {
+    token = token.replace(/^Bearer\s+/i, "").trim();
+  }
+
+  const hasMatchingQuotes = (
+    (token.startsWith('"') && token.endsWith('"'))
+    || (token.startsWith("'") && token.endsWith("'"))
+  );
+  if (hasMatchingQuotes) token = token.slice(1, -1).trim();
+
+  return token;
+}
+
+function sanitizeProviderCode(value: unknown): string {
+  return cleanString(value, 80)
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+function getMercadoPagoErrorCode(payload: unknown): string {
+  if (!isRecord(payload)) return "unknown";
+
+  const directCode = sanitizeProviderCode(payload.error) || sanitizeProviderCode(payload.code);
+  if (directCode) return directCode;
+
+  if (Array.isArray(payload.cause)) {
+    for (const cause of payload.cause) {
+      if (!isRecord(cause)) continue;
+      const causeCode = sanitizeProviderCode(cause.code);
+      if (causeCode) return causeCode;
+    }
+  }
+
+  return "unknown";
+}
+
+function getAccessTokenDiagnostics(accessToken: string): JsonRecord {
+  return {
+    token_family: accessToken.startsWith("APP_USR-")
+      ? "app_usr"
+      : accessToken.startsWith("TEST-")
+      ? "test"
+      : "unrecognized",
+    token_length: accessToken.length,
+    contains_whitespace: /\s/.test(accessToken),
+  };
+}
+
+function pixFallbackMessage(professorNotified: boolean): string {
+  const notification = professorNotified ? " O professor já foi informado." : "";
+  return "O pagamento via PIX está temporariamente indisponível." + notification +
+    " Devido a indisponibilidade momentânea do pagamento via PIX por meio do Mercado Pago, você pode enviar o valor do PIX para a chave PIX " + ALTERNATIVE_PIX_KEY + ".";
+}
+
+async function notifyProfessorOfMercadoPagoPolicyBlock(input: {
+  tuitionId: string;
+  attemptId: string;
+  studentEmail: string;
+  providerStatus: number;
+  providerErrorCode: string;
+}): Promise<boolean> {
+  const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
+  const notificationEmail = Deno.env.get("ENROLLMENT_NOTIFICATION_EMAIL") ?? "";
+  const fromEmail = Deno.env.get("ENROLLMENT_FROM_EMAIL") ?? "";
+
+  if (!resendApiKey || !notificationEmail || !fromEmail) {
+    console.warn("Mercado Pago policy alert email is not configured");
+    return false;
+  }
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": `mercado-pago-policy-${input.tuitionId}`,
+      },
+      body: JSON.stringify({
+        from: fromEmail,
+        to: [notificationEmail],
+        subject: "Alerta: pagamento via Mercado Pago indisponível",
+        text: [
+          "O site detectou que o Mercado Pago recusou a criação de um pagamento por política interna.",
+          "",
+          `Aluno: ${input.studentEmail || "e-mail não informado"}`,
+          `Mensalidade: ${input.tuitionId}`,
+          `Tentativa: ${input.attemptId}`,
+          `HTTP do Mercado Pago: ${input.providerStatus}`,
+          `Código do Mercado Pago: ${input.providerErrorCode}`,
+          "",
+          `O aluno recebeu a orientação para pagar pela chave PIX alternativa: ${ALTERNATIVE_PIX_KEY}`,
+        ].join("\n"),
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Resend rejected Mercado Pago policy alert", response.status, (await response.text()).slice(0, 500));
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Unable to send Mercado Pago policy alert", error instanceof Error ? error.message : error);
+    return false;
+  }
 }
 
 function isUuid(value: string): boolean {
@@ -172,8 +290,8 @@ Deno.serve(async (request: Request) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const mercadoPagoAccessToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN") ?? "";
-  const mercadoPagoPublicKey = Deno.env.get("MERCADO_PAGO_PUBLIC_KEY") ?? "";
+  const mercadoPagoAccessToken = normalizeAccessToken(Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN"));
+  const mercadoPagoPublicKey = (Deno.env.get("MERCADO_PAGO_PUBLIC_KEY") ?? "").trim();
   const authorization = request.headers.get("Authorization") ?? "";
 
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
@@ -441,14 +559,48 @@ Deno.serve(async (request: Request) => {
   }
 
   if (!mercadoPagoResponse.ok || !mercadoPagoPayment?.id) {
+    const providerErrorCode = getMercadoPagoErrorCode(mercadoPagoPayment);
+    const providerStatusDetail = `provider_http_${mercadoPagoResponse.status}_${providerErrorCode}`.slice(0, 300);
     await supabaseAdmin
       .from("tuition_payment_attempts")
-      .update({ status: "rejected", status_detail: `provider_http_${mercadoPagoResponse.status}` })
+      .update({ status: "rejected", status_detail: providerStatusDetail })
       .eq("id", attempt.id);
-    console.error("Mercado Pago rejected payment creation", attempt.id, mercadoPagoResponse.status);
+    console.error("Mercado Pago rejected payment creation", {
+      attempt_id: attempt.id,
+      provider_status: mercadoPagoResponse.status,
+      provider_error_code: providerErrorCode,
+      ...getAccessTokenDiagnostics(mercadoPagoAccessToken),
+    });
+
+    if (mercadoPagoResponse.status === 403 && providerErrorCode === "pa_unauthorized_result_from_policies") {
+      const professorNotified = await notifyProfessorOfMercadoPagoPolicyBlock({
+        tuitionId,
+        attemptId: attempt.id,
+        studentEmail: payerEmail,
+        providerStatus: mercadoPagoResponse.status,
+        providerErrorCode,
+      });
+      return jsonResponse(request, {
+        error: pixFallbackMessage(professorNotified),
+        code: "mercado_pago_pix_temporarily_unavailable",
+        provider_error_code: providerErrorCode,
+        alternative_pix_key: ALTERNATIVE_PIX_KEY,
+        professor_notified: professorNotified,
+      }, 503);
+    }
+
+    if (mercadoPagoResponse.status === 401) {
+      return jsonResponse(request, {
+        error: "O Mercado Pago recusou a credencial privada desta integração. O professor precisa revisar ou reativar as credenciais da aplicação.",
+        code: "mercado_pago_unauthorized",
+        provider_error_code: providerErrorCode,
+      }, 502);
+    }
+
     return jsonResponse(request, {
       error: "O Mercado Pago não conseguiu processar os dados informados. Revise-os e tente novamente.",
       code: "provider_rejected_payment",
+      provider_error_code: providerErrorCode,
     }, 422);
   }
 
