@@ -113,6 +113,9 @@ Deno.serve(async (req: Request) => {
         exercise_url: exercise.exercise_url,
         completed: true,
         completed_at: finalCompletedAt.toISOString(),
+        completion_source: "monitor",
+        completed_by: null,
+        completed_by_email: null,
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id,exercise_id" });
 
@@ -125,6 +128,7 @@ Deno.serve(async (req: Request) => {
       exercise_id: exercise.exercise_id,
       exercise_title: exercise.exercise_title,
       completed_at: finalCompletedAt.toISOString(),
+      completion_source: "monitor",
       source_email: originalEmail,
     });
   } catch (error) {
