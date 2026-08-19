@@ -61,8 +61,10 @@
 
   loadScript("teacher-flavius-clean-urls", "/clean_urls.js?v=20260819-1", function () {
     loadScript("teacher-flavius-google-only-access", "/google_only_access.js?v=20260819-1", function () {
-      loadScript("teacher-flavius-site-footer-core", "/site_footer_core.js?v=20260819-2", function () {
-        removeEnrollmentLinks(document);
+      loadScript("teacher-flavius-student-birthdays", "/student_birthdays.js?v=20260819-1", function () {
+        loadScript("teacher-flavius-site-footer-core", "/site_footer_core.js?v=20260819-2", function () {
+          removeEnrollmentLinks(document);
+        });
       });
     });
   });
