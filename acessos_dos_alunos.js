@@ -38,6 +38,10 @@
     }).format(date);
   }
 
+  function formatOptionalDateTime(value) {
+    return value ? formatDateTime(value) : "—";
+  }
+
   function renderStudents(students) {
     const select = document.getElementById("studentFilter");
     const selectedValue = select.value;
@@ -67,6 +71,46 @@
     if (Array.from(select.options).some(function (option) { return option.value === selectedValue; })) {
       select.value = selectedValue;
     }
+  }
+
+  function renderAccessStatuses(statuses) {
+    const rows = Array.isArray(statuses) ? statuses : [];
+    const accessedCount = rows.filter(function (student) { return student.has_accessed === true; }).length;
+    const neverCount = rows.length - accessedCount;
+
+    document.getElementById("statusTotalStudents").textContent = String(rows.length);
+    document.getElementById("statusAccessedStudents").textContent = String(accessedCount);
+    document.getElementById("statusNeverStudents").textContent = String(neverCount);
+
+    const message = document.getElementById("statusMessage");
+    const tableWrap = document.getElementById("statusTableWrap");
+    const tbody = document.getElementById("statusTableBody");
+
+    if (!rows.length) {
+      tbody.innerHTML = "";
+      tableWrap.hidden = true;
+      message.hidden = false;
+      message.className = "empty";
+      message.textContent = "Nenhum aluno matriculado foi encontrado.";
+      return;
+    }
+
+    tbody.innerHTML = rows.map(function (student) {
+      const hasAccessed = student.has_accessed === true;
+      return [
+        "<tr>",
+        '<td><span class="student-name">' + escapeHtml(student.student_name || "Aluno") + "</span>",
+        '<div class="muted">' + escapeHtml(student.student_email || "") + "</div></td>",
+        '<td><span class="status-pill ' + (hasAccessed ? "status-accessed" : "status-never") + '">' +
+          (hasAccessed ? "JÁ ACESSOU" : "NUNCA ACESSOU") + "</span></td>",
+        "<td>" + escapeHtml(formatOptionalDateTime(student.first_access_at)) + "</td>",
+        "<td>" + escapeHtml(formatOptionalDateTime(student.last_access_at)) + "</td>",
+        "</tr>"
+      ].join("");
+    }).join("");
+
+    message.hidden = true;
+    tableWrap.hidden = false;
   }
 
   function renderSummary(accesses) {
@@ -127,6 +171,12 @@
     renderStudents(response.data || []);
   }
 
+  async function loadAccessStatuses() {
+    const response = await Auth.getClient().rpc("get_teacher_student_access_statuses");
+    if (response.error) throw response.error;
+    renderAccessStatuses(response.data || []);
+  }
+
   async function loadAccesses() {
     const refreshButton = document.getElementById("refreshAccesses");
     const message = document.getElementById("accessMessage");
@@ -152,11 +202,15 @@
       renderSummary([]);
       message.hidden = false;
       message.className = "error";
-      message.textContent = "Não foi possível carregar os acessos. Execute o arquivo supabase_acessos_alunos.sql no Supabase e tente novamente. Detalhe: " + (error.message || "erro desconhecido");
-      setStatus("O painel ainda não está configurado no Supabase.", true);
+      message.textContent = "Não foi possível carregar os acessos. Detalhe: " + (error.message || "erro desconhecido");
+      setStatus("O painel ainda não está configurado corretamente no Supabase.", true);
     } finally {
       refreshButton.disabled = false;
     }
+  }
+
+  async function refreshDashboard() {
+    await Promise.all([loadAccessStatuses(), loadAccesses()]);
   }
 
   async function initializeDashboard() {
@@ -189,14 +243,20 @@
       setStatus("Professor autenticado: " + currentSession.user.email + ".");
 
       await loadStudents();
-      await loadAccesses();
+      await refreshDashboard();
     } catch (error) {
-      setStatus("Não foi possível confirmar as credenciais administrativas.", true);
+      setStatus("Não foi possível confirmar as credenciais administrativas ou carregar os dados.", true);
       document.body.classList.remove("auth-checking");
+      const statusMessage = document.getElementById("statusMessage");
+      if (statusMessage) {
+        statusMessage.hidden = false;
+        statusMessage.className = "error";
+        statusMessage.textContent = error.message || "Não foi possível carregar a situação dos alunos.";
+      }
     }
   }
 
-  document.getElementById("refreshAccesses").addEventListener("click", loadAccesses);
+  document.getElementById("refreshAccesses").addEventListener("click", refreshDashboard);
   document.getElementById("studentFilter").addEventListener("change", loadAccesses);
   document.getElementById("periodFilter").addEventListener("change", loadAccesses);
 
