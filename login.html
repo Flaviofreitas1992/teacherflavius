@@ -94,10 +94,10 @@
       const note = block.querySelector(".google-auth-note");
       const divider = block.querySelector(".google-auth-divider");
       if (route === "password_allowed") {
-        if (note) note.textContent = "Você já acessou o portal anteriormente. Pode entrar com Google ou usar sua senha abaixo.";
+        if (note) note.textContent = "Você ainda pode entrar com Google ou usar seu e-mail e senha abaixo.";
         if (divider) divider.style.display = "flex";
       } else {
-        if (note) note.textContent = "Primeiro acesso: entre com Google usando a conta que corresponde ao e-mail da sua matrícula.";
+        if (note) note.textContent = "Para esta conta, o acesso ao portal está disponível somente pelo Google.";
         if (divider) divider.style.display = "none";
       }
       return true;
@@ -118,11 +118,11 @@
       if (route === "password_allowed") {
         loginForm.hidden = false;
         routeMessage.hidden = false;
-        routeMessage.textContent = "Este aluno já possui acesso registrado. Escolha Google ou e-mail e senha.";
+        routeMessage.textContent = "Você pode escolher entre entrar com Google ou usar e-mail e senha.";
       } else {
         loginForm.hidden = true;
         routeMessage.hidden = false;
-        routeMessage.textContent = "Como ainda não há acesso registrado para este aluno, o primeiro login deve ser feito com Google.";
+        routeMessage.textContent = "O acesso desta conta deve ser feito pelo Google.";
       }
     }
 
@@ -171,10 +171,10 @@
         const route = response.data && response.data.route === "password_allowed" ? "password_allowed" : "google_only";
         showRoute(route, email);
       } catch (err) {
-        console.error("Não foi possível verificar o histórico de acesso:", err);
+        console.error("Não foi possível verificar a política de acesso:", err);
         showRoute("google_only", email);
         const routeMessage = document.getElementById("routeMessage");
-        routeMessage.textContent = "Não foi possível consultar o histórico agora. Por segurança, use o login com Google.";
+        routeMessage.textContent = "Não foi possível consultar a forma de acesso agora. Por segurança, use o login com Google.";
       } finally {
         button.disabled = false;
         button.textContent = "CONTINUAR";
