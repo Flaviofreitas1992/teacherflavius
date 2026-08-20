@@ -1,11 +1,6 @@
 name: Validate Supabase baseline restore
 
 on:
-  push:
-    branches:
-      - chore/supabase-schema-baseline
-    paths:
-      - .github/workflows/validate-supabase-baseline.yml
   pull_request:
     branches:
       - main
@@ -33,6 +28,39 @@ jobs:
         uses: supabase/setup-cli@v1
         with:
           version: latest
+
+      - name: Normalize exported function terminators
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('supabase/baseline/10_public_schema.sql')
+          text = path.read_text()
+          lines = text.splitlines(keepends=True)
+          changed = 0
+          out = []
+          for line in lines:
+              raw = line.rstrip('\r\n')
+              ending = line[len(raw):]
+              if raw == '$function$':
+                  out.append('$function$;' + ending)
+                  changed += 1
+              else:
+                  out.append(line)
+          path.write_text(''.join(out))
+          print(f'Normalized {changed} function terminators')
+          if changed not in (0, 117):
+              raise SystemExit(f'Unexpected number of function terminators: {changed}')
+          PY
+
+          if ! git diff --quiet -- supabase/baseline/10_public_schema.sql; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add supabase/baseline/10_public_schema.sql
+            git commit -m 'fix: terminate baseline function definitions'
+            git push origin HEAD:chore/supabase-schema-baseline
+          fi
 
       - name: Start a clean local Supabase stack
         id: start
