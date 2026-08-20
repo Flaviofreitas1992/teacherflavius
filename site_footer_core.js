@@ -4,6 +4,7 @@
   var FOOTER_ID = "teacher-flavius-site-footer";
   var STYLE_ID = "teacher-flavius-site-footer-styles";
   var PAYMENT_NOTICE_SCRIPT_ID = "teacher-flavius-payment-notice-script";
+  var paymentNoticeScheduled = false;
 
   function isPublicMarketingPage() {
     var path = (window.location.pathname || "/").toLowerCase();
@@ -16,14 +17,29 @@
       path.indexOf("/landing-page") === 0;
   }
 
-  function loadStudentPaymentNotice() {
-    if (isPublicMarketingPage()) return;
+  function appendStudentPaymentNoticeScript() {
     if (!document.body || document.getElementById(PAYMENT_NOTICE_SCRIPT_ID)) return;
     var script = document.createElement("script");
     script.id = PAYMENT_NOTICE_SCRIPT_ID;
     script.src = "/student_payment_notice.js?v=20260819-1";
     script.async = true;
     document.body.appendChild(script);
+  }
+
+  function loadStudentPaymentNotice() {
+    if (paymentNoticeScheduled || document.getElementById(PAYMENT_NOTICE_SCRIPT_ID)) return;
+    paymentNoticeScheduled = true;
+
+    if (isPublicMarketingPage()) {
+      if ("requestIdleCallback" in window) {
+        window.requestIdleCallback(appendStudentPaymentNoticeScript, { timeout: 1800 });
+      } else {
+        window.setTimeout(appendStudentPaymentNoticeScript, 600);
+      }
+      return;
+    }
+
+    appendStudentPaymentNoticeScript();
   }
 
   function installStyles() {
