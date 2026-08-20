@@ -73,3 +73,22 @@ jobs:
           if 'searchParams.get("token")' in text or 'const TOKEN =' in text:
               print('Legacy runner still contains token-based secret handling.')
               sys.exit(1)
+
+      - name: Verify live HTTP redirects to HTTPS
+        shell: bash
+        run: |
+          set -euo pipefail
+          redirect=$(curl --max-time 20 -sS -o /dev/null -w '%{redirect_url}' http://teacherflavius.com/)
+          echo "HTTP redirect target: ${redirect:-<none>}"
+          case "$redirect" in
+            https://teacherflavius.com/*|https://www.teacherflavius.com/*) ;;
+            *) echo 'HTTP is not redirecting to the canonical HTTPS site.'; exit 1 ;;
+          esac
+
+      - name: Inspect live HTTPS security headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers=$(curl --max-time 20 -sS -I https://teacherflavius.com/ | tr -d '\r')
+          printf '%s\n' "$headers"
+          printf '%s\n' "$headers" | grep -qi '^content-type:'
