@@ -89,12 +89,18 @@ Deno.serve(async (req: Request) => {
   });
 
   const responseText = await res.text();
-  let data: unknown = null;
-  try { data = JSON.parse(responseText); } catch (_) { data = { ok: res.ok }; }
   if (!res.ok) {
-    console.error("Resend request failed", res.status, responseText.slice(0, 300));
+    console.error("Resend request failed", res.status);
     return json({ error: "Não foi possível enviar o e-mail." }, 502, origin);
   }
 
-  return json(data, 200, origin);
+  let providerId: string | null = null;
+  try {
+    const parsed = JSON.parse(responseText);
+    providerId = typeof parsed?.id === "string" ? parsed.id : null;
+  } catch (_) {
+    providerId = null;
+  }
+
+  return json({ ok: true, id: providerId }, 200, origin);
 });
