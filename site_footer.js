@@ -27,7 +27,7 @@
       var palette = document.createElement("link");
       palette.id = "teacher-flavius-brand-palette";
       palette.rel = "stylesheet";
-      palette.href = "/brand_palette.css?v=20260820-1";
+      palette.href = "/brand_palette.css?v=20260820-2";
       document.head.appendChild(palette);
     }
 
