@@ -1,12 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 
 const SECRET_SHA256 = "f093cfbed40de5128fa41e842a9431d385a27db653ff2e79eab7576ad8086f9e";
-
-const EMAIL_ALIASES: Record<string, string> = {
-  "carvalhodamiana306@gmail.com": "damiana_002@hotmail.com",
-  "tesolinjulia@gmail.com": "tessarijulia2411@gmail.com",
-};
-
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 
 function json(body: unknown, status = 200) {
@@ -28,6 +22,20 @@ async function writeSyncEvent(admin: ReturnType<typeof createClient>, event: Rec
   } catch (error) {
     console.error("Falha inesperada ao registrar exercise_sync_events:", error);
   }
+}
+
+async function resolveEnrollmentEmail(admin: ReturnType<typeof createClient>, sourceEmail: string) {
+  if (!sourceEmail) return sourceEmail;
+  const { data, error } = await admin
+    .from("student_google_email_aliases")
+    .select("enrollment_email")
+    .eq("active", true)
+    .ilike("google_email", sourceEmail)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return String(data?.enrollment_email ?? sourceEmail).trim().toLowerCase();
 }
 
 Deno.serve(async (req: Request) => {
@@ -62,16 +70,13 @@ Deno.serve(async (req: Request) => {
     try {
       payload = await req.json();
     } catch {
-      await writeSyncEvent(admin, {
-        status: "invalid_payload",
-        error_message: "JSON inválido ou ausente.",
-      });
+      await writeSyncEvent(admin, { status: "invalid_payload", error_message: "JSON inválido ou ausente." });
       return json({ ok: false, status: "invalid_payload" }, 400);
     }
 
     const exerciseId = String(payload.exercise_id ?? "").trim();
     const originalEmail = String(payload.email ?? "").trim().toLowerCase();
-    const normalizedEmail = EMAIL_ALIASES[originalEmail] ?? originalEmail;
+    const normalizedEmail = await resolveEnrollmentEmail(admin, originalEmail);
     const completedAt = new Date(String(payload.completed_at ?? ""));
     const aliasApplied = Boolean(originalEmail && normalizedEmail !== originalEmail);
 
@@ -113,11 +118,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const student = profiles[0];
-    eventContext = {
-      ...eventContext,
-      user_id: student.id,
-      student_name: student.name,
-    };
+    eventContext = { ...eventContext, user_id: student.id, student_name: student.name };
 
     const enrolled = Boolean(student.enrolled) || Boolean(String(student.enrollment_code ?? "").trim());
     if (!enrolled) {
@@ -137,10 +138,7 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, status: "exercise_not_found", exercise_id: exerciseId }, 404);
     }
 
-    eventContext = {
-      ...eventContext,
-      exercise_title: exercise.exercise_title,
-    };
+    eventContext = { ...eventContext, exercise_title: exercise.exercise_title };
 
     const { data: existing, error: existingError } = await admin
       .from("daily_exercise_completion")
@@ -153,7 +151,6 @@ Deno.serve(async (req: Request) => {
 
     let finalCompletedAt = completedAt;
     let recordAction = "inserted";
-
     if (existing?.completed_at) {
       recordAction = "confirmed_existing";
       const existingDate = new Date(existing.completed_at);
