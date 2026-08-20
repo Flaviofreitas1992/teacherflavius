@@ -150,6 +150,21 @@
     document.head.appendChild(script);
   }
 
+  function loadStylesheet(id, href) {
+    var existing = document.getElementById(id);
+    if (existing) return;
+    var stylesheet = document.createElement("link");
+    stylesheet.id = id;
+    stylesheet.rel = "stylesheet";
+    stylesheet.href = href;
+    document.head.appendChild(stylesheet);
+  }
+
+  function loadAccessibility() {
+    loadStylesheet("teacher-flavius-accessibility-styles", "/accessibility.css?v=20260820-1");
+    loadScript("teacher-flavius-accessibility", "/accessibility.js?v=20260820-1");
+  }
+
   function loadCro() {
     loadScript(
       "teacher-flavius-cro",
@@ -200,6 +215,7 @@
 
   function initializeUi() {
     installBrandPalette();
+    loadAccessibility();
     loadMobileTopNavigation();
     if (isPublicMarketingPage()) removeEnrollmentLinks(document);
     else installEnrollmentLinkGuard();
