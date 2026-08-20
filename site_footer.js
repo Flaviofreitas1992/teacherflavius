@@ -157,11 +157,19 @@
     );
   }
 
-  function loadAnalytics() {
+  function loadAnalyticsCore() {
     loadScript(
       "teacher-flavius-analytics",
       "/analytics.js?v=20260820-1",
       loadCro
+    );
+  }
+
+  function loadAnalytics() {
+    loadScript(
+      "teacher-flavius-analytics-attribution",
+      "/analytics_attribution.js?v=20260820-1",
+      loadAnalyticsCore
     );
   }
 
