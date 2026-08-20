@@ -13,6 +13,7 @@
       path === "/quero_conhecer.html" ||
       path === "/quero-conhecer" ||
       path === "/quero-conhecer/" ||
+      path.indexOf("/curso-de-ingles-online") === 0 ||
       path.indexOf("/landing-page") === 0;
   }
 
@@ -31,6 +32,7 @@
       path === "/quero_conhecer.html" ||
       path === "/quero-conhecer" ||
       path === "/quero-conhecer/" ||
+      path.indexOf("/curso-de-ingles-online") === 0 ||
       path.indexOf("/landing-page") === 0
     ) {
       root.classList.add("tf-brand-sales");
@@ -148,10 +150,18 @@
     document.head.appendChild(script);
   }
 
+  function loadCro() {
+    loadScript(
+      "teacher-flavius-cro",
+      "/cro.js?v=20260820-1"
+    );
+  }
+
   function loadAnalytics() {
     loadScript(
       "teacher-flavius-analytics",
-      "/analytics.js?v=20260820-1"
+      "/analytics.js?v=20260820-1",
+      loadCro
     );
   }
 
