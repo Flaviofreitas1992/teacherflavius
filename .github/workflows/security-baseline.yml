@@ -29,6 +29,29 @@ jobs:
             exit 1
           fi
 
+      - name: Reject floating Supabase Edge SDK
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          import sys
+
+          root = Path('supabase/functions')
+          floating = re.compile(r'(?:npm:|https://esm\.sh/)@supabase/supabase-js@2(?=["\'/])')
+          findings = []
+          if root.exists():
+              for path in root.rglob('*'):
+                  if path.suffix not in {'.ts', '.js'} or not path.is_file():
+                      continue
+                  for line_number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
+                      if floating.search(line):
+                          findings.append(f'{path}:{line_number}')
+
+          if findings:
+              print('Floating Supabase Edge SDK dependency found:')
+              print('\n'.join(findings))
+              sys.exit(1)
+
       - name: Reject obvious hardcoded Edge Function secrets
         shell: python
         run: |
