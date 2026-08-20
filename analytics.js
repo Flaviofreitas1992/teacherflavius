@@ -1,7 +1,7 @@
 (function () {
   "use strict";
 
-  var MEASUREMENT_ID = "G-BGMFE51RB6";
+  var MEASUREMENT_ID = "G-11V3W5B6TG";
   var SCRIPT_ID = "teacher-flavius-google-tag";
   var FIRST_TOUCH_KEY = "tf_analytics_first_touch_v1";
   var LAST_TOUCH_KEY = "tf_analytics_last_touch_v1";
