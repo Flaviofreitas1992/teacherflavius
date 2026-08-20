@@ -7,6 +7,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PUBLISH = ROOT / "_site"
+RESPONSIVE_COMPAT_HREF = "/responsive_compat.css?v=20260820-1"
+RESPONSIVE_COMPAT_LINK = f'  <link rel="stylesheet" href="{RESPONSIVE_COMPAT_HREF}">'
+VIEWPORT_META = '  <meta name="viewport" content="width=device-width, initial-scale=1.0">'
 
 BLOCKED_TOP_LEVEL = {
     ".git",
@@ -55,12 +58,35 @@ def is_public(path: Path) -> bool:
     return path.suffix.lower() in PUBLIC_SUFFIXES
 
 
+def inject_responsive_compat(html: str) -> tuple[str, bool]:
+    closing_head = html.lower().find("</head>")
+    if closing_head < 0:
+        return html, False
+
+    additions: list[str] = []
+    lower_html = html.lower()
+    if 'name="viewport"' not in lower_html and "name='viewport'" not in lower_html:
+        additions.append(VIEWPORT_META)
+    if "/responsive_compat.css" not in lower_html:
+        additions.append(RESPONSIVE_COMPAT_LINK)
+
+    if not additions:
+        return html, False
+
+    prefix = html[:closing_head]
+    suffix = html[closing_head:]
+    separator = "" if prefix.endswith("\n") else "\n"
+    injected = "\n".join(additions)
+    return f"{prefix}{separator}{injected}\n{suffix}", True
+
+
 def main() -> None:
     if PUBLISH.exists():
         shutil.rmtree(PUBLISH)
     PUBLISH.mkdir(parents=True)
 
     copied = 0
+    enhanced_html = 0
     for relative in tracked_files():
         if not is_public(relative):
             continue
@@ -72,6 +98,13 @@ def main() -> None:
         shutil.copy2(source, destination)
         copied += 1
 
+        if relative.suffix.lower() in {".html", ".htm"}:
+            html = destination.read_text(encoding="utf-8")
+            html, enhanced = inject_responsive_compat(html)
+            if enhanced:
+                destination.write_text(html, encoding="utf-8")
+                enhanced_html += 1
+
     headers = ROOT / "netlify" / "_headers"
     if not headers.is_file():
         raise SystemExit("Missing netlify/_headers")
@@ -82,6 +115,10 @@ def main() -> None:
     if missing:
         raise SystemExit(f"Netlify build missing required public files: {', '.join(missing)}")
 
+    compat_stylesheet = PUBLISH / "responsive_compat.css"
+    if not compat_stylesheet.is_file():
+        raise SystemExit("Netlify build missing responsive_compat.css")
+
     forbidden_suffixes = {".md", ".sql", ".py", ".yml", ".yaml", ".toml"}
     leaked = [
         str(path.relative_to(PUBLISH))
@@ -91,7 +128,10 @@ def main() -> None:
     if leaked:
         raise SystemExit(f"Operational files leaked into publish directory: {', '.join(leaked)}")
 
-    print(f"Netlify publish directory ready: {copied} public files + _headers")
+    print(
+        f"Netlify publish directory ready: {copied} public files + _headers; "
+        f"responsive/viewport baseline enhanced {enhanced_html} HTML files"
+    )
 
 
 if __name__ == "__main__":
