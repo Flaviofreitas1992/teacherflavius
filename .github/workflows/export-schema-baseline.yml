@@ -38,6 +38,17 @@ jobs:
             exit 1
           fi
 
+          if grep -Fq '\n' supabase/baseline/10_public_schema.sql; then
+            echo 'Literal backslash-n sequence detected in baseline' >&2
+            exit 1
+          fi
+
+          if ! grep -Fq -- '-- Application private schema' supabase/baseline/10_public_schema.sql || \
+             ! grep -Fq 'FUNCTION private.dispatch_enrollment_notification_webhook' supabase/baseline/10_public_schema.sql; then
+            echo 'Required private application schema is missing from baseline' >&2
+            exit 1
+          fi
+
           if grep -Eiq 'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|sb_secret_|sk-[A-Za-z0-9]|@gmail\.com|31415926590' supabase/baseline/10_public_schema.sql; then
             echo 'Potential secret or application data detected in baseline' >&2
             exit 1
