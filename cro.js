@@ -10,14 +10,14 @@
   var primaryCtaClicked = false;
   var trackedSections = Object.create(null);
   var trackedScroll = Object.create(null);
+  var cachedVariant = "";
 
   function currentPath() {
     return (window.location.pathname || "/").toLowerCase();
   }
 
   function isHomePage() {
-    var path = currentPath();
-    return path === "/" || path === "/index.html";
+    return currentPath() === "/";
   }
 
   function isSalesPage() {
@@ -46,21 +46,6 @@
     try { window.localStorage.setItem(key, value); } catch (error) { /* Storage may be unavailable. */ }
   }
 
-  function track(eventName, params) {
-    var payload = Object.assign({
-      site_area: "marketing",
-      cro_page: isSalesPage() ? "course_sales" : (isHomePage() ? "home" : "marketing"),
-      cro_experiment: isSalesPage() ? EXPERIMENT_NAME : "none",
-      cro_variant: isSalesPage() ? getVariant() : "not_applicable"
-    }, params || {});
-
-    if (window.TeacherAnalytics && typeof window.TeacherAnalytics.track === "function") {
-      window.TeacherAnalytics.track(eventName, payload);
-      return;
-    }
-    if (typeof window.gtag === "function") window.gtag("event", eventName, payload);
-  }
-
   function queryVariantOverride() {
     try {
       var value = new URLSearchParams(window.location.search || "").get("cro_variant");
@@ -70,7 +55,6 @@
     }
   }
 
-  var cachedVariant = "";
   function getVariant() {
     if (!isSalesPage()) return "not_applicable";
     if (cachedVariant) return cachedVariant;
@@ -92,11 +76,25 @@
     return cachedVariant;
   }
 
+  function track(eventName, params) {
+    var payload = Object.assign({
+      site_area: "marketing",
+      cro_page: isSalesPage() ? "course_sales" : (isHomePage() ? "home" : "marketing"),
+      cro_experiment: isSalesPage() ? EXPERIMENT_NAME : "none",
+      cro_variant: isSalesPage() ? getVariant() : "not_applicable"
+    }, params || {});
+
+    if (window.TeacherAnalytics && typeof window.TeacherAnalytics.track === "function") {
+      window.TeacherAnalytics.track(eventName, payload);
+      return;
+    }
+    if (typeof window.gtag === "function") window.gtag("event", eventName, payload);
+  }
+
   function isWhatsappLink(link) {
     if (!link || link.tagName !== "A") return false;
-    var href = link.getAttribute("href") || "";
     try {
-      var url = new URL(href, window.location.href);
+      var url = new URL(link.getAttribute("href") || "", window.location.href);
       return url.hostname === "wa.me" || url.hostname === "api.whatsapp.com" || /(^|\.)whatsapp\.com$/.test(url.hostname);
     } catch (error) {
       return false;
@@ -140,6 +138,7 @@
 
   function addSalesReassurance() {
     if (!isSalesPage()) return;
+
     var actions = document.querySelector(".hero .actions");
     if (actions && !document.getElementById("cro-hero-reassurance")) {
       var note = document.createElement("p");
@@ -170,7 +169,7 @@
     var strip = document.createElement("section");
     strip.id = "cro-proof-strip";
     strip.className = "cro-proof-strip";
-    strip.setAttribute("aria-label", "Credenciais e garantias do curso");
+    strip.setAttribute("aria-label", "Credenciais e condições do curso");
     strip.innerHTML = [
       '<div class="cro-proof-strip__inner">',
       '<div class="cro-proof-item">Aula experimental gratuita</div>',
@@ -233,6 +232,7 @@
 
   function installSectionTracking() {
     var candidates = [];
+
     function add(name, selector) {
       var element = document.querySelector(selector);
       if (element) candidates.push({ name: name, element: element });
