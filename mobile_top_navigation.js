@@ -76,7 +76,7 @@
       "#" + BAR_ID + " .tf-mobile-nav-toggle{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 16px;border:1px solid rgba(78,154,236,.46);border-radius:14px;background:rgba(5,66,136,.18);color:#e8f2ff;font:800 12px/1.2 var(--tf-font-display,Inter,system-ui,sans-serif);letter-spacing:.02em;box-shadow:0 8px 24px rgba(2,16,43,.16);cursor:pointer}",
       "#" + BAR_ID + " .tf-mobile-nav-toggle-icon{font-size:18px;line-height:1}",
       "#" + BAR_ID + " button:focus-visible,#" + OVERLAY_ID + " a:focus-visible,#" + OVERLAY_ID + " button:focus-visible{outline:3px solid #4e9aec!important;outline-offset:3px!important}",
-      "#" + OVERLAY_ID + "{position:fixed;inset:0;z-index:2147482500;align-items:flex-end;justify-content:center;padding:18px;background:rgba(2,6,23,.72);backdrop-filter:blur(6px)}",
+      "#" + OVERLAY_ID + "{position:fixed;inset:0;z-index:2147482500;align-items:center;justify-content:center;padding:18px;background:rgba(2,6,23,.72);backdrop-filter:blur(6px)}",
       "#" + OVERLAY_ID + ".is-open{display:flex!important}",
       "#" + OVERLAY_ID + " .tf-mobile-menu-sheet{width:min(100%,520px);max-height:min(82vh,700px);overflow:auto;padding:18px;border:1px solid rgba(78,154,236,.30);border-radius:24px;background:linear-gradient(155deg,#071326,#0a2956);box-shadow:0 26px 80px rgba(2,6,23,.58);font-family:var(--tf-font-body,Inter,system-ui,sans-serif)}",
       "#" + OVERLAY_ID + " .tf-mobile-menu-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;padding:2px 2px 12px;border-bottom:1px solid rgba(148,163,184,.16)}",
