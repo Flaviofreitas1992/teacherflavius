@@ -151,7 +151,7 @@
   function loadMobileTopNavigation() {
     loadScript(
       "teacher-flavius-mobile-top-navigation",
-      "/mobile_top_navigation.js?v=20260820-1"
+      "/mobile_top_navigation.js?v=20260820-center-2"
     );
   }
 
