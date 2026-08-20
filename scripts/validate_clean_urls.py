@@ -21,14 +21,15 @@ LEGACY_COMPATIBILITY_FILES = {
 # New public pages must be directory indexes. 404.html is a GitHub Pages special file.
 ALLOWED_NEW_HTML_BASENAMES = {"index.html", "404.html"}
 
-HTML_URL_RE = re.compile(
-    r"(?:https?://teacherflavius\.com)?/[^\s\"'<>]*\.html(?:[?#][^\s\"'<>]*)?",
+TEACHERFLAVIUS_HTML_URL_RE = re.compile(
+    r"(?:https?://(?:www\.)?teacherflavius\.com)?/[^\s\"'<>]*\.html(?:[?#][^\s\"'<>]*)?",
     re.IGNORECASE,
 )
-ATTRIBUTE_HTML_RE = re.compile(
-    r"(?:href|src|action|content)\s*=\s*[\"'][^\"']*\.html(?:[?#][^\"']*)?[\"']",
+ATTRIBUTE_RE = re.compile(
+    r"(?:href|src|action|content)\s*=\s*[\"']([^\"']+)[\"']",
     re.IGNORECASE,
 )
+SCHEME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
 
 
 def run(*args: str) -> str:
@@ -86,6 +87,27 @@ def added_lines(base: str, head: str) -> list[tuple[str, str]]:
     return result
 
 
+def is_internal_html_reference(text: str) -> bool:
+    if TEACHERFLAVIUS_HTML_URL_RE.search(text):
+        return True
+
+    for match in ATTRIBUTE_RE.finditer(text):
+        value = match.group(1).strip()
+        if ".html" not in value.lower():
+            continue
+        lowered = value.lower()
+        if lowered.startswith(("https://teacherflavius.com/", "http://teacherflavius.com/")):
+            return True
+        if lowered.startswith(("https://www.teacherflavius.com/", "http://www.teacherflavius.com/")):
+            return True
+        if value.startswith(("/", "./", "../")):
+            return True
+        if not SCHEME_RE.match(value):
+            return True
+
+    return False
+
+
 def main() -> int:
     if len(sys.argv) != 3:
         print("Usage: validate_clean_urls.py <base_sha> <head_sha>")
@@ -107,9 +129,9 @@ def main() -> int:
     for file_path, text in added_lines(base, head):
         if not file_path or Path(file_path).name in LEGACY_COMPATIBILITY_FILES:
             continue
-        if HTML_URL_RE.search(text) or ATTRIBUTE_HTML_RE.search(text):
+        if is_internal_html_reference(text):
             violations.append(
-                f"Nova referência pública com .html em {file_path}: {text.strip()}"
+                f"Nova referência pública interna com .html em {file_path}: {text.strip()}"
             )
 
     if violations:
