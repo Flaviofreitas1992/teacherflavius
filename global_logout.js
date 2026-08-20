@@ -9,7 +9,7 @@
     if (window.__teacherFlaviusMobileTopNavigationLoaded) return;
     if (document.querySelector('script[src*="mobile_top_navigation.js"]')) return;
     const script = document.createElement("script");
-    script.src = "/mobile_top_navigation.js?v=20260820-center-2";
+    script.src = "/mobile_top_navigation.js?v=20260820-desktop-menu-1";
     script.defer = true;
     document.head.appendChild(script);
   }
