@@ -1,0 +1,50 @@
+name: Configure Cloudflare security edge
+
+on:
+  workflow_dispatch:
+    inputs:
+      enable_proxy:
+        description: "Enable Cloudflare proxy after certificate validation"
+        required: true
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: read
+
+jobs:
+  configure-edge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Validate Cloudflare token configuration
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CLOUDFLARE_API_TOKEN:-}" ]; then
+            echo "Repository secret CLOUDFLARE_API_TOKEN is not configured."
+            exit 1
+          fi
+
+      - name: Validate automation syntax
+        run: python -m py_compile scripts/configure_cloudflare_security.py
+
+      - name: Configure security edge
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ENABLE_PROXY: ${{ inputs.enable_proxy }}
+        run: python scripts/configure_cloudflare_security.py
+
+      - name: Show live response headers
+        if: ${{ inputs.enable_proxy == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --max-time 20 -sS -I https://teacherflavius.com/ | tr -d '\r'
