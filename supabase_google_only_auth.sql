@@ -1,5 +1,6 @@
 -- Google-only authentication support.
 -- Applied to production on 2026-08-19.
+-- Enrollment-code migration conflict fix applied on 2026-08-20.
 
 create table if not exists public.student_google_email_aliases (
   google_email text primary key,
@@ -120,6 +121,7 @@ as $$
 declare
   normalized_google_email text := lower(btrim(coalesce(target_google_email, '')));
   source_profile public.profiles%rowtype;
+  target_profile public.profiles%rowtype;
   ref record;
   mode_value text;
 begin
@@ -134,19 +136,27 @@ begin
     and coalesce(p.archived, false) = false
   for update;
 
-  if source_profile.id is null then raise exception 'Matrícula não encontrada ou inativa.'; end if;
+  if source_profile.id is null then
+    raise exception 'Matrícula não encontrada ou inativa.';
+  end if;
+
   if exists (select 1 from public.teacher_admins ta where ta.user_id = target_legacy_user_id) then
     raise exception 'Conta administrativa não pode ser migrada por este fluxo.';
   end if;
 
   if target_google_user_id = target_legacy_user_id then
     mode_value := 'automatic';
+
     insert into public.student_google_account_links (
       google_user_id, legacy_user_id, enrollment_email, google_email, link_mode, confirmed_at, updated_at
     ) values (
-      target_google_user_id, target_legacy_user_id,
-      lower(btrim(coalesce(source_profile.email, ''))), normalized_google_email,
-      mode_value, now(), now()
+      target_google_user_id,
+      target_legacy_user_id,
+      lower(btrim(coalesce(source_profile.email, ''))),
+      normalized_google_email,
+      mode_value,
+      now(),
+      now()
     )
     on conflict (google_user_id) do update
     set enrollment_email = excluded.enrollment_email,
@@ -154,11 +164,13 @@ begin
         link_mode = excluded.link_mode,
         confirmed_at = now(),
         updated_at = now();
+
     return jsonb_build_object('linked', true, 'mode', mode_value, 'legacy_user_id', target_legacy_user_id);
   end if;
 
   if not exists (
-    select 1 from public.student_google_email_aliases a
+    select 1
+    from public.student_google_email_aliases a
     where a.google_email = normalized_google_email
       and a.enrollment_email = lower(btrim(coalesce(source_profile.email, '')))
       and a.active = true
@@ -168,20 +180,37 @@ begin
 
   if exists (
     select 1 from public.student_google_account_links l
-    where l.legacy_user_id = target_legacy_user_id or l.google_user_id = target_google_user_id
+    where l.legacy_user_id = target_legacy_user_id
+       or l.google_user_id = target_google_user_id
   ) then
     raise exception 'Esta matrícula ou conta Google já foi vinculada.';
   end if;
 
-  if exists (select 1 from public.profiles p where p.id = target_google_user_id and p.enrolled = true) then
+  select p.* into target_profile
+  from public.profiles p
+  where p.id = target_google_user_id
+  for update;
+
+  if target_profile.id is not null and target_profile.enrolled = true then
     raise exception 'A conta Google já possui outra matrícula ativa.';
   end if;
 
-  delete from public.profiles where id = target_google_user_id and enrolled = false;
+  delete from public.profiles
+  where id = target_google_user_id
+    and enrolled = false;
+
+  -- O código de matrícula é único. Liberamos temporariamente o valor na linha
+  -- legada, mantendo o valor original em source_profile. Se qualquer etapa
+  -- posterior falhar, a transação inteira é revertida automaticamente.
+  update public.profiles
+  set enrollment_code = null
+  where id = target_legacy_user_id;
 
   insert into public.profiles
-  select (jsonb_populate_record(null::public.profiles, to_jsonb(p) || jsonb_build_object('id', target_google_user_id))).*
-  from public.profiles p where p.id = target_legacy_user_id;
+  select (jsonb_populate_record(
+    null::public.profiles,
+    to_jsonb(source_profile) || jsonb_build_object('id', target_google_user_id)
+  )).*;
 
   for ref in
     select ns.nspname as schema_name, cls.relname as table_name, att.attname as column_name
@@ -217,15 +246,20 @@ begin
 
   delete from public.profiles where id = target_legacy_user_id;
 
+  mode_value := 'alias';
   insert into public.student_google_account_links (
     google_user_id, legacy_user_id, enrollment_email, google_email, link_mode, confirmed_at, updated_at
   ) values (
-    target_google_user_id, target_legacy_user_id,
-    lower(btrim(coalesce(source_profile.email, ''))), normalized_google_email,
-    'alias', now(), now()
+    target_google_user_id,
+    target_legacy_user_id,
+    lower(btrim(coalesce(source_profile.email, ''))),
+    normalized_google_email,
+    mode_value,
+    now(),
+    now()
   );
 
-  return jsonb_build_object('linked', true, 'mode', 'alias', 'legacy_user_id', target_legacy_user_id);
+  return jsonb_build_object('linked', true, 'mode', mode_value, 'legacy_user_id', target_legacy_user_id);
 end;
 $$;
 
