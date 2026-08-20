@@ -73,7 +73,6 @@ jobs:
                       if not match:
                           continue
                       name = match.group('name').upper()
-                      # One-way verifiers may be versioned; raw credentials may not.
                       if 'SHA256' in name or name.endswith('_HASH'):
                           continue
                       findings.append(f'{path}:{line_number}:{match.group("name")}')
@@ -97,6 +96,9 @@ jobs:
               print('Legacy runner still contains token-based secret handling.')
               sys.exit(1)
 
+      - name: Validate Cloudflare automation syntax
+        run: python -m py_compile scripts/configure_cloudflare_security.py
+
       - name: Verify live HTTP redirects to HTTPS
         shell: bash
         run: |
@@ -115,3 +117,23 @@ jobs:
           headers=$(curl --max-time 20 -sS -I https://teacherflavius.com/ | tr -d '\r')
           printf '%s\n' "$headers"
           printf '%s\n' "$headers" | grep -qi '^content-type:'
+
+          if printf '%s\n' "$headers" | grep -Eqi '^(cf-ray:|server:[[:space:]]*cloudflare)'; then
+            echo 'Cloudflare edge detected; enforcing response security header baseline.'
+            required=(
+              'strict-transport-security'
+              'x-content-type-options'
+              'referrer-policy'
+              'x-frame-options'
+              'permissions-policy'
+              'content-security-policy-report-only'
+            )
+            for header in "${required[@]}"; do
+              if ! printf '%s\n' "$headers" | grep -qi "^${header}:"; then
+                echo "Missing required edge security header: ${header}"
+                exit 1
+              fi
+            done
+          else
+            echo 'Cloudflare edge not detected yet; advanced response headers are not enforced in CI yet.'
+          fi
