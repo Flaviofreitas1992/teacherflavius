@@ -12,7 +12,8 @@ Este documento é um inventário operacional. Ele deve ser atualizado quando hou
 - não enviar CPF, WhatsApp, e-mail, chave PIX ou conteúdo de formulário para Analytics;
 - eliminar ou anonimizar dados quando a finalidade terminar, ressalvadas hipóteses legais de conservação;
 - manter uma forma simples de o titular acessar políticas, rever consentimento e solicitar direitos;
-- separar tecnicamente o encerramento da conta da retenção seletiva de registros financeiros.
+- separar tecnicamente o encerramento da conta da retenção seletiva de registros financeiros;
+- evitar duplicar dados pessoais para atender solicitações de acesso: a exportação automática é gerada sob demanda e não é armazenada novamente no banco.
 
 ## Inventário principal
 
@@ -29,7 +30,27 @@ Este documento é um inventário operacional. Ele deve ser atualizado quando hou
 | E-mail transacional | endereço e conteúdo operacional | Resend + Edge Functions | confirmações necessárias | conforme necessidade transacional e configuração do provedor | notificações internas vinculadas ao aluno são removidas no encerramento; evitar conteúdo excessivo |
 | Analytics | página, origem, eventos, conversão e atributos técnicos | Google Analytics + storage do navegador | mensuração e CRO | somente após consentimento; retenção conforme configuração da propriedade e necessidade | desligar após revogação; limpar estados locais próprios e cookies GA quando possível |
 | Consentimento | versão, categorias, data e expiração | `localStorage` do navegador | provar e respeitar a preferência no dispositivo | 180 dias na versão atual | usuário pode alterar antes do prazo; nova versão relevante invalida preferência anterior |
-| Solicitações de privacidade | tipo, status, datas, referência do titular e resolução | `data_subject_requests` | registrar e demonstrar o atendimento ao titular | somente pelo período necessário à prestação de contas e defesa de direitos | nome/e-mail temporários são removidos quando o pedido é concluído; fica somente referência pseudônima e registro mínimo do atendimento |
+| Solicitações de privacidade | tipo, detalhes, status, datas, referência do titular e resposta | `data_subject_requests` | registrar e demonstrar o atendimento ao titular | somente pelo período necessário à prestação de contas e defesa de direitos | nome/e-mail temporários são removidos quando o pedido é concluído; não são armazenadas cópias integrais dos dados no registro do pedido |
+
+## Central de direitos do titular
+
+A área **Perfil → Privacidade e meus dados** concentra os seguintes recursos:
+
+1. **Cópia automática dos dados**: a RPC `get_my_data_export()` usa exclusivamente `auth.uid()` e gera um JSON com os principais dados diretamente associados à sessão autenticada. O navegador cria o arquivo localmente; o portal não grava uma segunda cópia do conteúdo exportado.
+2. **Correções simples**: nome, CPF, WhatsApp, chave PIX e disponibilidade continuam editáveis diretamente no perfil.
+3. **Acesso adicional**: o titular pode registrar pedido formal quando a cópia automática não for suficiente ou quando precisar de esclarecimento sobre outros dados.
+4. **Correção formal**: para dados que não podem ser alterados diretamente pelo aluno, o pedido registra o item incorreto e a correção solicitada.
+5. **Anonimização ou bloqueio**: o titular pode indicar quais dados considera inadequados, excessivos ou desnecessários para análise administrativa.
+6. **Informações sobre compartilhamentos**: o titular pode pedir esclarecimentos sobre fornecedores, integrações ou categorias de compartilhamento.
+7. **Encerramento da conta**: permanece separado por ser a única operação destrutiva do fluxo.
+
+Os pedidos não destrutivos usam `create_data_subject_request`, `mark_data_subject_request_in_review` e `complete_data_subject_request`. A conclusão exige que o professor registre uma resposta ao titular. O aluno pode cancelar pedidos ainda em status `open`.
+
+## Escopo da cópia automática
+
+A exportação automática inclui, quando existentes: conta e identidades de autenticação, perfil, dados privados, matrícula, vínculo com turma, frequência, resultados e progresso acadêmico, planos semanais, flashcards e histórico de prática, reposições, tentativas de pronúncia em formato reduzido, logs próprios de acesso, tags, eventos de sincronização relevantes, configurações de cobrança, mensalidades, tentativas de pagamento e metadados dos arquivos pertencentes ao usuário no Storage.
+
+Por segurança e minimização, o arquivo automático não inclui segredos operacionais, `idempotency_key`, identificadores administrativos de quem realizou alterações, nem o payload bruto e potencialmente volumoso do provedor de pronúncia. O titular pode pedir acesso adicional formalmente quando necessário.
 
 ## Ciclo operacional de encerramento da conta
 
@@ -62,17 +83,17 @@ Fornecedores atualmente identificados no projeto: Supabase, Mercado Pago, Resend
 
 Canais operacionais atuais:
 
-- **Perfil → Privacidade e meus dados**, para pedido de encerramento da conta;
-- WhatsApp indicado na Política de Privacidade, para demais solicitações e suporte.
+- **Perfil → Privacidade e meus dados**, para cópia automática, acesso adicional, correção, anonimização/bloqueio, informações sobre compartilhamentos e pedido de encerramento da conta;
+- WhatsApp indicado na Política de Privacidade, para suporte complementar e situações em que o portal não seja suficiente.
 
 Fluxo operacional para cada solicitação:
 
-1. registrar data, titular e tipo da solicitação sem coletar documentação excessiva;
-2. verificar identidade de forma proporcional ao risco;
+1. registrar data, titular, tipo e descrição necessária da solicitação sem coletar documentação excessiva;
+2. verificar identidade de forma proporcional ao risco — para pedidos feitos dentro do portal, a sessão autenticada funciona como primeira camada de verificação;
 3. localizar dados em Auth, banco, pagamentos e fornecedores aplicáveis;
-4. avaliar obrigação de conservação antes da exclusão;
+4. avaliar obrigação de conservação antes de anonimização, bloqueio ou exclusão;
 5. executar correção, exportação, bloqueio, anonimização ou exclusão conforme o caso;
-6. confirmar ao titular o resultado e eventuais dados mantidos com a justificativa correspondente;
+6. registrar a resposta administrativa no pedido e disponibilizá-la ao titular pelo portal;
 7. guardar somente o registro mínimo necessário para demonstrar o atendimento.
 
 ## Pontos que exigem revisão periódica
@@ -82,5 +103,6 @@ Fluxo operacional para cada solicitação:
 - revisar logs das Edge Functions e provedores para evitar retenção desnecessária de payloads;
 - testar semestralmente a recusa e a revogação de Analytics;
 - testar periodicamente os dois cenários de encerramento: sem histórico financeiro e com retenção financeira;
+- testar periodicamente a exportação com usuários que possuam diferentes conjuntos de dados, garantindo que o resultado permaneça limitado a `auth.uid()`;
 - revisar a política sempre que houver novo fornecedor, nova finalidade ou nova categoria de dado;
 - manter as migrations como fonte de verdade da rotina de encerramento e não restaurar versões antigas de `delete_teacher_student`.
