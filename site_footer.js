@@ -39,13 +39,14 @@
     var themeColor = document.querySelector('meta[name="theme-color"]');
     if (themeColor) themeColor.setAttribute("content", "#02102B");
 
-    if (!document.getElementById("teacher-flavius-brand-palette")) {
-      var palette = document.createElement("link");
+    var palette = document.getElementById("teacher-flavius-brand-palette");
+    if (!palette) {
+      palette = document.createElement("link");
       palette.id = "teacher-flavius-brand-palette";
       palette.rel = "stylesheet";
-      palette.href = "/brand_palette.css?v=20260820-2";
       document.head.appendChild(palette);
     }
+    palette.href = "/brand_palette.css?v=20260820-3";
 
     if (document.body) {
       var bodyColor = window.getComputedStyle(document.body).color || "";
