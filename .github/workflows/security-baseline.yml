@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Reject floating Supabase browser SDK
         shell: bash
@@ -30,22 +30,40 @@ jobs:
           fi
 
       - name: Reject obvious hardcoded Edge Function secrets
-        shell: bash
+        shell: python
         run: |
-          set -euo pipefail
-          if grep -REn --include='*.ts' --include='*.js' \
-            '(TOKEN|SECRET|SERVICE_ROLE_KEY|API_KEY)[A-Za-z0-9_ ]*=[[:space:]]*["'"'][A-Za-z0-9_./+=:-]{20,}["'"']' \
-            supabase/functions 2>/dev/null; then
-            echo "Possible hardcoded secret found in Supabase function source."
-            exit 1
-          fi
+          from pathlib import Path
+          import re
+          import sys
+
+          root = Path('supabase/functions')
+          pattern = re.compile(
+              r'''(?i)\b(?:TOKEN|SECRET|SERVICE_ROLE_KEY|API_KEY)[A-Za-z0-9_ ]*\s*=\s*["'][A-Za-z0-9_./+=:-]{20,}["']'''
+          )
+          findings = []
+          if root.exists():
+              for path in root.rglob('*'):
+                  if path.suffix not in {'.ts', '.js'} or not path.is_file():
+                      continue
+                  for line_number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
+                      if pattern.search(line):
+                          findings.append(f'{path}:{line_number}')
+
+          if findings:
+              print('Possible hardcoded secret found in Supabase function source:')
+              print('\n'.join(findings))
+              sys.exit(1)
 
       - name: Verify disabled legacy runner has no query-string secret
-        shell: bash
+        shell: python
         run: |
-          set -euo pipefail
-          file='supabase/functions/exercise-sync-runner/index.ts'
-          if [ -f "$file" ] && grep -Eq 'searchParams.*token|const[[:space:]]+TOKEN[[:space:]]*=' "$file"; then
-            echo "Legacy runner still contains token-based secret handling."
-            exit 1
-          fi
+          from pathlib import Path
+          import sys
+
+          path = Path('supabase/functions/exercise-sync-runner/index.ts')
+          if not path.exists():
+              sys.exit(0)
+          text = path.read_text(encoding='utf-8')
+          if 'searchParams.get("token")' in text or 'const TOKEN =' in text:
+              print('Legacy runner still contains token-based secret handling.')
+              sys.exit(1)
