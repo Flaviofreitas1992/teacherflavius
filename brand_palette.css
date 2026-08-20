@@ -54,6 +54,11 @@ html.tf-brand-dark-page .professor-button:hover {
 }
 
 /* Página inicial. */
+html.tf-brand-home body {
+  background: linear-gradient(145deg, var(--tf-navy-950) 0%, var(--tf-navy-900) 42%, var(--tf-blue-800) 72%, var(--tf-blue-700) 100%) !important;
+  background-attachment: fixed !important;
+}
+
 html.tf-brand-home .entry-card.student,
 html.tf-brand-home .entry-card.visitor {
   background: rgba(3, 26, 63, .78) !important;
