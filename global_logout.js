@@ -5,6 +5,15 @@
   const BUTTON_ID = "globalLogoutButton";
   const STYLE_ID = "globalLogoutStyles";
 
+  function loadMobileTopNavigation() {
+    if (window.__teacherFlaviusMobileTopNavigationLoaded) return;
+    if (document.querySelector('script[src*="mobile_top_navigation.js"]')) return;
+    const script = document.createElement("script");
+    script.src = "/mobile_top_navigation.js?v=20260820-1";
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+
   function once(callback) {
     let called = false;
     return function () {
@@ -188,6 +197,7 @@
   }
 
   async function initialize() {
+    loadMobileTopNavigation();
     ensureAuthentication(async function () {
       if (!window.Auth || !window.Auth.isConfigured || !window.Auth.isConfigured()) return;
 

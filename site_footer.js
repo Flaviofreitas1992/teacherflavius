@@ -148,6 +148,13 @@
     document.head.appendChild(script);
   }
 
+  function loadMobileTopNavigation() {
+    loadScript(
+      "teacher-flavius-mobile-top-navigation",
+      "/mobile_top_navigation.js?v=20260820-1"
+    );
+  }
+
   function loadFooterCore() {
     loadScript("teacher-flavius-site-footer-core", "/site_footer_core.js?v=20260820-1", function () {
       removeEnrollmentLinks(document);
@@ -168,6 +175,7 @@
 
   function initializeUi() {
     installBrandPalette();
+    loadMobileTopNavigation();
     if (isPublicMarketingPage()) removeEnrollmentLinks(document);
     else installEnrollmentLinkGuard();
     installWhatsappFloat();
