@@ -52,3 +52,7 @@ At capture time production had:
 - 1 required Vault secret name
 
 The machine-readable copy is in `schema-fingerprint.json`.
+
+## Disposable restore validation
+
+Before merging baseline changes, `.github/workflows/validate-supabase-baseline.yml` starts a clean local Supabase stack in GitHub Actions, applies the baseline without replaying the incomplete historical migrations, provisions only a dummy Vault secret, and compares the restored catalog against `schema-fingerprint.json`. Production credentials and application data are never used by this test.
