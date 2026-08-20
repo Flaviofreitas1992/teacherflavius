@@ -1,0 +1,51 @@
+name: Security baseline
+
+on:
+  push:
+    branches:
+      - main
+      - 'security/**'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  security-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Reject floating Supabase browser SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          matches=$(grep -RIl --include='*.html' 'cdn.jsdelivr.net/npm/@supabase/supabase-js@2"' . || true)
+          if [ -n "$matches" ]; then
+            echo "Floating @supabase/supabase-js@2 dependency found in:"
+            echo "$matches"
+            echo "Pin an exact 2.x version before merging."
+            exit 1
+          fi
+
+      - name: Reject obvious hardcoded Edge Function secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -REn --include='*.ts' --include='*.js' \
+            '(TOKEN|SECRET|SERVICE_ROLE_KEY|API_KEY)[A-Za-z0-9_ ]*=[[:space:]]*["'"'][A-Za-z0-9_./+=:-]{20,}["'"']' \
+            supabase/functions 2>/dev/null; then
+            echo "Possible hardcoded secret found in Supabase function source."
+            exit 1
+          fi
+
+      - name: Verify disabled legacy runner has no query-string secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='supabase/functions/exercise-sync-runner/index.ts'
+          if [ -f "$file" ] && grep -Eq 'searchParams.*token|const[[:space:]]+TOKEN[[:space:]]*=' "$file"; then
+            echo "Legacy runner still contains token-based secret handling."
+            exit 1
+          fi
