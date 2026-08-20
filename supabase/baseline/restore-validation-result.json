@@ -1,9 +1,22 @@
 {
-  "status": "failed",
+  "status": "success",
   "start": "success",
-  "apply": "failure",
-  "compare": "skipped",
-  "failure_summary": "Baseline apply failed in: supabase/baseline/10_public_schema.sql\nNOTICE:  extension \"supabase_vault\" already exists, skipping\nERROR:  syntax error at or near \"CREATE\"\nLINE 11: CREATE OR REPLACE FUNCTION public.get_teacher_daily_exercise...\n         ^",
-  "tested_commit": "1f3cea78c86c88586a168018ed904cd87a05b1f3",
-  "actual_fingerprint": null
+  "apply": "success",
+  "compare": "success",
+  "failure_summary": "",
+  "tested_commit": "384463467d0c209b1e081a6ef1f5479b686bf4ff",
+  "actual_fingerprint": {
+    "application_auth_triggers": 1,
+    "application_event_triggers": 1,
+    "constraints": 188,
+    "cron_jobs": 1,
+    "non_constraint_indexes": 99,
+    "private_functions": 1,
+    "public_functions": 116,
+    "public_user_triggers": 28,
+    "rls_policies": 85,
+    "storage_buckets": 0,
+    "tables": 46,
+    "vault_secret_names": 1
+  }
 }
