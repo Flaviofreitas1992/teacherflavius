@@ -1,6 +1,8 @@
 (function () {
   "use strict";
 
+  var GOOGLE_MEASUREMENT_ID = "G-11V3W5B6TG";
+
   function currentPath() {
     return (window.location.pathname || "/").toLowerCase();
   }
@@ -22,11 +24,7 @@
     var path = currentPath();
 
     root.classList.add("tf-brand-palette");
-
-    if (path === "/" || path === "/index.html") {
-      root.classList.add("tf-brand-home");
-    }
-
+    if (path === "/" || path === "/index.html") root.classList.add("tf-brand-home");
     if (
       path === "/quero_conhecer" ||
       path === "/quero_conhecer.html" ||
@@ -34,9 +32,7 @@
       path === "/quero-conhecer/" ||
       path.indexOf("/curso-de-ingles-online") === 0 ||
       path.indexOf("/landing-page") === 0
-    ) {
-      root.classList.add("tf-brand-sales");
-    }
+    ) root.classList.add("tf-brand-sales");
 
     var themeColor = document.querySelector('meta[name="theme-color"]');
     if (themeColor) themeColor.setAttribute("content", "#02102B");
@@ -151,8 +147,7 @@
   }
 
   function loadStylesheet(id, href) {
-    var existing = document.getElementById(id);
-    if (existing) return;
+    if (document.getElementById(id)) return;
     var stylesheet = document.createElement("link");
     stylesheet.id = id;
     stylesheet.rel = "stylesheet";
@@ -166,37 +161,50 @@
   }
 
   function loadCro() {
-    loadScript(
-      "teacher-flavius-cro",
-      "/cro.js?v=20260820-1"
-    );
+    loadScript("teacher-flavius-cro", "/cro.js?v=20260820-1");
   }
 
   function loadAnalyticsCore() {
-    loadScript(
-      "teacher-flavius-analytics",
-      "/analytics.js?v=20260820-1",
-      loadCro
-    );
+    loadScript("teacher-flavius-analytics", "/analytics.js?v=20260820-1", loadCro);
   }
 
   function loadAnalytics() {
-    loadScript(
-      "teacher-flavius-analytics-attribution",
-      "/analytics_attribution.js?v=20260820-1",
-      loadAnalyticsCore
-    );
+    loadScript("teacher-flavius-analytics-attribution", "/analytics_attribution.js?v=20260820-1", loadAnalyticsCore);
+  }
+
+  function disableAnalytics() {
+    window["ga-disable-" + GOOGLE_MEASUREMENT_ID] = true;
+    if (typeof window.gtag === "function") {
+      window.gtag("consent", "update", {
+        analytics_storage: "denied",
+        ad_storage: "denied",
+        ad_user_data: "denied",
+        ad_personalization: "denied"
+      });
+    }
+  }
+
+  function applyPrivacyChoice() {
+    var privacy = window.TeacherFlaviusPrivacy;
+    if (privacy && typeof privacy.hasAnalyticsConsent === "function" && privacy.hasAnalyticsConsent()) {
+      window["ga-disable-" + GOOGLE_MEASUREMENT_ID] = false;
+      loadAnalytics();
+    } else {
+      disableAnalytics();
+    }
+  }
+
+  function loadPrivacy() {
+    window.addEventListener("tf:privacy-consent-changed", applyPrivacyChoice);
+    loadScript("teacher-flavius-privacy-consent", "/privacy_consent.js?v=20260820-1", applyPrivacyChoice);
   }
 
   function loadMobileTopNavigation() {
-    loadScript(
-      "teacher-flavius-mobile-top-navigation",
-      "/mobile_top_navigation.js?v=20260820-desktop-menu-1"
-    );
+    loadScript("teacher-flavius-mobile-top-navigation", "/mobile_top_navigation.js?v=20260820-desktop-menu-1");
   }
 
   function loadFooterCore() {
-    loadScript("teacher-flavius-site-footer-core", "/site_footer_core.js?v=20260820-1", function () {
+    loadScript("teacher-flavius-site-footer-core", "/site_footer_core.js?v=20260820-privacy-1", function () {
       removeEnrollmentLinks(document);
     });
   }
@@ -223,14 +231,11 @@
   }
 
   function schedulePublicScripts() {
-    if ("requestIdleCallback" in window) {
-      window.requestIdleCallback(loadPublicPageScripts, { timeout: 1200 });
-    } else {
-      window.setTimeout(loadPublicPageScripts, 0);
-    }
+    if ("requestIdleCallback" in window) window.requestIdleCallback(loadPublicPageScripts, { timeout: 1200 });
+    else window.setTimeout(loadPublicPageScripts, 0);
   }
 
-  loadAnalytics();
+  loadPrivacy();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initializeUi, { once: true });
