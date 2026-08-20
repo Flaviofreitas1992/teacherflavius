@@ -1,6 +1,46 @@
 (function () {
   "use strict";
 
+  function installBrandPalette() {
+    var root = document.documentElement;
+    var path = (window.location.pathname || "/").toLowerCase();
+
+    root.classList.add("tf-brand-palette");
+
+    if (path === "/" || path === "/index.html") {
+      root.classList.add("tf-brand-home");
+    }
+
+    if (
+      path === "/quero_conhecer.html" ||
+      path === "/quero-conhecer" ||
+      path === "/quero-conhecer/" ||
+      path.indexOf("/landing-page") === 0
+    ) {
+      root.classList.add("tf-brand-sales");
+    }
+
+    var themeColor = document.querySelector('meta[name="theme-color"]');
+    if (themeColor) themeColor.setAttribute("content", "#02102B");
+
+    if (!document.getElementById("teacher-flavius-brand-palette")) {
+      var palette = document.createElement("link");
+      palette.id = "teacher-flavius-brand-palette";
+      palette.rel = "stylesheet";
+      palette.href = "/brand_palette.css?v=20260820-1";
+      document.head.appendChild(palette);
+    }
+
+    if (document.body) {
+      var bodyColor = window.getComputedStyle(document.body).color || "";
+      var rgb = bodyColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+      if (rgb) {
+        var luminance = (Number(rgb[1]) * 0.2126) + (Number(rgb[2]) * 0.7152) + (Number(rgb[3]) * 0.0722);
+        if (luminance >= 150) root.classList.add("tf-brand-dark-page");
+      }
+    }
+  }
+
   function isEnrollmentLink(value) {
     if (!value) return false;
     try {
@@ -158,10 +198,12 @@
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", function () {
+      installBrandPalette();
       installEnrollmentLinkGuard();
       installWhatsappFloat();
     }, { once: true });
   } else {
+    installBrandPalette();
     installEnrollmentLinkGuard();
     installWhatsappFloat();
   }
