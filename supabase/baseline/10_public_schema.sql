@@ -1,4 +1,15 @@
--- teacherflavius.com Supabase schema baseline\n-- Generated from production schema. Schema only: no application rows or secrets.\n-- Prerequisites: a fresh Supabase Postgres project with auth/storage schemas.\n\nset check_function_bodies = false;\nset search_path = public, auth, extensions, pg_catalog;\n\ncreate extension if not exists pg_net with schema extensions;\ncreate extension if not exists supabase_vault with schema vault;\n\n-- Tables\ncreate table public.profiles (
+-- teacherflavius.com Supabase schema baseline
+-- Generated from production schema. Schema only: no application rows or secrets.
+-- Prerequisites: a fresh Supabase Postgres project with auth/storage schemas.
+
+set check_function_bodies = false;
+set search_path = public, auth, extensions, pg_catalog;
+
+create extension if not exists pg_net with schema extensions;
+create extension if not exists supabase_vault with schema vault;
+
+-- Tables
+create table public.profiles (
   id uuid not null,
   name text,
   email text,
@@ -674,7 +685,8 @@ create table public.app_error_events (
   resolved_at timestamp with time zone
 );
 
--- Constraints\nalter table only public.profiles add constraint profiles_pkey PRIMARY KEY (id);
+-- Constraints
+alter table only public.profiles add constraint profiles_pkey PRIMARY KEY (id);
 alter table only public.profiles add constraint profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table only public.activity_results add constraint activity_results_pkey PRIMARY KEY (id);
 alter table only public.activity_results add constraint activity_results_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
@@ -864,7 +876,8 @@ alter table only public.app_error_events add constraint app_error_events_http_st
 alter table only public.app_error_events add constraint app_error_events_pkey PRIMARY KEY (id);
 
 
--- Indexes\nCREATE UNIQUE INDEX profiles_enrollment_code_unique ON public.profiles USING btree (enrollment_code) WHERE (enrollment_code IS NOT NULL);
+-- Indexes
+CREATE UNIQUE INDEX profiles_enrollment_code_unique ON public.profiles USING btree (enrollment_code) WHERE (enrollment_code IS NOT NULL);
 CREATE INDEX profiles_cpf_idx ON public.profiles USING btree (cpf);
 CREATE INDEX profiles_whatsapp_idx ON public.profiles USING btree (whatsapp);
 CREATE INDEX profiles_pix_key_idx ON public.profiles USING btree (pix_key);
@@ -965,7 +978,8 @@ CREATE INDEX app_error_events_unresolved_idx ON public.app_error_events USING bt
 CREATE INDEX app_error_events_fingerprint_idx ON public.app_error_events USING btree (fingerprint, created_at DESC) WHERE (fingerprint IS NOT NULL);
 
 
--- Functions\nCREATE OR REPLACE FUNCTION public.rls_auto_enable()
+-- Functions
+CREATE OR REPLACE FUNCTION public.rls_auto_enable()
  RETURNS event_trigger
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -6828,7 +6842,8 @@ $function$
 
 
 
--- Row Level Security\nalter table public.profiles enable row level security;
+-- Row Level Security
+alter table public.profiles enable row level security;
 alter table public.activity_results enable row level security;
 alter table public.student_frequency enable row level security;
 alter table public.teacher_admins enable row level security;
@@ -6876,7 +6891,8 @@ alter table public.csp_violation_reports enable row level security;
 alter table public.app_error_events enable row level security;
 
 
--- RLS policies\ncreate policy "Users can insert own activity results" on public.activity_results as restrictive for insert to authenticated
+-- RLS policies
+create policy "Users can insert own activity results" on public.activity_results as restrictive for insert to authenticated
   with check ((( SELECT auth.uid() AS uid) = user_id));
 
 create policy "Users can read own activity results" on public.activity_results as restrictive for select to authenticated
@@ -7178,7 +7194,56 @@ create policy "Professor exclui tarefas semanais" on public.weekly_student_tasks
   using (( SELECT is_teacher_admin() AS is_teacher_admin));
 
 
--- Public triggers\nCREATE TRIGGER activate_completed_google_student_profile_before_write BEFORE INSERT OR UPDATE OF profile_completed, enrolled, enrollment_code, email ON public.profiles FOR EACH ROW EXECUTE FUNCTION activate_completed_google_student_profile();
+-- Application private schema
+create schema if not exists private;
+revoke all on schema private from public, anon, authenticated;
+
+CREATE OR REPLACE FUNCTION private.dispatch_enrollment_notification_webhook()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  webhook_secret text;
+begin
+  select ds.decrypted_secret
+    into webhook_secret
+  from vault.decrypted_secrets as ds
+  where ds.name = 'teacherflavius_notification_webhook_secret'
+  limit 1;
+
+  if nullif(webhook_secret, '') is null then
+    raise warning 'Enrollment notification webhook secret is unavailable';
+    return new;
+  end if;
+
+  perform net.http_post(
+    url := 'https://wnigzpvgsbpjdxvjzugt.supabase.co/functions/v1/notify-new-enrollment',
+    body := pg_catalog.jsonb_build_object(
+      'type', 'INSERT',
+      'table', tg_table_name,
+      'schema', tg_table_schema,
+      'record', pg_catalog.to_jsonb(new),
+      'old_record', null
+    ),
+    params := '{}'::jsonb,
+    headers := pg_catalog.jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-webhook-secret', webhook_secret
+    ),
+    timeout_milliseconds := 5000
+  );
+
+  return new;
+end;
+$function$
+
+
+revoke all on function private.dispatch_enrollment_notification_webhook() from public, anon, authenticated, service_role;
+
+-- Public triggers
+CREATE TRIGGER activate_completed_google_student_profile_before_write BEFORE INSERT OR UPDATE OF profile_completed, enrolled, enrollment_code, email ON public.profiles FOR EACH ROW EXECUTE FUNCTION activate_completed_google_student_profile();
 CREATE TRIGGER normalize_profile_enrollment_code_before_write BEFORE INSERT OR UPDATE OF enrollment_code ON public.profiles FOR EACH ROW EXECUTE FUNCTION normalize_profile_enrollment_code();
 CREATE TRIGGER preserve_linked_student_enrollment_email_trigger BEFORE UPDATE OF email ON public.profiles FOR EACH ROW EXECUTE FUNCTION preserve_linked_student_enrollment_email();
 CREATE TRIGGER profiles_prevent_new_duplicate_cpf BEFORE INSERT OR UPDATE OF cpf ON public.profiles FOR EACH ROW EXECUTE FUNCTION prevent_new_duplicate_profile_cpf();
@@ -7208,13 +7273,16 @@ CREATE TRIGGER tuition_payment_attempts_set_updated_at BEFORE UPDATE ON public.t
 CREATE TRIGGER set_flashcard_srs_updated_at BEFORE UPDATE ON public.flashcard_srs FOR EACH ROW EXECUTE FUNCTION set_flashcards_updated_at();
 
 
--- Application-owned auth triggers\nCREATE TRIGGER sync_enrolled_auth_user_profile_trigger AFTER INSERT OR UPDATE OF raw_user_meta_data, email ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_enrolled_auth_user_profile();
+-- Application-owned auth triggers
+CREATE TRIGGER sync_enrolled_auth_user_profile_trigger AFTER INSERT OR UPDATE OF raw_user_meta_data, email ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_enrolled_auth_user_profile();
 
 
--- Event triggers\ncreate event trigger ensure_rls on ddl_command_end when tag in ('CREATE TABLE', 'CREATE TABLE AS', 'SELECT INTO') execute function public.rls_auto_enable();
+-- Event triggers
+create event trigger ensure_rls on ddl_command_end when tag in ('CREATE TABLE', 'CREATE TABLE AS', 'SELECT INTO') execute function public.rls_auto_enable();
 
 
--- Table grants\nrevoke all on table public.profiles from public, anon, authenticated, service_role;
+-- Table grants
+revoke all on table public.profiles from public, anon, authenticated, service_role;
 revoke all on table public.activity_results from public, anon, authenticated, service_role;
 revoke all on table public.student_frequency from public, anon, authenticated, service_role;
 revoke all on table public.teacher_admins from public, anon, authenticated, service_role;
@@ -7995,10 +8063,12 @@ grant TRIGGER on table public.app_error_events to service_role;
 grant TRUNCATE on table public.app_error_events to service_role;
 grant UPDATE on table public.app_error_events to service_role;
 
--- Column grants\ngrant UPDATE (resolved_at) on table public.app_error_events to authenticated;
+-- Column grants
+grant UPDATE (resolved_at) on table public.app_error_events to authenticated;
 
 
--- Function grants\nrevoke all on function public.rls_auto_enable() from public, anon, authenticated, service_role;
+-- Function grants
+revoke all on function public.rls_auto_enable() from public, anon, authenticated, service_role;
 revoke all on function public.set_updated_at() from public, anon, authenticated, service_role;
 revoke all on function public.delete_teacher_student(target_user_id uuid) from public, anon, authenticated, service_role;
 revoke all on function public.get_teacher_student_frequency(target_user_id uuid) from public, anon, authenticated, service_role;
@@ -8303,4 +8373,4 @@ grant execute on function public.record_flashcard_review(p_card_id uuid, p_grade
 grant execute on function public.prevent_new_duplicate_profile_cpf() to service_role;
 grant execute on function public.prune_app_error_events(target_days integer) to service_role;
 
-set check_function_bodies = true;\n
+set check_function_bodies = true;
