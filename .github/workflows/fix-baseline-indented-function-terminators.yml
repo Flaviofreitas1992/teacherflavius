@@ -1,0 +1,51 @@
+name: Repair remaining baseline function terminators
+
+on:
+  push:
+    branches:
+      - chore/supabase-schema-baseline
+    paths:
+      - .github/workflows/fix-baseline-indented-function-terminators.yml
+
+permissions:
+  contents: write
+
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chore/supabase-schema-baseline
+      - name: Normalize indented function terminators
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('supabase/baseline/10_public_schema.sql')
+          lines = path.read_text().splitlines(keepends=True)
+          out = []
+          changed = 0
+          for line in lines:
+              if line.endswith('\r\n'):
+                  raw, ending = line[:-2], '\r\n'
+              elif line.endswith('\n'):
+                  raw, ending = line[:-1], '\n'
+              else:
+                  raw, ending = line, ''
+              if raw.strip() == '$function$':
+                  out.append('$function$;' + ending)
+                  changed += 1
+              else:
+                  out.append(line)
+          if changed != 2:
+              raise SystemExit(f'Expected 2 remaining unterminated function definitions, found {changed}')
+          path.write_text(''.join(out))
+          print(f'Fixed {changed} remaining function definitions')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add supabase/baseline/10_public_schema.sql
+          git commit -m 'fix: normalize remaining baseline function terminators'
+          git push origin HEAD:chore/supabase-schema-baseline
