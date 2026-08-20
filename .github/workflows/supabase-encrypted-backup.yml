@@ -213,14 +213,21 @@ jobs:
           compression-level: 0
           retention-days: ${{ steps.metadata.outputs.retention }}
 
-      - name: Remove encrypted working files
+      - name: Remove backup working files
         if: always()
         shell: bash
         run: |
-          rm -rf \
+          set +e
+
+          for path in \
             "${{ steps.metadata.outputs.backup_dir }}" \
             "${{ steps.metadata.outputs.archive }}" \
             "${{ steps.metadata.outputs.encrypted }}" \
             "${{ steps.metadata.outputs.encrypted }}.sha256" \
             "$RUNNER_TEMP/verify-${{ steps.metadata.outputs.backup_id }}" \
             "$RUNNER_TEMP/verify-${{ steps.metadata.outputs.backup_id }}.tar.gz"
+          do
+            if [ -n "$path" ] && [ "$path" != "$RUNNER_TEMP/verify-" ] && [ "$path" != "$RUNNER_TEMP/verify-.tar.gz" ]; then
+              rm -rf -- "$path"
+            fi
+          done
