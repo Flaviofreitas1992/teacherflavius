@@ -67,6 +67,18 @@ html.tf-brand-palette ::selection{color:var(--tf-white);background:var(--tf-blue
 .header h1{color:var(--tf-slate-50) !important;background:linear-gradient(100deg,var(--tf-white) 0%,var(--tf-blue-100) 48%,var(--tf-blue-300) 72%,var(--tf-white) 100%) !important;-webkit-background-clip:text !important;-webkit-text-fill-color:transparent !important;background-clip:text !important;animation:tfTitleEnter .55s var(--tf-ease) both !important}
 @keyframes tfTitleEnter{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
 
+/* Home pública: mantém o hero escuro, mas restaura contraste correto nas áreas de conteúdo. */
+html.tf-brand-home{color-scheme:light}
+html.tf-brand-home body{background:var(--tf-slate-50) !important;background-attachment:scroll !important;color:var(--tf-navy-900)}
+html.tf-brand-home .section{background:linear-gradient(180deg,#F8FBFF 0%,#EEF5FF 100%) !important;color:var(--tf-navy-900) !important}
+html.tf-brand-home .section-head h2{color:var(--tf-navy-950) !important;text-shadow:none !important}
+html.tf-brand-home .section-head p{color:var(--tf-slate-600) !important}
+html.tf-brand-home .section .eyebrow{color:var(--tf-blue-500) !important}
+html.tf-brand-home .benefits li{background:var(--tf-white) !important;color:var(--tf-navy-900) !important;border-color:#D7E3F4 !important;box-shadow:0 10px 28px rgba(2,16,43,.08) !important}
+html.tf-brand-home .benefits li span:not(.icon){color:var(--tf-navy-900) !important}
+html.tf-brand-home .benefits .icon{display:grid !important;place-items:center !important;width:44px !important;height:44px !important;flex:0 0 44px !important;border-radius:12px !important;background:#E8F2FF !important;box-shadow:inset 0 0 0 1px rgba(9,104,188,.10) !important;font-size:1.35rem !important;line-height:1 !important}
+html.tf-brand-home .video-copy h2{color:var(--tf-navy-950) !important}
+html.tf-brand-home .video-copy p{color:var(--tf-slate-600) !important}
 html.tf-brand-home .entry-card.student,html.tf-brand-home .entry-card.visitor{background:rgba(3,26,63,.82) !important;border-color:rgba(78,154,236,.30) !important}
 html.tf-brand-home .entry-card.student .entry-icon,html.tf-brand-home .entry-card.visitor .entry-icon{background:linear-gradient(135deg,var(--tf-blue-700),var(--tf-blue-300)) !important}
 html.tf-brand-home .entry-card strong{font-family:var(--tf-font-display) !important}
@@ -99,5 +111,5 @@ html.tf-brand-dark-page input:not([type='checkbox']):not([type='radio']):focus,h
 .tf-site-footer__cta{background:linear-gradient(135deg,var(--tf-success),var(--tf-success-dark)) !important}
 
 @media(max-width:899px){html.tf-brand-palette body{background-attachment:scroll !important}}
-@media(max-width:639px){.menu-button,.entry-card{border-radius:var(--tf-radius-md) !important}.menu-button:hover,.entry-card:hover{transform:none !important}}
+@media(max-width:639px){.menu-button,.entry-card{border-radius:var(--tf-radius-md) !important}.menu-button:hover,.entry-card:hover{transform:none !important}html.tf-brand-home .section{padding-top:62px !important;padding-bottom:62px !important}html.tf-brand-home .benefits{gap:12px !important}html.tf-brand-home .benefits li{min-height:76px !important;padding:15px 16px !important;border-radius:18px !important}html.tf-brand-home .section-head{margin-bottom:28px !important}html.tf-brand-home .section-head h2{font-size:clamp(2rem,10vw,2.65rem) !important;line-height:1.08 !important}html.tf-brand-home .section-head p{font-size:1rem !important;line-height:1.65 !important}}
 @media(prefers-reduced-motion:reduce){html.tf-brand-palette *,html.tf-brand-palette *::before,html.tf-brand-palette *::after{scroll-behavior:auto !important;animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}}
