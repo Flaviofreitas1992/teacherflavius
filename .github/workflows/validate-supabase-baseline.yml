@@ -1,0 +1,193 @@
+name: Validate Supabase baseline restore
+
+on:
+  push:
+    branches:
+      - chore/supabase-schema-baseline
+    paths:
+      - .github/workflows/validate-supabase-baseline.yml
+
+permissions:
+  contents: read
+
+jobs:
+  restore-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out baseline branch
+        uses: actions/checkout@v4
+
+      - name: Set up Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start a clean local Supabase stack
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # The historical migration directory is intentionally incomplete and
+          # must not be replayed for a baseline restore test.
+          if [ -d supabase/migrations ]; then
+            mv supabase/migrations /tmp/teacherflavius-migrations
+          fi
+          if [ -f supabase/seed.sql ]; then
+            mv supabase/seed.sql /tmp/teacherflavius-seed.sql
+          fi
+
+          supabase init --force
+          mkdir -p supabase/migrations
+          supabase start
+
+          rm -rf supabase/migrations
+          if [ -d /tmp/teacherflavius-migrations ]; then
+            mv /tmp/teacherflavius-migrations supabase/migrations
+          fi
+          if [ -f /tmp/teacherflavius-seed.sql ]; then
+            mv /tmp/teacherflavius-seed.sql supabase/seed.sql
+          fi
+
+      - name: Apply production reconstruction baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DB_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+          test -n "$DB_CONTAINER"
+
+          for file in \
+            supabase/baseline/10_public_schema.sql \
+            supabase/baseline/20_default_privileges.sql \
+            supabase/baseline/30_platform_config.sql
+          do
+            echo "Applying $file"
+            docker exec -i "$DB_CONTAINER" \
+              psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
+              < "$file"
+          done
+
+          # The production secret value is intentionally never used. A dummy
+          # value lets us validate that the required Vault object can exist.
+          docker exec -i "$DB_CONTAINER" \
+            psql -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          select vault.create_secret(
+            'restore-test-placeholder-not-a-production-secret',
+            'teacherflavius_notification_webhook_secret',
+            'Temporary value used only by the baseline restore CI test'
+          );
+          SQL
+
+      - name: Compare restored catalog with production fingerprint
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DB_CONTAINER="$(docker ps --format '{{.Names}}' | grep '^supabase_db_' | head -n 1)"
+
+          docker exec -i "$DB_CONTAINER" \
+            psql -U postgres -d postgres -At -v ON_ERROR_STOP=1 <<'SQL' \
+            > /tmp/actual-fingerprint.json
+          select json_build_object(
+            'tables', (
+              select count(*)
+              from pg_class c
+              join pg_namespace n on n.oid = c.relnamespace
+              where n.nspname = 'public' and c.relkind in ('r','p')
+            ),
+            'constraints', (
+              select count(*)
+              from pg_constraint co
+              join pg_namespace n on n.oid = co.connamespace
+              where n.nspname = 'public'
+            ),
+            'non_constraint_indexes', (
+              select count(*)
+              from pg_index i
+              join pg_class idx on idx.oid = i.indexrelid
+              join pg_class tbl on tbl.oid = i.indrelid
+              join pg_namespace n on n.oid = tbl.relnamespace
+              where n.nspname = 'public'
+                and not exists (
+                  select 1 from pg_constraint co where co.conindid = i.indexrelid
+                )
+            ),
+            'public_functions', (
+              select count(*)
+              from pg_proc p
+              join pg_namespace n on n.oid = p.pronamespace
+              where n.nspname = 'public'
+            ),
+            'private_functions', (
+              select count(*)
+              from pg_proc p
+              join pg_namespace n on n.oid = p.pronamespace
+              where n.nspname = 'private'
+            ),
+            'rls_policies', (
+              select count(*) from pg_policies where schemaname = 'public'
+            ),
+            'public_user_triggers', (
+              select count(*)
+              from pg_trigger t
+              join pg_class c on c.oid = t.tgrelid
+              join pg_namespace n on n.oid = c.relnamespace
+              where n.nspname = 'public' and not t.tgisinternal
+            ),
+            'application_auth_triggers', (
+              select count(*)
+              from pg_trigger t
+              join pg_class c on c.oid = t.tgrelid
+              join pg_namespace n on n.oid = c.relnamespace
+              where n.nspname = 'auth' and not t.tgisinternal
+                and t.tgfoid in (
+                  select p.oid
+                  from pg_proc p
+                  join pg_namespace pn on pn.oid = p.pronamespace
+                  where pn.nspname in ('public','private')
+                )
+            ),
+            'application_event_triggers', (
+              select count(*)
+              from pg_event_trigger e
+              where e.evtfoid in (
+                select p.oid
+                from pg_proc p
+                join pg_namespace n on n.oid = p.pronamespace
+                where n.nspname in ('public','private')
+              )
+            ),
+            'cron_jobs', (
+              select count(*) from cron.job
+              where jobname = 'sync-auto-makeup-slots-30-days'
+            ),
+            'storage_buckets', (
+              select count(*) from storage.buckets
+            ),
+            'vault_secret_names', (
+              select count(*) from vault.secrets
+              where name = 'teacherflavius_notification_webhook_secret'
+            )
+          );
+          SQL
+
+          jq -S 'del(.captured_from_migration_version)' \
+            supabase/baseline/schema-fingerprint.json \
+            > /tmp/expected-fingerprint.json
+          jq -S . /tmp/actual-fingerprint.json \
+            > /tmp/actual-fingerprint-normalized.json
+
+          echo 'Expected fingerprint:'
+          cat /tmp/expected-fingerprint.json
+          echo 'Actual fingerprint:'
+          cat /tmp/actual-fingerprint-normalized.json
+
+          diff -u \
+            /tmp/expected-fingerprint.json \
+            /tmp/actual-fingerprint-normalized.json
+
+      - name: Stop disposable Supabase stack
+        if: always()
+        run: supabase stop --no-backup
