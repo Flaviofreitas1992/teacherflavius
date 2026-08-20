@@ -1,0 +1,132 @@
+name: Backup and recovery checkpoint
+
+on:
+  schedule:
+    # 02:30 America/Sao_Paulo while the region is UTC-3.
+    - cron: '30 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+      SUPABASE_PROJECT_REF: wnigzpvgsbpjdxvjzugt
+
+    steps:
+      - name: Checkout complete repository history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Validate required backup secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_DB_URL:-}" ]; then
+            echo '::error::Missing GitHub Actions secret SUPABASE_DB_URL.'
+            exit 1
+          fi
+          if [ -z "${BACKUP_ENCRYPTION_PASSPHRASE:-}" ]; then
+            echo '::error::Missing GitHub Actions secret BACKUP_ENCRYPTION_PASSPHRASE.'
+            exit 1
+          fi
+          if [ "${#BACKUP_ENCRYPTION_PASSPHRASE}" -lt 24 ]; then
+            echo '::error::BACKUP_ENCRYPTION_PASSPHRASE must contain at least 24 characters.'
+            exit 1
+          fi
+
+      - name: Install PostgreSQL 17 client
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo install -d -m 0755 /usr/share/postgresql-common/pgdg
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | gpg --dearmor \
+            | sudo tee /usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg >/dev/null
+          . /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client-17
+          pg_dump --version
+
+      - name: Refuse incomplete Storage backups
+        shell: bash
+        run: |
+          set -euo pipefail
+          bucket_count="$(psql "$SUPABASE_DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -c 'select count(*) from storage.buckets;')"
+          if [ "$bucket_count" != "0" ]; then
+            echo "::error::Detected ${bucket_count} Supabase Storage bucket(s). Database backups only contain Storage metadata, not stored objects. Add object backup coverage before relying on this workflow."
+            exit 1
+          fi
+
+      - name: Create database and repository checkpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          timestamp="$(date -u +'%Y%m%dT%H%M%SZ')"
+          checkpoint="teacherflavius-${timestamp}-${GITHUB_SHA::12}"
+          mkdir -p "backup/${checkpoint}"
+
+          pg_dump "$SUPABASE_DB_URL" \
+            --format=custom \
+            --compress=9 \
+            --no-owner \
+            --no-acl \
+            --file="backup/${checkpoint}/database.dump"
+
+          pg_restore --list "backup/${checkpoint}/database.dump" >/dev/null
+          git bundle create "backup/${checkpoint}/repository.bundle" --all
+          git bundle verify "backup/${checkpoint}/repository.bundle"
+
+          grep -RhoE 'Deno\.env\.get\("[A-Z0-9_]+"\)' supabase/functions 2>/dev/null \
+            | sed -E 's/.*\("([A-Z0-9_]+)"\).*/\1/' \
+            | sort -u \
+            > "backup/${checkpoint}/required-edge-function-env-names.txt" || true
+
+          cat > "backup/${checkpoint}/manifest.txt" <<EOF
+          project=teacherflavius
+          supabase_project_ref=${SUPABASE_PROJECT_REF}
+          created_at_utc=${timestamp}
+          github_repository=${GITHUB_REPOSITORY}
+          github_commit=${GITHUB_SHA}
+          github_ref=${GITHUB_REF}
+          postgres_client=$(pg_dump --version)
+          storage_bucket_count=0
+          EOF
+
+          (
+            cd "backup/${checkpoint}"
+            sha256sum database.dump repository.bundle required-edge-function-env-names.txt manifest.txt > SHA256SUMS
+          )
+
+          tar -C backup -czf "backup/${checkpoint}.tar.gz" "${checkpoint}"
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 250000 \
+            -in "backup/${checkpoint}.tar.gz" \
+            -out "backup/${checkpoint}.tar.gz.enc" \
+            -pass env:BACKUP_ENCRYPTION_PASSPHRASE
+          sha256sum "backup/${checkpoint}.tar.gz.enc" > "backup/${checkpoint}.tar.gz.enc.sha256"
+
+          rm -rf "backup/${checkpoint}" "backup/${checkpoint}.tar.gz"
+          echo "CHECKPOINT=${checkpoint}" >> "$GITHUB_ENV"
+
+      - name: Upload encrypted recovery checkpoint
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.CHECKPOINT }}
+          path: |
+            backup/${{ env.CHECKPOINT }}.tar.gz.enc
+            backup/${{ env.CHECKPOINT }}.tar.gz.enc.sha256
+          if-no-files-found: error
+          retention-days: 30
