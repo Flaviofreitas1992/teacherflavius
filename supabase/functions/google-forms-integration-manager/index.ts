@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 
 const SECRET_SHA256 = "f093cfbed40de5128fa41e842a9431d385a27db653ff2e79eab7576ad8086f9e";
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
