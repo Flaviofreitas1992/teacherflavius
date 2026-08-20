@@ -1,0 +1,58 @@
+name: Export Supabase schema baseline
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - chore/supabase-schema-baseline
+    paths:
+      - .github/workflows/export-schema-baseline.yml
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: chore/supabase-schema-baseline
+          fetch-depth: 0
+
+      - name: Export sanitized production schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p supabase/baseline
+          curl --fail --silent --show-error \
+            --retry 3 \
+            'https://wnigzpvgsbpjdxvjzugt.supabase.co/functions/v1/schema-baseline-export' \
+            -o supabase/baseline/10_public_schema.sql
+
+          bytes="$(wc -c < supabase/baseline/10_public_schema.sql)"
+          if [ "$bytes" -lt 300000 ] || [ "$bytes" -gt 500000 ]; then
+            echo "Unexpected baseline size: $bytes bytes" >&2
+            exit 1
+          fi
+
+          if grep -Eiq 'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+|sb_secret_|sk-[A-Za-z0-9]|@gmail\.com|31415926590' supabase/baseline/10_public_schema.sql; then
+            echo 'Potential secret or application data detected in baseline' >&2
+            exit 1
+          fi
+
+      - name: Commit exported baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- supabase/baseline/10_public_schema.sql
+          if git diff --cached --quiet; then
+            echo 'Baseline already current.'
+            exit 0
+          fi
+          git commit -m 'chore: capture production schema baseline'
+          git push origin HEAD:chore/supabase-schema-baseline
