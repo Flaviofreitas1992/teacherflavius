@@ -136,9 +136,6 @@ function pixFallbackMessage(professorNotified: boolean): string {
 }
 
 async function notifyProfessorOfMercadoPagoPolicyBlock(input: {
-  tuitionId: string;
-  attemptId: string;
-  studentEmail: string;
   providerStatus: number;
   providerErrorCode: string;
 }): Promise<boolean> {
@@ -152,12 +149,13 @@ async function notifyProfessorOfMercadoPagoPolicyBlock(input: {
   }
 
   try {
+    const dayKey = new Date().toISOString().slice(0, 10);
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${resendApiKey}`,
         "Content-Type": "application/json",
-        "Idempotency-Key": `mercado-pago-policy-${input.tuitionId}`,
+        "Idempotency-Key": `mercado-pago-policy-${input.providerErrorCode}-${dayKey}`,
       },
       body: JSON.stringify({
         from: fromEmail,
@@ -166,19 +164,18 @@ async function notifyProfessorOfMercadoPagoPolicyBlock(input: {
         text: [
           "O site detectou que o Mercado Pago recusou a criação de um pagamento por política interna.",
           "",
-          `Aluno: ${input.studentEmail || "e-mail não informado"}`,
-          `Mensalidade: ${input.tuitionId}`,
-          `Tentativa: ${input.attemptId}`,
           `HTTP do Mercado Pago: ${input.providerStatus}`,
           `Código do Mercado Pago: ${input.providerErrorCode}`,
           "",
+          "Por privacidade, este alerta não inclui dados do aluno nem identificadores internos da cobrança.",
+          "Consulte o Controle de Mensalidades no portal se precisar identificar o caso.",
           `O aluno recebeu a orientação para pagar pela chave PIX alternativa: ${ALTERNATIVE_PIX_KEY}`,
         ].join("\n"),
       }),
     });
 
     if (!response.ok) {
-      console.error("Resend rejected Mercado Pago policy alert", response.status, (await response.text()).slice(0, 500));
+      console.error("Resend rejected Mercado Pago policy alert", response.status);
       return false;
     }
 
@@ -574,9 +571,6 @@ Deno.serve(async (request: Request) => {
 
     if (mercadoPagoResponse.status === 403 && providerErrorCode === "pa_unauthorized_result_from_policies") {
       const professorNotified = await notifyProfessorOfMercadoPagoPolicyBlock({
-        tuitionId,
-        attemptId: attempt.id,
-        studentEmail: payerEmail,
         providerStatus: mercadoPagoResponse.status,
         providerErrorCode,
       });
