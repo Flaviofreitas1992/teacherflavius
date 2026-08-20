@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 import shutil
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -46,6 +48,17 @@ def tracked_files() -> list[Path]:
     return [Path(raw.decode("utf-8")) for raw in result.stdout.split(b"\0") if raw]
 
 
+def current_commit_sha() -> str:
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout.strip()
+
+
 def is_public(path: Path) -> bool:
     if not path.parts:
         return False
@@ -80,6 +93,19 @@ def inject_responsive_compat(html: str) -> tuple[str, bool]:
     return f"{prefix}{separator}{injected}\n{suffix}", True
 
 
+def write_health_check() -> None:
+    payload = {
+        "status": "ok",
+        "service": "teacherflavius.com",
+        "commit": current_commit_sha(),
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    }
+    (PUBLISH / "health.json").write_text(
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+    )
+
+
 def main() -> None:
     if PUBLISH.exists():
         shutil.rmtree(PUBLISH)
@@ -110,7 +136,15 @@ def main() -> None:
         raise SystemExit("Missing netlify/_headers")
     shutil.copy2(headers, PUBLISH / "_headers")
 
-    required = [PUBLISH / "index.html", PUBLISH / "404.html", PUBLISH / "robots.txt", PUBLISH / "sitemap.xml"]
+    write_health_check()
+
+    required = [
+        PUBLISH / "index.html",
+        PUBLISH / "404.html",
+        PUBLISH / "robots.txt",
+        PUBLISH / "sitemap.xml",
+        PUBLISH / "health.json",
+    ]
     missing = [str(path.relative_to(ROOT)) for path in required if not path.is_file()]
     if missing:
         raise SystemExit(f"Netlify build missing required public files: {', '.join(missing)}")
@@ -129,7 +163,7 @@ def main() -> None:
         raise SystemExit(f"Operational files leaked into publish directory: {', '.join(leaked)}")
 
     print(
-        f"Netlify publish directory ready: {copied} public files + _headers; "
+        f"Netlify publish directory ready: {copied} public files + _headers + health.json; "
         f"responsive/viewport baseline enhanced {enhanced_html} HTML files"
     )
 

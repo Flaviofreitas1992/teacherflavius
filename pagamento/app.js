@@ -90,6 +90,11 @@ async function getFunctionError(error) {
   return error.message || "Não foi possível processar o pagamento.";
 }
 
+function shouldPreserveIdempotencyKey(error) {
+  const status = Number(error && error.context && error.context.status);
+  return !Number.isFinite(status) || status === 0 || status >= 500;
+}
+
 async function invokePaymentFunction(payload) {
   const response = await Auth.getClient().functions.invoke("create-mercado-pago-payment", {
     body: payload
@@ -200,7 +205,7 @@ async function renderPaymentBrick() {
           );
           startPaymentPolling(selectedTuition.tuition_id, 0);
         } catch (error) {
-          currentIdempotencyKey = null;
+          if (!shouldPreserveIdempotencyKey(error)) currentIdempotencyKey = null;
           setPageMessage(await getFunctionError(error), "error");
           throw error;
         }
