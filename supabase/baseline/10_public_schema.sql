@@ -1237,7 +1237,7 @@ AS $function$
                                               new.updated_at = now();
                                                 return new;
                                                 end;
-                                                $function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_daily_exercise_completion()
@@ -1279,7 +1279,7 @@ AS $function$
                                                                                                                                                                                                 )
                                                                                                                                                                                                   order by student_name asc, dec.completed_at desc nulls last, dec.updated_at desc;
                                                                                                                                                                                                   end;
-                                                                                                                                                                                                  $function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_study_roadmap_completion_updated_at()
