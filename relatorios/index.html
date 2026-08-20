@@ -15,11 +15,29 @@
     .report-tab.active { border-color: rgba(129,140,248,0.85); background: rgba(129,140,248,0.12); color: #f8fafc; }
     .report-tab strong { display: block; margin-bottom: 4px; font-size: 16px; }
     .report-tab span { display: block; color: #94a3b8; font-size: 12px; line-height: 1.45; }
-    .report-panel { border: 1px solid rgba(255,255,255,0.09); border-radius: 20px; background: rgba(255,255,255,0.025); overflow: hidden; }
-    .report-frame { display: block; width: 100%; min-height: 1100px; border: 0; background: transparent; }
+    .report-panel {
+      border: 1px solid rgba(78,154,236,0.26);
+      border-radius: 20px;
+      background: linear-gradient(145deg, #06183b 0%, #0a2956 100%);
+      box-shadow: 0 18px 44px rgba(2,16,43,.28);
+      overflow: hidden;
+    }
+    .report-frame {
+      display: block;
+      width: 100%;
+      min-height: 1000px;
+      border: 0;
+      background: #071a45;
+      color-scheme: dark;
+    }
     .report-frame[hidden] { display: none; }
     @media (max-width: 900px) { .report-tabs { grid-template-columns: 1fr; } }
-    @media (max-width: 720px) { .report-frame { min-height: 1350px; } }
+    @media (max-width: 720px) {
+      .reports-shell { padding-left: 0; padding-right: 0; }
+      .report-tabs { padding-left: 12px; padding-right: 12px; }
+      .report-panel { border-radius: 18px; }
+      .report-frame { min-height: 1250px; }
+    }
   </style>
 </head>
 <body>
@@ -49,14 +67,27 @@
       </button>
     </div>
     <section class="report-panel">
-      <iframe id="syncFrame" class="report-frame" src="about:blank" data-embed-src="/relatorios.html?v=20260820-reports-fix-1" title="Relatórios de sincronização"></iframe>
-      <iframe id="accessFrame" class="report-frame" src="about:blank" data-embed-src="/acessos_dos_alunos.html?v=20260820-reports-fix-1" title="Acessos dos alunos" hidden></iframe>
-      <iframe id="vacancyFrame" class="report-frame" src="about:blank" data-embed-src="/relatorios_vagas_turmas.html?v=20260820-reports-fix-1" title="Turmas com vagas disponíveis" hidden></iframe>
+      <iframe id="syncFrame" class="report-frame" src="about:blank" data-embed-src="/relatorios.html?v=20260820-reports-theme-1" title="Relatórios de sincronização"></iframe>
+      <iframe id="accessFrame" class="report-frame" src="about:blank" data-embed-src="/acessos_dos_alunos.html?v=20260820-reports-theme-1" title="Acessos dos alunos" hidden></iframe>
+      <iframe id="vacancyFrame" class="report-frame" src="about:blank" data-embed-src="/relatorios_vagas_turmas.html?v=20260820-reports-theme-1" title="Turmas com vagas disponíveis" hidden></iframe>
     </section>
   </div>
   <script>
     const tabs = Array.from(document.querySelectorAll('.report-tab'));
     const frames = Array.from(document.querySelectorAll('.report-frame'));
+
+    function resizeEmbeddedFrame(frame) {
+      try {
+        const doc = frame.contentDocument;
+        if (!doc || !doc.documentElement || frame.hidden) return;
+        const bodyHeight = doc.body ? doc.body.scrollHeight : 0;
+        const documentHeight = doc.documentElement.scrollHeight || 0;
+        const minimum = window.innerWidth <= 720 ? 1250 : 1000;
+        frame.style.height = Math.max(minimum, bodyHeight, documentHeight) + 'px';
+      } catch (error) {
+        // Mantém a altura mínima quando o navegador não permite medir o conteúdo.
+      }
+    }
 
     function activateTab(targetId) {
       tabs.forEach(function (tab) {
@@ -64,7 +95,12 @@
         tab.classList.toggle('active', active);
         tab.setAttribute('aria-selected', active ? 'true' : 'false');
       });
-      frames.forEach(function (frame) { frame.hidden = frame.id !== targetId; });
+      frames.forEach(function (frame) {
+        frame.hidden = frame.id !== targetId;
+        if (!frame.hidden) {
+          window.setTimeout(function () { resizeEmbeddedFrame(frame); }, 30);
+        }
+      });
     }
 
     tabs.forEach(function (tab) {
@@ -74,21 +110,99 @@
     function cleanEmbeddedPage(frame) {
       try {
         const doc = frame.contentDocument;
-        if (!doc || !doc.head) return;
+        if (!doc || !doc.head || !doc.documentElement) return;
+
+        doc.documentElement.style.colorScheme = 'dark';
+
         let style = doc.getElementById('teacher-flavius-report-embed-cleanup');
         if (!style) {
           style = doc.createElement('style');
           style.id = 'teacher-flavius-report-embed-cleanup';
           style.textContent = `
-            body { background: transparent !important; padding-top: 8px !important; }
+            html {
+              min-height: 100% !important;
+              background: #071a45 !important;
+              color-scheme: dark !important;
+            }
+            body {
+              min-height: 100% !important;
+              display: block !important;
+              align-items: initial !important;
+              justify-content: initial !important;
+              margin: 0 !important;
+              padding: 12px 0 28px !important;
+              background: linear-gradient(160deg, #06183b 0%, #071a45 56%, #0a2956 100%) !important;
+              background-attachment: scroll !important;
+              color: #f1f5f9 !important;
+            }
             .top-links, .header, .divider,
             #tf-mobile-top-navigation, #tf-mobile-top-menu-overlay,
-            #teacher-flavius-whatsapp-float, .whatsapp-float { display: none !important; }
+            #teacher-flavius-whatsapp-float, .whatsapp-float,
+            .tf-site-footer { display: none !important; }
             body.tf-mobile-menu-open { overflow: auto !important; }
-            .container { max-width: none !important; width: 100% !important; padding-left: 14px !important; padding-right: 14px !important; }
+            .container {
+              max-width: none !important;
+              width: 100% !important;
+              margin: 0 !important;
+              padding: 0 18px 24px !important;
+              background: transparent !important;
+            }
+            .reports-content, #dashboardContent, #content { color: #f1f5f9 !important; }
+            .day-card, .panel, .summary-card, .vacancy-card, .metric, .empty-panel, .empty,
+            .table-wrap, .privacy-note {
+              background-color: rgba(3,26,63,.78) !important;
+              border-color: rgba(78,154,236,.24) !important;
+              color: #e2e8f0 !important;
+              box-shadow: none !important;
+            }
+            .reports-note, .reports-note small, .day-meta, .muted, .intro,
+            .class-meta, .metric-label, .summary-card span, td {
+              color: #cbd5e1 !important;
+            }
+            .day-title, .section-title, .student-name, .class-name,
+            .metric-value, .summary-card strong, .panel h2 {
+              color: #f8fafc !important;
+            }
+            table { background: rgba(2,16,43,.28) !important; }
+            th {
+              background: rgba(9,104,188,.18) !important;
+              color: #dbeafe !important;
+            }
+            th, td { border-bottom-color: rgba(148,163,184,.14) !important; }
+            select {
+              background: #0b234b !important;
+              color: #f8fafc !important;
+              border-color: rgba(78,154,236,.38) !important;
+            }
+            .refresh-button, button.top-link {
+              background: rgba(9,104,188,.22) !important;
+              color: #f8fafc !important;
+              border: 1px solid rgba(78,154,236,.48) !important;
+            }
+            @media (max-width: 720px) {
+              .container { padding-left: 14px !important; padding-right: 14px !important; }
+              .day-card, .panel, .vacancy-card { border-radius: 16px !important; }
+              .reports-note { font-size: 14px !important; line-height: 1.6 !important; }
+            }
           `;
           doc.head.appendChild(style);
         }
+
+        if (frame._tfReportResizeObserver) {
+          frame._tfReportResizeObserver.disconnect();
+          frame._tfReportResizeObserver = null;
+        }
+
+        if (window.ResizeObserver && doc.body) {
+          const observer = new ResizeObserver(function () { resizeEmbeddedFrame(frame); });
+          observer.observe(doc.documentElement);
+          observer.observe(doc.body);
+          frame._tfReportResizeObserver = observer;
+        }
+
+        resizeEmbeddedFrame(frame);
+        window.setTimeout(function () { resizeEmbeddedFrame(frame); }, 250);
+        window.setTimeout(function () { resizeEmbeddedFrame(frame); }, 900);
       } catch (error) {
         console.warn('Não foi possível ajustar o relatório incorporado.', error);
       }
@@ -107,6 +221,10 @@
     frames.forEach(function (frame) {
       frame.addEventListener('load', function () { cleanEmbeddedPage(frame); });
       loadEmbeddedFrame(frame);
+    });
+
+    window.addEventListener('resize', function () {
+      frames.forEach(resizeEmbeddedFrame);
     });
   </script>
   <script defer src="/site_footer.js?v=20260820-desktop-menu-1"></script>
