@@ -147,17 +147,22 @@
 
   function getOrCreateButton() {
     let button = findExistingButton();
+    const navigation = document.querySelector(".topbar-actions") || document.querySelector(".top-links") || document.querySelector(".top");
+
     if (!button) {
       button = document.createElement("button");
       button.type = "button";
-      const navigation = document.querySelector(".top-links") || document.querySelector(".top");
       if (navigation) {
         navigation.appendChild(button);
       } else {
         button.classList.add("global-logout-fallback");
         document.body.appendChild(button);
       }
+    } else if (navigation && button.parentElement !== navigation) {
+      navigation.appendChild(button);
     }
+
+    if (navigation) button.classList.remove("global-logout-fallback");
 
     button.id = BUTTON_ID;
     button.type = "button";
