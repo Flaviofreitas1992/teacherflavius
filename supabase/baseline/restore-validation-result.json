@@ -1,9 +1,9 @@
 {
   "status": "failed",
-  "start": "success",
-  "apply": "failure",
+  "start": "skipped",
+  "apply": "skipped",
   "compare": "skipped",
-  "failure_summary": "Baseline apply failed in: supabase/baseline/10_public_schema.sql\nNOTICE:  extension \"supabase_vault\" already exists, skipping\nERROR:  syntax error at or near \"CREATE\"\nLINE 30: CREATE OR REPLACE FUNCTION public.set_updated_at()\n         ^",
-  "tested_commit": "f90a8a938403b341cbb90a6f1ef1d74c90f0a69d",
+  "failure_summary": "",
+  "tested_commit": "03165945def1b663594f65660d8351b3543145c7",
   "actual_fingerprint": null
 }
