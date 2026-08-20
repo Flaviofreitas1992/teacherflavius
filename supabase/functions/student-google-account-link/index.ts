@@ -84,10 +84,50 @@ Deno.serve(async (req: Request) => {
     return (data || { show_prompt: false }) as Record<string, unknown>;
   };
 
+  const retryLegacyAuthCleanup = async () => {
+    const { data: link, error: linkError } = await admin
+      .from("student_google_account_links")
+      .select("legacy_user_id,link_mode,legacy_auth_deleted")
+      .eq("google_user_id", user.id)
+      .maybeSingle();
+
+    if (linkError) {
+      console.error("legacy auth cleanup lookup failed", linkError.message);
+      return false;
+    }
+
+    const legacyUserId = String(link?.legacy_user_id || "");
+    if (!link || link.link_mode !== "alias" || link.legacy_auth_deleted === true || !legacyUserId || legacyUserId === user.id) {
+      return link?.legacy_auth_deleted === true;
+    }
+
+    const deletion = await admin.auth.admin.deleteUser(legacyUserId);
+    const alreadyMissing = !!deletion.error && /not\s+found|does\s+not\s+exist/i.test(deletion.error.message || "");
+
+    if (deletion.error && !alreadyMissing) {
+      console.error("legacy auth deletion retry failed", deletion.error.message);
+      return false;
+    }
+
+    const { error: updateError } = await admin
+      .from("student_google_account_links")
+      .update({ legacy_auth_deleted: true, updated_at: new Date().toISOString() })
+      .eq("google_user_id", user.id)
+      .eq("legacy_user_id", legacyUserId);
+
+    if (updateError) {
+      console.error("legacy auth cleanup state update failed", updateError.message);
+      return false;
+    }
+
+    return true;
+  };
+
   try {
     const candidate = await getCandidate();
 
     if (action === "candidate") {
+      if (candidate.reason === "already_confirmed") await retryLegacyAuthCleanup();
       return json({
         show_prompt: candidate.show_prompt === true,
         mode: candidate.mode || null,
@@ -100,7 +140,10 @@ Deno.serve(async (req: Request) => {
     if (action !== "link") return json({ error: "Ação inválida." }, 400, origin);
 
     if (candidate.show_prompt !== true) {
-      if (candidate.reason === "already_confirmed") return json({ linked: true, already_confirmed: true }, 200, origin);
+      if (candidate.reason === "already_confirmed") {
+        await retryLegacyAuthCleanup();
+        return json({ linked: true, already_confirmed: true }, 200, origin);
+      }
       return json({ error: "Nenhuma matrícula elegível foi encontrada para esta conta Google." }, 409, origin);
     }
 
@@ -112,17 +155,7 @@ Deno.serve(async (req: Request) => {
     });
     if (linkError) throw linkError;
 
-    let legacyAuthDeleted = false;
-    if (legacyUserId && legacyUserId !== user.id && candidate.mode === "alias") {
-      const deletion = await admin.auth.admin.deleteUser(legacyUserId);
-      legacyAuthDeleted = !deletion.error;
-      if (deletion.error) console.error("legacy auth deletion failed", deletion.error.message);
-    }
-
-    await admin
-      .from("student_google_account_links")
-      .update({ legacy_auth_deleted: legacyAuthDeleted, updated_at: new Date().toISOString() })
-      .eq("google_user_id", user.id);
+    await retryLegacyAuthCleanup();
 
     const { data: profile } = await admin
       .from("profiles")
