@@ -37,8 +37,8 @@ jobs:
           import sys
 
           root = Path('supabase/functions')
-          pattern = re.compile(
-              r'''(?i)\b(?:TOKEN|SECRET|SERVICE_ROLE_KEY|API_KEY)[A-Za-z0-9_ ]*\s*=\s*["'][A-Za-z0-9_./+=:-]{20,}["']'''
+          assignment = re.compile(
+              r'''(?i)\b(?P<name>[A-Za-z0-9_]*(?:TOKEN|SECRET|SERVICE_ROLE_KEY|API_KEY)[A-Za-z0-9_]*)\s*=\s*["'](?P<value>[A-Za-z0-9_./+=:-]{20,})["']'''
           )
           findings = []
           if root.exists():
@@ -46,11 +46,17 @@ jobs:
                   if path.suffix not in {'.ts', '.js'} or not path.is_file():
                       continue
                   for line_number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
-                      if pattern.search(line):
-                          findings.append(f'{path}:{line_number}')
+                      match = assignment.search(line)
+                      if not match:
+                          continue
+                      name = match.group('name').upper()
+                      # One-way verifiers may be versioned; raw credentials may not.
+                      if 'SHA256' in name or name.endswith('_HASH'):
+                          continue
+                      findings.append(f'{path}:{line_number}:{match.group("name")}')
 
           if findings:
-              print('Possible hardcoded secret found in Supabase function source:')
+              print('Possible hardcoded raw secret found in Supabase function source:')
               print('\n'.join(findings))
               sys.exit(1)
 
