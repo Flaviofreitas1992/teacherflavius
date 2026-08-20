@@ -1,5 +1,7 @@
-/* Teacher Flávio — paleta institucional global.
-   Altera superfícies, bordas, destaques e sombras sem redefinir as cores tipográficas. */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&family=Open+Sans:wght@400;500;600;700&display=swap');
+
+/* Teacher Flávio Design System v1
+   Fonte única para identidade visual, tokens, estados e componentes compartilhados. */
 
 :root {
   --tf-navy-950:#02102B;
@@ -8,49 +10,94 @@
   --tf-blue-700:#054288;
   --tf-blue-500:#0968BC;
   --tf-blue-300:#4E9AEC;
+  --tf-blue-100:#BFDBFE;
+  --tf-white:#FFFFFF;
+  --tf-slate-50:#F8FAFC;
+  --tf-slate-100:#F1F5F9;
+  --tf-slate-200:#E2E8F0;
+  --tf-slate-300:#CBD5E1;
+  --tf-slate-400:#94A3B8;
+  --tf-slate-500:#64748B;
+  --tf-slate-600:#475569;
+  --tf-success:#22C55E;
+  --tf-success-dark:#15803D;
+  --tf-warning:#F59E0B;
+  --tf-danger:#EF4444;
+  --tf-font-display:'Montserrat','Segoe UI',Arial,sans-serif;
+  --tf-font-body:'Open Sans','Segoe UI',Arial,sans-serif;
+  --tf-radius-sm:10px;
+  --tf-radius-md:16px;
+  --tf-radius-lg:20px;
+  --tf-radius-xl:24px;
+  --tf-radius-pill:999px;
+  --tf-shadow-sm:0 8px 22px rgba(2,16,43,.20);
+  --tf-shadow-md:0 18px 45px rgba(2,16,43,.30);
+  --tf-shadow-lg:0 24px 64px rgba(2,16,43,.42);
+  --tf-shadow-focus:0 0 0 4px rgba(78,154,236,.24);
+  --tf-space-1:4px;
+  --tf-space-2:8px;
+  --tf-space-3:12px;
+  --tf-space-4:16px;
+  --tf-space-5:20px;
+  --tf-space-6:24px;
+  --tf-space-8:32px;
+  --tf-space-10:40px;
+  --tf-space-12:48px;
+  --tf-motion-fast:160ms;
+  --tf-motion-normal:220ms;
+  --tf-ease:cubic-bezier(.2,.8,.2,1);
 }
 
-/* Fundo institucional em qualquer página que carregue este CSS. */
-body {
-  background:linear-gradient(145deg,var(--tf-navy-950) 0%,var(--tf-navy-900) 42%,var(--tf-blue-800) 72%,var(--tf-blue-700) 100%) !important;
-  background-attachment:fixed !important;
-}
+html.tf-brand-palette{color-scheme:dark;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+html.tf-brand-palette body{background:linear-gradient(145deg,var(--tf-navy-950) 0%,var(--tf-navy-900) 42%,var(--tf-blue-800) 72%,var(--tf-blue-700) 100%) !important;background-attachment:fixed !important;color:var(--tf-slate-100);font-family:var(--tf-font-body) !important}
+html.tf-brand-palette h1,html.tf-brand-palette h2,html.tf-brand-palette h3,html.tf-brand-palette h4,html.tf-brand-palette h5,html.tf-brand-palette h6,html.tf-brand-palette .header h1{font-family:var(--tf-font-display) !important}
+html.tf-brand-palette button,html.tf-brand-palette input,html.tf-brand-palette select,html.tf-brand-palette textarea{font:inherit}
+html.tf-brand-palette img,html.tf-brand-palette video,html.tf-brand-palette iframe{max-width:100%}
+html.tf-brand-palette :where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:3px solid var(--tf-blue-300) !important;outline-offset:3px !important;box-shadow:var(--tf-shadow-focus)}
+html.tf-brand-palette ::selection{color:var(--tf-white);background:var(--tf-blue-500)}
 
-.divider { background:linear-gradient(90deg,transparent,rgba(78,154,236,.42),transparent) !important; }
+.divider{background:linear-gradient(90deg,transparent,rgba(78,154,236,.42),transparent) !important}
+.menu-button,.entry-card,.menu-group,.content-card,.section-card,.dashboard-card{background-color:rgba(3,26,63,.76) !important;border-color:rgba(78,154,236,.24) !important;box-shadow:var(--tf-shadow-md) !important}
+.menu-button,.entry-card{transition:transform var(--tf-motion-normal) var(--tf-ease),border-color var(--tf-motion-normal) var(--tf-ease),background-color var(--tf-motion-normal) var(--tf-ease),box-shadow var(--tf-motion-normal) var(--tf-ease) !important}
+.menu-button:hover,.entry-card:hover{transform:translateY(-3px) !important;background-color:rgba(5,66,136,.32) !important;border-color:rgba(78,154,236,.58) !important;box-shadow:var(--tf-shadow-lg) !important}
+.icon,.entry-icon,.badge{background:linear-gradient(135deg,var(--tf-blue-700),var(--tf-blue-300)) !important;box-shadow:0 12px 30px rgba(9,104,188,.28) !important}
+.top-link,.professor-button{min-height:44px;background:rgba(5,66,136,.16) !important;border-color:rgba(78,154,236,.38) !important;color:var(--tf-blue-100) !important;font-family:var(--tf-font-display) !important;transition:transform var(--tf-motion-fast) var(--tf-ease),background-color var(--tf-motion-fast) var(--tf-ease),border-color var(--tf-motion-fast) var(--tf-ease) !important}
+.top-link:hover,.professor-button:hover{transform:translateY(-2px) !important;background:rgba(9,104,188,.20) !important;border-color:rgba(78,154,236,.68) !important}
+.arrow,.divider::after{color:var(--tf-blue-300) !important}
+.header h1{color:var(--tf-slate-50) !important;background:linear-gradient(100deg,var(--tf-white) 0%,var(--tf-blue-100) 48%,var(--tf-blue-300) 72%,var(--tf-white) 100%) !important;-webkit-background-clip:text !important;-webkit-text-fill-color:transparent !important;background-clip:text !important;animation:tfTitleEnter .55s var(--tf-ease) both !important}
+@keyframes tfTitleEnter{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:translateY(0)}}
 
-.menu-button,.entry-card,.menu-group,.content-card,.section-card,.dashboard-card {
-  background-color:rgba(3,26,63,.72) !important;
-  border-color:rgba(78,154,236,.22) !important;
-  box-shadow:0 18px 45px rgba(2,16,43,.28) !important;
-}
-.menu-button:hover,.entry-card:hover { background-color:rgba(5,66,136,.30) !important; border-color:rgba(78,154,236,.62) !important; }
-.icon,.entry-icon,.badge { background:linear-gradient(135deg,var(--tf-blue-700),var(--tf-blue-300)) !important; box-shadow:0 12px 30px rgba(9,104,188,.28) !important; }
-.top-link,.professor-button { background:rgba(5,66,136,.14) !important; border-color:rgba(78,154,236,.38) !important; }
-.top-link:hover,.professor-button:hover { background:rgba(9,104,188,.18) !important; border-color:rgba(78,154,236,.68) !important; }
+html.tf-brand-home .entry-card.student,html.tf-brand-home .entry-card.visitor{background:rgba(3,26,63,.82) !important;border-color:rgba(78,154,236,.30) !important}
+html.tf-brand-home .entry-card.student .entry-icon,html.tf-brand-home .entry-card.visitor .entry-icon{background:linear-gradient(135deg,var(--tf-blue-700),var(--tf-blue-300)) !important}
+html.tf-brand-home .entry-card strong{font-family:var(--tf-font-display) !important}
+html.tf-brand-home .entry-card span.description,html.tf-brand-home .hero-subtitle{color:var(--tf-slate-300) !important}
 
-html.tf-brand-home .entry-card.student,html.tf-brand-home .entry-card.visitor { background:rgba(3,26,63,.78) !important; border-color:rgba(78,154,236,.30) !important; }
-html.tf-brand-home .entry-card.student .entry-icon,html.tf-brand-home .entry-card.visitor .entry-icon { background:linear-gradient(135deg,var(--tf-blue-700),var(--tf-blue-300)) !important; }
+html.tf-brand-sales body{background:linear-gradient(155deg,var(--tf-navy-950) 0%,var(--tf-navy-900) 38%,var(--tf-blue-800) 65%,var(--tf-blue-700) 84%,var(--tf-blue-500) 100%) !important}
+html.tf-brand-sales .hero-tag{background:rgba(9,104,188,.18) !important;border-color:rgba(78,154,236,.38) !important}
+html.tf-brand-sales .video-box{background:rgba(2,16,43,.70) !important;border-color:rgba(78,154,236,.34) !important;box-shadow:0 20px 60px rgba(2,16,43,.58) !important}
+html.tf-brand-sales .new-class-content,html.tf-brand-sales .course-benefits-card,html.tf-brand-sales .availability-card,html.tf-brand-sales .instructor-card,html.tf-brand-sales .instagram-card,html.tf-brand-sales .instructor-photo-card{background:linear-gradient(145deg,rgba(3,26,63,.88),rgba(10,41,86,.74)) !important;border-color:rgba(78,154,236,.30) !important;box-shadow:var(--tf-shadow-md) !important}
+html.tf-brand-sales .audience-list li,html.tf-brand-sales .benefits-list li,html.tf-brand-sales .availability-list li,html.tf-brand-sales .credentials-list li,html.tf-brand-sales .languages-list li{background:rgba(5,66,136,.20) !important;border-color:rgba(78,154,236,.24) !important}
+html.tf-brand-sales .btn-alunos,html.tf-brand-sales .limited-card{background:var(--tf-blue-700) !important;box-shadow:0 7px 26px rgba(5,66,136,.48) !important}
+html.tf-brand-sales .availability-highlight{background:rgba(9,104,188,.22) !important;border-color:rgba(78,154,236,.34) !important}
+html.tf-brand-sales .investment-card{background:linear-gradient(145deg,rgba(5,66,136,.34),rgba(3,26,63,.78)) !important;border-color:rgba(78,154,236,.52) !important;box-shadow:var(--tf-shadow-md) !important}
+html.tf-brand-sales .price-pulse{background:var(--tf-blue-300) !important;color:var(--tf-navy-950) !important;animation:tfPulsePriceBlue 1.35s ease-in-out 3 !important}
+html.tf-brand-sales .btn-inscricao,html.tf-brand-sales .btn-trial{min-height:52px;background:var(--tf-blue-500) !important;box-shadow:0 6px 30px rgba(9,104,188,.50) !important}
+html.tf-brand-sales .btn-inscricao:hover,html.tf-brand-sales .btn-trial:hover{transform:translateY(-2px) !important;box-shadow:0 10px 40px rgba(78,154,236,.58) !important}
+@keyframes tfPulsePriceBlue{0%{transform:scale(1);box-shadow:0 0 0 0 rgba(78,154,236,.62),0 12px 30px rgba(2,16,43,.30)}70%{transform:scale(1.035);box-shadow:0 0 0 14px rgba(78,154,236,0),0 18px 42px rgba(2,16,43,.36)}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(78,154,236,0),0 12px 30px rgba(2,16,43,.30)}}
 
-html.tf-brand-sales body { background:linear-gradient(155deg,var(--tf-navy-950) 0%,var(--tf-navy-900) 38%,var(--tf-blue-800) 65%,var(--tf-blue-700) 84%,var(--tf-blue-500) 100%) !important; }
-html.tf-brand-sales .hero-tag { background:rgba(9,104,188,.18) !important; border-color:rgba(78,154,236,.38) !important; }
-html.tf-brand-sales .video-box { background:rgba(2,16,43,.70) !important; border-color:rgba(78,154,236,.34) !important; box-shadow:0 20px 60px rgba(2,16,43,.58) !important; }
-html.tf-brand-sales .new-class-content,html.tf-brand-sales .course-benefits-card,html.tf-brand-sales .availability-card,html.tf-brand-sales .instructor-card,html.tf-brand-sales .instagram-card,html.tf-brand-sales .instructor-photo-card { background:linear-gradient(145deg,rgba(3,26,63,.86),rgba(10,41,86,.72)) !important; border-color:rgba(78,154,236,.30) !important; box-shadow:0 18px 50px rgba(2,16,43,.34) !important; }
-html.tf-brand-sales .audience-list li,html.tf-brand-sales .benefits-list li,html.tf-brand-sales .availability-list li,html.tf-brand-sales .credentials-list li,html.tf-brand-sales .languages-list li { background:rgba(5,66,136,.20) !important; border-color:rgba(78,154,236,.24) !important; }
-html.tf-brand-sales .btn-alunos,html.tf-brand-sales .limited-card { background:var(--tf-blue-700) !important; box-shadow:0 7px 26px rgba(5,66,136,.48) !important; }
-html.tf-brand-sales .availability-highlight { background:rgba(9,104,188,.22) !important; border-color:rgba(78,154,236,.34) !important; }
-html.tf-brand-sales .investment-card { background:linear-gradient(145deg,rgba(5,66,136,.34),rgba(3,26,63,.78)) !important; border-color:rgba(78,154,236,.52) !important; box-shadow:0 18px 50px rgba(2,16,43,.32) !important; }
-html.tf-brand-sales .price-pulse { background:var(--tf-blue-300) !important; animation-name:tfPulsePriceBlue !important; }
-html.tf-brand-sales .btn-inscricao,html.tf-brand-sales .btn-trial { background:var(--tf-blue-500) !important; box-shadow:0 6px 30px rgba(9,104,188,.50) !important; }
-html.tf-brand-sales .btn-inscricao:hover,html.tf-brand-sales .btn-trial:hover { box-shadow:0 10px 40px rgba(78,154,236,.58) !important; }
+html.tf-brand-dark-page input:not([type='checkbox']):not([type='radio']),html.tf-brand-dark-page select,html.tf-brand-dark-page textarea{border-color:rgba(78,154,236,.28);border-radius:var(--tf-radius-sm)}
+html.tf-brand-dark-page input:not([type='checkbox']):not([type='radio']):focus,html.tf-brand-dark-page select:focus,html.tf-brand-dark-page textarea:focus{border-color:var(--tf-blue-300) !important}
 
-@keyframes tfPulsePriceBlue {
-  0%{transform:scale(1);box-shadow:0 0 0 0 rgba(78,154,236,.62),0 12px 30px rgba(2,16,43,.30)}
-  70%{transform:scale(1.045);box-shadow:0 0 0 16px rgba(78,154,236,0),0 18px 42px rgba(2,16,43,.36)}
-  100%{transform:scale(1);box-shadow:0 0 0 0 rgba(78,154,236,0),0 12px 30px rgba(2,16,43,.30)}
-}
+.tf-site-footer{color:var(--tf-slate-200) !important;background:linear-gradient(145deg,var(--tf-navy-950) 0%,var(--tf-navy-900) 55%,var(--tf-blue-800) 100%) !important;border-top-color:rgba(78,154,236,.42) !important;box-shadow:0 -18px 50px rgba(2,16,43,.30) !important;font-family:var(--tf-font-body) !important}
+.tf-site-footer::before{background:rgba(9,104,188,.18) !important}
+.tf-site-footer__title,.tf-site-footer__heading{font-family:var(--tf-font-display) !important}
+.tf-site-footer__eyebrow,.tf-site-footer__bottom a,.tf-site-footer__credential strong{color:var(--tf-blue-100) !important}
+.tf-site-footer__eyebrow::before{background:var(--tf-blue-300) !important}
+.tf-site-footer__credential{background:rgba(5,66,136,.12) !important;border-color:rgba(78,154,236,.20) !important}
+.tf-site-footer__contact{background:rgba(5,66,136,.18) !important;border-color:rgba(78,154,236,.38) !important}
+.tf-site-footer__bottom{border-top-color:rgba(78,154,236,.18) !important}
+.tf-site-footer__cta{background:linear-gradient(135deg,var(--tf-success),var(--tf-success-dark)) !important}
 
-.tf-site-footer { background:linear-gradient(145deg,var(--tf-navy-950) 0%,var(--tf-navy-900) 55%,var(--tf-blue-800) 100%) !important; border-top-color:rgba(78,154,236,.42) !important; box-shadow:0 -18px 50px rgba(2,16,43,.30) !important; }
-.tf-site-footer::before { background:rgba(9,104,188,.18) !important; }
-.tf-site-footer__credential { background:rgba(5,66,136,.12) !important; border-color:rgba(78,154,236,.20) !important; }
-.tf-site-footer__contact { background:rgba(5,66,136,.18) !important; border-color:rgba(78,154,236,.38) !important; }
-.tf-site-footer__bottom { border-top-color:rgba(78,154,236,.18) !important; }
+@media(max-width:899px){html.tf-brand-palette body{background-attachment:scroll !important}}
+@media(max-width:639px){.menu-button,.entry-card{border-radius:var(--tf-radius-md) !important}.menu-button:hover,.entry-card:hover{transform:none !important}}
+@media(prefers-reduced-motion:reduce){html.tf-brand-palette *,html.tf-brand-palette *::before,html.tf-brand-palette *::after{scroll-behavior:auto !important;animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}}
