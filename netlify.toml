@@ -1,0 +1,9 @@
+[build]
+  command = "python3 scripts/build_netlify_site.py"
+  publish = "_site"
+
+[build.processing]
+  skip_processing = false
+
+[build.processing.html]
+  pretty_urls = true
