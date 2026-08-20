@@ -3,9 +3,12 @@
 
   var statusElement = document.getElementById("retentionStatus");
   var rowsElement = document.getElementById("retentionRows");
+  var processorStatusElement = document.getElementById("processorStatus");
+  var processorRowsElement = document.getElementById("processorRows");
   var refreshButton = document.getElementById("refreshRetention");
   var runButton = document.getElementById("runRetentionNow");
   var dashboard = null;
+  var processorDashboard = null;
 
   var datasetLabels = {
     student_access_logs: "Acessos dos alunos",
@@ -27,6 +30,12 @@
     backup: "Backup"
   };
 
+  var processorStatusLabels = {
+    verified: "Verificado",
+    pending: "Pendente",
+    action_required: "Ação necessária"
+  };
+
   function escapeHtml(value) {
     return String(value == null ? "" : value)
       .replace(/&/g, "&amp;")
@@ -44,10 +53,25 @@
     return date.toLocaleDateString("pt-BR");
   }
 
+  function safeExternalUrl(value) {
+    try {
+      var url = new URL(String(value || ""));
+      return url.protocol === "https:" ? url.href : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
   function setStatus(message, type) {
     statusElement.textContent = message || "";
     statusElement.style.borderColor = type === "error" ? "rgba(251,113,133,.5)" : "";
     statusElement.style.color = type === "error" ? "#fecdd3" : "";
+  }
+
+  function setProcessorStatus(message, type) {
+    processorStatusElement.textContent = message || "";
+    processorStatusElement.style.borderColor = type === "error" ? "rgba(251,113,133,.5)" : "";
+    processorStatusElement.style.color = type === "error" ? "#fecdd3" : "";
   }
 
   function sumEligible(policies) {
@@ -117,10 +141,62 @@
     setStatus("Última manutenção: " + formatDate(latestRun.completed_at || latestRun.started_at, true) + ". Registros removidos: " + deletedTotal.toLocaleString("pt-BR") + "." + cronText);
   }
 
+  function renderProcessorMetrics() {
+    var summary = processorDashboard && processorDashboard.summary || {};
+    document.getElementById("processorTotal").textContent = Number(summary.total || 0).toLocaleString("pt-BR");
+    document.getElementById("processorVerified").textContent = Number(summary.verified || 0).toLocaleString("pt-BR");
+    document.getElementById("processorPending").textContent = Number(summary.pending || 0).toLocaleString("pt-BR");
+    document.getElementById("processorActions").textContent = Number(summary.action_required || 0).toLocaleString("pt-BR");
+  }
+
+  function renderProcessorRows() {
+    var processors = processorDashboard && processorDashboard.processors || [];
+    if (!processors.length) {
+      processorRowsElement.innerHTML = '<tr><td colspan="7" class="empty">Nenhum fornecedor externo mapeado.</td></tr>';
+      return;
+    }
+
+    processorRowsElement.innerHTML = processors.map(function (item) {
+      var referenceUrl = safeExternalUrl(item.official_reference);
+      var reference = referenceUrl ? '<a href="' + escapeHtml(referenceUrl) + '" target="_blank" rel="noopener noreferrer">Referência oficial</a>' : '';
+      var categories = Array.isArray(item.data_categories) ? item.data_categories.join(", ") : "";
+      var status = processorStatusLabels[item.verification_status] || item.verification_status || "Pendente";
+
+      return '<tr>' +
+        '<td class="processor-name"><strong>' + escapeHtml(item.provider_name) + '</strong>' + reference + '</td>' +
+        '<td><div>' + escapeHtml(item.service_scope) + '</div><div class="categories">' + escapeHtml(categories) + '</div></td>' +
+        '<td class="reason">' + escapeHtml(item.provider_retention) + '</td>' +
+        '<td class="reason">' + escapeHtml(item.internal_control) + '</td>' +
+        '<td><span class="badge ' + escapeHtml(item.verification_status) + '">' + escapeHtml(status) + '</span></td>' +
+        '<td>' + escapeHtml(formatDate(item.next_review_at, false)) + '</td>' +
+        '<td><div class="processor-actions">' +
+          '<button class="processor-action verified" type="button" data-processor-key="' + escapeHtml(item.processor_key) + '" data-review-status="verified">VERIFICADO</button>' +
+          '<button class="processor-action pending" type="button" data-processor-key="' + escapeHtml(item.processor_key) + '" data-review-status="pending">PENDENTE</button>' +
+          '<button class="processor-action action_required" type="button" data-processor-key="' + escapeHtml(item.processor_key) + '" data-review-status="action_required">AÇÃO NECESSÁRIA</button>' +
+        '</div></td>' +
+      '</tr>';
+    }).join("");
+  }
+
+  function renderProcessorStatus() {
+    var summary = processorDashboard && processorDashboard.summary || {};
+    var pending = Number(summary.pending || 0);
+    var actions = Number(summary.action_required || 0);
+    var overdue = Number(summary.overdue || 0);
+    if (actions > 0 || overdue > 0) {
+      setProcessorStatus("Fornecedores carregados. Ações necessárias: " + actions + ". Revisões vencidas: " + overdue + ".", "error");
+      return;
+    }
+    setProcessorStatus("Fornecedores carregados. Pendentes de conferência externa: " + pending + ".");
+  }
+
   function render() {
     renderMetrics();
     renderRows();
     renderStatus();
+    renderProcessorMetrics();
+    renderProcessorRows();
+    renderProcessorStatus();
   }
 
   async function verifyTeacherAccess() {
@@ -138,13 +214,20 @@
     refreshButton.disabled = true;
     runButton.disabled = true;
     setStatus("Carregando políticas e histórico de retenção...");
+    setProcessorStatus("Carregando fornecedores externos...");
     try {
-      var response = await Auth.getClient().rpc("get_data_retention_dashboard");
-      if (response.error) throw response.error;
-      dashboard = response.data || {};
+      var responses = await Promise.all([
+        Auth.getClient().rpc("get_data_retention_dashboard"),
+        Auth.getClient().rpc("get_external_data_processor_dashboard")
+      ]);
+      if (responses[0].error) throw responses[0].error;
+      if (responses[1].error) throw responses[1].error;
+      dashboard = responses[0].data || {};
+      processorDashboard = responses[1].data || {};
       render();
     } catch (error) {
       setStatus(error.message || "Não foi possível carregar a governança de retenção.", "error");
+      setProcessorStatus(error.message || "Não foi possível carregar os fornecedores externos.", "error");
     } finally {
       refreshButton.disabled = false;
       runButton.disabled = false;
@@ -181,8 +264,39 @@
     }
   }
 
+  async function reviewProcessor(processorKey, reviewStatus, button) {
+    var label = processorStatusLabels[reviewStatus] || reviewStatus;
+    var note = window.prompt("Registre a evidência ou a providência desta revisão (" + label + "):");
+    if (note == null) return;
+    note = note.trim();
+    if (!note) {
+      window.alert("A revisão precisa de uma nota de evidência.");
+      return;
+    }
+
+    button.disabled = true;
+    try {
+      var response = await Auth.getClient().rpc("review_external_data_processor", {
+        p_processor_key: processorKey,
+        p_status: reviewStatus,
+        p_note: note
+      });
+      if (response.error) throw response.error;
+      await loadDashboard();
+    } catch (error) {
+      setProcessorStatus(error.message || "Não foi possível registrar a revisão do fornecedor.", "error");
+    } finally {
+      button.disabled = false;
+    }
+  }
+
   refreshButton.addEventListener("click", loadDashboard);
   runButton.addEventListener("click", runMaintenance);
+  processorRowsElement.addEventListener("click", function (event) {
+    var button = event.target.closest("button[data-processor-key][data-review-status]");
+    if (!button) return;
+    reviewProcessor(button.dataset.processorKey, button.dataset.reviewStatus, button);
+  });
 
   (async function init() {
     try {
@@ -190,6 +304,7 @@
       await loadDashboard();
     } catch (error) {
       setStatus(error.message || "Não foi possível verificar o acesso de professor.", "error");
+      setProcessorStatus(error.message || "Não foi possível verificar o acesso de professor.", "error");
     }
   })();
 })();
