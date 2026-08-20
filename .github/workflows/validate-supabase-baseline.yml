@@ -10,65 +10,29 @@ on:
       - .github/workflows/validate-supabase-baseline.yml
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   restore-test:
-    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
     steps:
-      - name: Check out baseline branch
+      - name: Check out pull request
         uses: actions/checkout@v4
-        with:
-          ref: chore/supabase-schema-baseline
 
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v1
         with:
           version: latest
 
-      - name: Normalize exported function terminators
-        shell: bash
-        run: |
-          set -euo pipefail
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('supabase/baseline/10_public_schema.sql')
-          text = path.read_text()
-          lines = text.splitlines(keepends=True)
-          changed = 0
-          out = []
-          for line in lines:
-              raw = line.rstrip('\r\n')
-              ending = line[len(raw):]
-              if raw == '$function$':
-                  out.append('$function$;' + ending)
-                  changed += 1
-              else:
-                  out.append(line)
-          path.write_text(''.join(out))
-          print(f'Normalized {changed} function terminators')
-          if changed not in (0, 117):
-              raise SystemExit(f'Unexpected number of function terminators: {changed}')
-          PY
-
-          if ! git diff --quiet -- supabase/baseline/10_public_schema.sql; then
-            git config user.name 'github-actions[bot]'
-            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add supabase/baseline/10_public_schema.sql
-            git commit -m 'fix: terminate baseline function definitions'
-            git push origin HEAD:chore/supabase-schema-baseline
-          fi
-
       - name: Start a clean local Supabase stack
-        id: start
         shell: bash
         run: |
           set -euo pipefail
-          trap 'echo "supabase start failed" > /tmp/failure-summary.txt' ERR
 
+          # The historical migration directory is intentionally incomplete and
+          # must not be replayed for a baseline restore test.
           if [ -d supabase/migrations ]; then
             mv supabase/migrations /tmp/teacherflavius-migrations
           fi
@@ -89,7 +53,6 @@ jobs:
           fi
 
       - name: Apply production reconstruction baseline
-        id: apply
         shell: bash
         run: |
           set -euo pipefail
@@ -103,18 +66,13 @@ jobs:
             supabase/baseline/30_platform_config.sql
           do
             echo "Applying $file"
-            if ! docker exec -i "$DB_CONTAINER" \
+            docker exec -i "$DB_CONTAINER" \
               psql -U postgres -d postgres -v ON_ERROR_STOP=1 \
-              < "$file" 2> /tmp/psql-error.txt
-            then
-              {
-                echo "Baseline apply failed in: $file"
-                tail -n 20 /tmp/psql-error.txt
-              } > /tmp/failure-summary.txt
-              exit 1
-            fi
+              < "$file"
           done
 
+          # Production secret values are never used in CI. A dummy value only
+          # verifies that the required Vault object can be provisioned.
           docker exec -i "$DB_CONTAINER" \
             psql -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
           select vault.create_secret(
@@ -125,7 +83,6 @@ jobs:
           SQL
 
       - name: Compare restored catalog with production fingerprint
-        id: compare
         shell: bash
         run: |
           set -euo pipefail
@@ -223,63 +180,14 @@ jobs:
           jq -S . /tmp/actual-fingerprint.json \
             > /tmp/actual-fingerprint-normalized.json
 
-          if ! diff -u \
+          echo 'Expected fingerprint:'
+          cat /tmp/expected-fingerprint.json
+          echo 'Actual fingerprint:'
+          cat /tmp/actual-fingerprint-normalized.json
+
+          diff -u \
             /tmp/expected-fingerprint.json \
-            /tmp/actual-fingerprint-normalized.json \
-            > /tmp/fingerprint-diff.txt
-          then
-            {
-              echo 'Fingerprint mismatch:'
-              cat /tmp/fingerprint-diff.txt
-            } > /tmp/failure-summary.txt
-            exit 1
-          fi
-
-      - name: Record disposable validation result
-        if: always()
-        shell: bash
-        env:
-          START_OUTCOME: ${{ steps.start.outcome }}
-          APPLY_OUTCOME: ${{ steps.apply.outcome }}
-          COMPARE_OUTCOME: ${{ steps.compare.outcome }}
-        run: |
-          set -euo pipefail
-
-          STATUS=failed
-          if [ "$START_OUTCOME" = success ] && \
-             [ "$APPLY_OUTCOME" = success ] && \
-             [ "$COMPARE_OUTCOME" = success ]; then
-            STATUS=success
-          fi
-
-          FAILURE_SUMMARY=''
-          if [ -f /tmp/failure-summary.txt ]; then
-            FAILURE_SUMMARY="$(cat /tmp/failure-summary.txt)"
-          fi
-
-          ACTUAL='null'
-          if [ -s /tmp/actual-fingerprint-normalized.json ]; then
-            ACTUAL="$(cat /tmp/actual-fingerprint-normalized.json)"
-          fi
-
-          jq -n \
-            --arg status "$STATUS" \
-            --arg start "$START_OUTCOME" \
-            --arg apply "$APPLY_OUTCOME" \
-            --arg compare "$COMPARE_OUTCOME" \
-            --arg failure_summary "$FAILURE_SUMMARY" \
-            --arg tested_commit "$GITHUB_SHA" \
-            --argjson actual "$ACTUAL" \
-            '{status:$status,start:$start,apply:$apply,compare:$compare,failure_summary:$failure_summary,tested_commit:$tested_commit,actual_fingerprint:$actual}' \
-            > supabase/baseline/restore-validation-result.json
-
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add supabase/baseline/restore-validation-result.json
-          if ! git diff --cached --quiet; then
-            git commit -m 'ci: record baseline restore validation result'
-            git push origin HEAD:chore/supabase-schema-baseline
-          fi
+            /tmp/actual-fingerprint-normalized.json
 
       - name: Stop disposable Supabase stack
         if: always()
