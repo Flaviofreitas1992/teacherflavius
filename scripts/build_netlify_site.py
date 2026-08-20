@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PUBLISH = ROOT / "_site"
 RESPONSIVE_COMPAT_HREF = "/responsive_compat.css?v=20260820-1"
 RESPONSIVE_COMPAT_LINK = f'  <link rel="stylesheet" href="{RESPONSIVE_COMPAT_HREF}">'
+ERROR_MONITOR_SRC = "/error_monitor.js?v=20260820-1"
 VIEWPORT_META = '  <meta name="viewport" content="width=device-width, initial-scale=1.0">'
 
 BLOCKED_TOP_LEVEL = {
@@ -58,7 +59,7 @@ def is_public(path: Path) -> bool:
     return path.suffix.lower() in PUBLIC_SUFFIXES
 
 
-def inject_responsive_compat(html: str) -> tuple[str, bool]:
+def inject_site_baseline(html: str, relative: Path) -> tuple[str, bool]:
     closing_head = html.lower().find("</head>")
     if closing_head < 0:
         return html, False
@@ -69,6 +70,9 @@ def inject_responsive_compat(html: str) -> tuple[str, bool]:
         additions.append(VIEWPORT_META)
     if "/responsive_compat.css" not in lower_html:
         additions.append(RESPONSIVE_COMPAT_LINK)
+    if "/error_monitor.js" not in lower_html:
+        status_attribute = ' data-page-status="404"' if relative.as_posix() == "404.html" else ""
+        additions.append(f'  <script defer src="{ERROR_MONITOR_SRC}"{status_attribute}></script>')
 
     if not additions:
         return html, False
@@ -100,7 +104,7 @@ def main() -> None:
 
         if relative.suffix.lower() in {".html", ".htm"}:
             html = destination.read_text(encoding="utf-8")
-            html, enhanced = inject_responsive_compat(html)
+            html, enhanced = inject_site_baseline(html, relative)
             if enhanced:
                 destination.write_text(html, encoding="utf-8")
                 enhanced_html += 1
@@ -110,7 +114,7 @@ def main() -> None:
         raise SystemExit("Missing netlify/_headers")
     shutil.copy2(headers, PUBLISH / "_headers")
 
-    required = [PUBLISH / "index.html", PUBLISH / "404.html", PUBLISH / "robots.txt", PUBLISH / "sitemap.xml"]
+    required = [PUBLISH / "index.html", PUBLISH / "404.html", PUBLISH / "robots.txt", PUBLISH / "sitemap.xml", PUBLISH / "error_monitor.js"]
     missing = [str(path.relative_to(ROOT)) for path in required if not path.is_file()]
     if missing:
         raise SystemExit(f"Netlify build missing required public files: {', '.join(missing)}")
@@ -130,7 +134,7 @@ def main() -> None:
 
     print(
         f"Netlify publish directory ready: {copied} public files + _headers; "
-        f"responsive/viewport baseline enhanced {enhanced_html} HTML files"
+        f"site baseline enhanced {enhanced_html} HTML files"
     )
 
 
