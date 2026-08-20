@@ -1007,7 +1007,7 @@ BEGIN
      END IF;
   END LOOP;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_updated_at()
@@ -1019,7 +1019,7 @@ begin
   new.updated_at = now();
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.delete_teacher_student(target_user_id uuid)
@@ -1100,7 +1100,7 @@ begin
     'deleted_backup_count', deleted_backup_count
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_student_frequency(target_user_id uuid)
@@ -1127,7 +1127,7 @@ begin
   where sf.user_id = target_user_id
   order by sf.class_date desc, sf.created_at desc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.save_teacher_student_frequency(target_user_id uuid, target_class_date date, target_attendance_status text, target_class_notes text)
@@ -1153,7 +1153,7 @@ begin
 
   return jsonb_build_object('ok', true, 'id', inserted_id);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.is_teacher_admin()
@@ -1171,7 +1171,7 @@ AS $function$
          and lower(ta.email) = lower(auth.jwt() ->> 'email')
        )
   );
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.update_teacher_student_frequency(target_frequency_id uuid, target_class_date date, target_attendance_status text, target_class_notes text)
@@ -1202,7 +1202,7 @@ begin
 
   return jsonb_build_object('ok', true, 'id', target_frequency_id);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.delete_teacher_student_frequency(target_frequency_id uuid)
@@ -1225,7 +1225,7 @@ begin
 
   return jsonb_build_object('ok', true, 'id', target_frequency_id);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_daily_exercise_completion_updated_at()
@@ -1291,7 +1291,7 @@ begin
   new.updated_at = now();
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_class_resources_updated_at()
@@ -1303,7 +1303,7 @@ begin
   new.updated_at = now();
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_teacher_exercises_updated_at()
@@ -1315,7 +1315,7 @@ begin
   new.updated_at = now();
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.update_teacher_student_profile(target_user_id uuid, target_name text, target_email text, target_cpf text, target_whatsapp text, target_pix_key text, target_enrollment_code text, target_availability jsonb)
@@ -1545,7 +1545,7 @@ begin
 
   return jsonb_build_object('ok', true, 'user_id', target_user_id);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.save_teacher_class_lesson_record(target_class_number integer, target_user_id uuid, target_class_date date, target_lesson_code text)
@@ -1563,7 +1563,7 @@ begin
     target_lesson_code
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_my_lesson_records()
@@ -1587,7 +1587,7 @@ begin
   where clr.user_id = auth.uid()
   order by clr.class_date desc, clr.created_at desc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.save_teacher_class_resources(target_class_number integer, target_video_lesson_url text, target_lesson_material_url text, target_recorded_lessons_url text, target_whatsapp_group_url text)
@@ -1626,7 +1626,7 @@ begin
 
   return jsonb_build_object('ok', true, 'class_number', target_class_number);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_student_private_data_updated_at()
@@ -1638,7 +1638,7 @@ begin
   new.updated_at = now();
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.upsert_my_private_student_data(target_cpf text, target_whatsapp text, target_pix_key text, target_consent_lgpd boolean DEFAULT true)
@@ -1699,7 +1699,7 @@ begin
 
   return jsonb_build_object('ok', true, 'user_id', requester_id);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_my_private_student_data()
@@ -1717,7 +1717,7 @@ AS $function$
     spd.updated_at
   from public.student_private_data spd
   where spd.user_id = auth.uid();
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_private_student_data()
@@ -1747,7 +1747,7 @@ begin
     coalesce(spd.pix_key, '')::text as pix_key
   from public.student_private_data spd;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.assert_teacher_class_exists(target_class_number integer)
@@ -1765,7 +1765,7 @@ begin
     raise exception 'Turma não encontrada ou inativa.';
   end if;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_classes()
@@ -1794,7 +1794,7 @@ begin
   group by tc.id, tc.class_number, tc.class_name, tc.is_active, tc.created_at, tc.updated_at
   order by tc.class_number asc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.create_teacher_class(target_class_name text DEFAULT NULL::text)
@@ -1830,7 +1830,7 @@ begin
 
   return jsonb_build_object('ok', true, 'id', inserted_id, 'class_number', next_number, 'class_name', final_name);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.delete_teacher_class(target_class_number integer)
@@ -1869,7 +1869,7 @@ begin
     'deleted_resources', deleted_resources
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.save_teacher_class_resources(target_class_number integer, target_video_lesson_url text, target_lesson_material_url text, target_whatsapp_group_url text)
@@ -1894,7 +1894,7 @@ begin
     target_whatsapp_group_url
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.add_teacher_class_student(target_class_number integer, target_user_id uuid)
@@ -1939,7 +1939,7 @@ begin
 
   return jsonb_build_object('ok', true, 'id', inserted_id);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.remove_teacher_class_student(target_class_number integer, target_user_id uuid)
@@ -1965,7 +1965,7 @@ begin
 
   return jsonb_build_object('ok', true);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.save_teacher_class_attendance(target_class_number integer, target_class_date date, target_general_notes text, attendance_records jsonb)
@@ -2022,7 +2022,7 @@ begin
 
   return jsonb_build_object('ok', true, 'inserted_count', inserted_count);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_enrollment_invite_by_code(target_invite_code text)
@@ -2044,7 +2044,7 @@ begin
     and (sei.expires_at is null or sei.expires_at > now())
   limit 1;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.complete_enrollment_invite(target_invite_code text, target_name text, target_cpf text, target_whatsapp text, target_pix_key text, target_availability jsonb)
@@ -2305,7 +2305,7 @@ begin
 
   return jsonb_build_object('ok', true, 'enrollment_code', enrollment_code);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_class_students(target_class_number integer)
@@ -2342,7 +2342,7 @@ begin
     and (cs.user_id is null or coalesce(p.archived, false) = false)
   order by student_name asc, student_email asc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.add_teacher_class_student_by_ref(target_class_number integer, target_student_ref_id text, target_student_ref_type text)
@@ -2451,7 +2451,7 @@ begin
 
   return jsonb_build_object('ok', true, 'id', inserted_id, 'class_number', target_class_number, 'class_type', class_type_value);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.remove_teacher_class_student_by_ref(target_class_number integer, target_student_ref_id text, target_student_ref_type text)
@@ -2485,7 +2485,7 @@ begin
 
   return jsonb_build_object('ok', true);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_class_activity_history(target_class_number integer)
@@ -2531,7 +2531,7 @@ begin
   where sf.class_notes ilike ('[Turma ' || target_class_number || ']%')
   order by sf.class_date desc, sf.created_at desc, student_name asc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.save_teacher_class_attendance_by_ref(target_class_number integer, target_class_date date, target_general_notes text, attendance_records jsonb)
@@ -2609,7 +2609,7 @@ begin
 
   return jsonb_build_object('ok', true, 'inserted_count', inserted_count);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.migrate_invite_records_to_user()
@@ -2638,7 +2638,7 @@ begin
 
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_student_tags()
@@ -2664,7 +2664,7 @@ begin
   from public.student_tags st
   order by st.created_at desc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.toggle_teacher_student_tag(target_student_ref_id text, target_student_ref_type text, target_tag_name text)
@@ -2729,7 +2729,7 @@ begin
     raise exception 'Tipo de aluno inválido.';
   end if;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.migrate_invite_student_tags_to_user()
@@ -2748,7 +2748,7 @@ begin
 
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_class_lesson_records(target_class_number integer)
@@ -2789,7 +2789,7 @@ begin
   )
   order by clr.class_date desc, clr.created_at desc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.save_teacher_class_lesson_record_by_ref(target_class_number integer, target_student_ref_id text, target_student_ref_type text, target_class_date date, target_lesson_code text)
@@ -2870,7 +2870,7 @@ begin
     'lesson_code', target_lesson_code
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_class_resources(target_class_number integer)
@@ -2897,7 +2897,7 @@ begin
   from public.class_resources cr
   where cr.class_number = target_class_number;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_my_student_class()
@@ -2929,7 +2929,7 @@ begin
   where cs.user_id = auth.uid()
   order by cs.created_at desc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.save_teacher_classes_order(classes_order jsonb)
@@ -2973,7 +2973,7 @@ begin
 
   return jsonb_build_object('ok', true, 'updated_count', updated_count);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.create_teacher_exercise(target_exercise_id text, target_exercise_title text, target_exercise_url text, target_scheduled_publish_at timestamp with time zone DEFAULT NULL::timestamp with time zone)
@@ -3017,7 +3017,7 @@ begin
 
   return jsonb_build_object('ok', true, 'id', new_id, 'scheduled_publish_at', target_scheduled_publish_at);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_created_exercises()
@@ -3044,7 +3044,7 @@ begin
   from public.teacher_exercises te
   order by coalesce(te.scheduled_publish_at, te.created_at) desc, te.created_at desc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.delete_teacher_exercise(target_id uuid)
@@ -3087,7 +3087,7 @@ begin
     'deleted_completion_count', deleted_completion_count
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_public_teacher_exercises()
@@ -3106,7 +3106,7 @@ AS $function$
   where te.is_active = true
     and (te.scheduled_publish_at is null or te.scheduled_publish_at <= now())
   order by coalesce(te.scheduled_publish_at, te.created_at) desc, te.created_at desc;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_students()
@@ -3196,7 +3196,7 @@ begin
   )
   order by mr.name asc nulls last, mr.email asc nulls last;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_billing_students()
@@ -3232,7 +3232,7 @@ begin
     )
   order by p.name asc nulls last, p.email asc nulls last;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.save_student_billing_settings(target_student_id uuid, target_monthly_fee numeric, target_due_day integer, target_billing_start_month date, target_active boolean, target_notes text DEFAULT NULL::text)
@@ -3301,7 +3301,7 @@ begin
 
   return jsonb_build_object('ok', true, 'student_id', target_student_id);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.generate_monthly_tuition(target_reference_month date)
@@ -3375,7 +3375,7 @@ begin
   get diagnostics affected_count = row_count;
   return affected_count;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_monthly_tuition(target_reference_month date)
@@ -3424,7 +3424,7 @@ begin
      )
   order by mt.due_date asc, p.name asc nulls last;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_student_tuition_history(target_student_id uuid)
@@ -3458,7 +3458,7 @@ begin
   where mt.student_id = target_student_id
   order by mt.reference_month desc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.record_tuition_payment(target_tuition_id uuid, target_payment_date date, target_amount_paid numeric, target_payment_method text, target_payment_notes text DEFAULT NULL::text)
@@ -3520,7 +3520,7 @@ begin
 
   return jsonb_build_object('ok', true, 'tuition_id', target_tuition_id);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.reverse_tuition_payment(target_tuition_id uuid, target_reason text DEFAULT NULL::text)
@@ -3578,7 +3578,7 @@ begin
 
   return jsonb_build_object('ok', true, 'tuition_id', target_tuition_id);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.sync_enrolled_auth_profile(target_user_id uuid, target_email text, target_metadata jsonb)
@@ -3685,7 +3685,7 @@ begin
 
   return true;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.handle_enrolled_auth_user_profile()
@@ -3702,7 +3702,7 @@ begin
   );
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.queue_enrollment_email_notification()
@@ -3735,7 +3735,7 @@ begin
 
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.book_makeup_class(target_slot_id uuid)
@@ -3885,7 +3885,7 @@ begin
     'email_queued', true
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_my_makeup_bookings()
@@ -3940,7 +3940,7 @@ begin
     end asc,
     s.starts_at desc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_makeup_bookings()
@@ -3973,7 +3973,7 @@ begin
    and n.notification_type = 'booking_confirmation'
   order by b.booked_at desc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.cancel_makeup_class_slot(target_slot_id uuid)
@@ -4011,7 +4011,7 @@ begin
     'cancelled_bookings', cancelled_count
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.cancel_makeup_class_booking(target_booking_id uuid)
@@ -4040,7 +4040,7 @@ begin
     'ok', true
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_makeup_classes()
@@ -4078,7 +4078,7 @@ begin
     cr.video_lesson_url
   order by tc.class_number asc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.create_makeup_class_slot(target_class_number integer, target_date date, target_start_time time without time zone, target_end_time time without time zone, target_capacity integer DEFAULT 1, target_notes text DEFAULT NULL::text)
@@ -4193,7 +4193,7 @@ begin
     'ends_at', target_ends_at
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_available_makeup_slots()
@@ -4246,7 +4246,7 @@ begin
   having count(b.id) < s.capacity
   order by s.starts_at asc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.cancel_my_makeup_class_booking(target_booking_id uuid)
@@ -4320,7 +4320,7 @@ begin
     'email_queued', true
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_makeup_slots()
@@ -4376,7 +4376,7 @@ begin
     end asc,
     s.starts_at desc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.log_student_page_access(target_page_path text, target_page_title text DEFAULT NULL::text, target_timezone text DEFAULT NULL::text)
@@ -4441,7 +4441,7 @@ begin
     'access_id', inserted_id
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_student_accesses(target_days integer DEFAULT 30, target_user_id uuid DEFAULT NULL::uuid)
@@ -4497,7 +4497,7 @@ begin
   order by sal.accessed_at desc
   limit 2000;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_flashcards_updated_at()
@@ -4509,7 +4509,7 @@ begin
   new.updated_at = now();
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.save_flashcard_deck(p_deck_id uuid, p_title text, p_description text, p_is_shared boolean, p_cards jsonb)
@@ -4583,7 +4583,7 @@ begin
 
   return v_deck_id;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.save_flashcard_deck(p_deck_id uuid, p_owner_id uuid, p_title text, p_description text, p_cards jsonb)
@@ -4726,7 +4726,7 @@ begin
 
   return v_deck_id;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.record_flashcard_practice_day()
@@ -4749,7 +4749,7 @@ begin
 
   return v_practice_date;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_weekly_exercise_status()
@@ -4882,7 +4882,7 @@ begin
     c.resolved_name asc,
     c.resolved_email asc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_daily_exercise_completion_actor()
@@ -4903,7 +4903,7 @@ begin
   new.updated_at = now();
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_student_exercise_completion(target_user_id uuid)
@@ -4954,7 +4954,7 @@ begin
     and (te.scheduled_publish_at is null or te.scheduled_publish_at <= now())
   order by coalesce(te.scheduled_publish_at, te.created_at) asc, te.created_at asc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_teacher_student_exercise_completion(target_user_id uuid, target_exercise_id text, target_completed boolean, target_completed_at timestamp with time zone DEFAULT NULL::timestamp with time zone)
@@ -5047,7 +5047,7 @@ begin
     'completion_source', 'teacher'
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_exercise_schedule_start_date()
@@ -5071,7 +5071,7 @@ begin
 
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.archive_teacher_student(target_user_id uuid)
@@ -5111,7 +5111,7 @@ begin
     end if;
   end if;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.unarchive_teacher_student(target_user_id uuid)
@@ -5135,7 +5135,7 @@ begin
     raise exception 'Aluno arquivado não encontrado.';
   end if;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.ensure_weekly_plan_snapshot(target_user_id uuid)
@@ -5213,7 +5213,7 @@ begin
     and s.week_start = computed_start
   limit 1;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_my_weekly_task_completed(target_task_id uuid, target_completed boolean)
@@ -5248,7 +5248,7 @@ begin
       updated_at = now()
   where id = target_task_id;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_classes_with_type()
@@ -5278,7 +5278,7 @@ begin
   group by tc.id, tc.class_number, tc.class_name, tc.class_type, tc.is_active, tc.created_at, tc.updated_at
   order by tc.class_number asc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.create_teacher_class_with_type(target_class_name text, target_class_type text)
@@ -5313,7 +5313,7 @@ begin
 
   return jsonb_build_object('ok', true,'id', inserted_id,'class_number', next_number,'class_name', final_name,'class_type', normalized_type);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_teacher_class_type(target_class_number integer, target_class_type text)
@@ -5346,7 +5346,7 @@ begin
 
   return jsonb_build_object('ok', true,'class_number', target_class_number,'class_name', updated_name,'class_type', normalized_type);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_group_classes_with_available_spots()
@@ -5380,7 +5380,7 @@ begin
   where cc.occupied_spots < cc.capacity_limit
   order by (cc.capacity_limit - cc.occupied_spots) desc, cc.class_name asc, cc.class_number asc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_available_group_classes_for_students()
@@ -5445,7 +5445,7 @@ begin
   where cc.occupied_spots < cc.capacity_limit
   order by (cc.capacity_limit - cc.occupied_spots) desc, cc.class_name asc, cc.class_number asc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.switch_my_group_class(target_class_number integer)
@@ -5514,7 +5514,7 @@ begin
 
   return jsonb_build_object('ok',true,'changed',true,'old_class_number',old_class_number,'new_class_number',target_class_number,'available_spots_after_change',capacity - occupied_count - 1);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.enforce_class_students_capacity()
@@ -5566,7 +5566,7 @@ begin
 
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.sync_auto_makeup_slots_30_days()
@@ -5662,7 +5662,7 @@ begin
     'generated_at', now()
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.enforce_makeup_slots_enabled()
@@ -5683,7 +5683,7 @@ begin
   end if;
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_google_form_integrations()
@@ -5717,7 +5717,7 @@ begin
   join public.teacher_exercises e on e.exercise_id = s.exercise_id
   order by s.created_at desc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.upsert_google_form_integration(target_exercise_id text, target_spreadsheet_url text, target_import_existing boolean DEFAULT true)
@@ -5797,7 +5797,7 @@ begin
 
   return result_id;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.retry_google_form_integration(target_id uuid)
@@ -5821,7 +5821,7 @@ begin
     raise exception 'Integração não encontrada';
   end if;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.disconnect_google_form_integration(target_id uuid)
@@ -5845,7 +5845,7 @@ begin
     raise exception 'Integração não encontrada';
   end if;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_tuition_payment_attempt_updated_at()
@@ -5857,7 +5857,7 @@ begin
   new.updated_at := now();
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_my_pending_tuitions()
@@ -5909,7 +5909,7 @@ begin
     and mt.reference_month <= date_trunc('month', current_date)::date
   order by mt.due_date asc, mt.reference_month asc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.process_mercado_pago_payment(target_attempt_id uuid, target_provider_payment_id text, target_status text, target_status_detail text, target_amount numeric, target_payment_method text, target_live_mode boolean, target_provider_created_at timestamp with time zone, target_provider_updated_at timestamp with time zone, target_approved_at timestamp with time zone)
@@ -6078,7 +6078,7 @@ begin
     'payment_reversed', payment_was_reversed
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_student_login_route_internal(target_email text)
@@ -6137,7 +6137,7 @@ begin
 
   return 'google_only';
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_teacher_student_access_statuses()
@@ -6184,7 +6184,7 @@ begin
   order by (p.first_portal_access_at is not null) asc,
            student_name asc;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.sync_student_portal_access_status()
@@ -6200,7 +6200,7 @@ begin
   where id = new.user_id;
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.delete_teacher_class_lesson_record(target_record_id uuid)
@@ -6232,7 +6232,7 @@ begin
     'lesson_code', deleted_row.lesson_code
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_student_google_link_candidate_internal(target_google_user_id uuid, target_google_email text)
@@ -6296,7 +6296,7 @@ begin
     'student_name', coalesce(matched_profile.name, '')
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.confirm_or_migrate_student_google_link_internal(target_google_user_id uuid, target_legacy_user_id uuid, target_google_email text)
@@ -6447,7 +6447,7 @@ begin
 
   return jsonb_build_object('linked', true, 'mode', mode_value, 'legacy_user_id', target_legacy_user_id);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.preserve_linked_student_enrollment_email()
@@ -6466,7 +6466,7 @@ begin
   end if;
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.normalize_profile_enrollment_code()
@@ -6480,7 +6480,7 @@ begin
   end if;
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.activate_completed_google_student_profile()
@@ -6525,7 +6525,7 @@ begin
 
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.consume_api_rate_limit(target_bucket_key text, target_window_seconds integer, target_max_requests integer)
@@ -6562,7 +6562,7 @@ begin
 
   return new_count <= target_max_requests;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.protect_profile_security_fields()
@@ -6608,7 +6608,7 @@ begin
 
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.record_flashcard_review(p_card_id uuid, p_grade text)
@@ -6742,7 +6742,7 @@ begin
     'last_reviewed_at', now()
   );
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.prevent_new_duplicate_profile_cpf()
@@ -6777,7 +6777,7 @@ begin
 
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.prune_app_error_events(target_days integer DEFAULT 90)
@@ -6796,7 +6796,7 @@ begin
   get diagnostics deleted_count = row_count;
   return deleted_count;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.dispatch_makeup_notification_webhook()
@@ -6838,7 +6838,7 @@ begin
 
   return new;
 end;
-$function$
+$function$;
 
 
 
@@ -7237,7 +7237,7 @@ begin
 
   return new;
 end;
-$function$
+$function$;
 
 
 revoke all on function private.dispatch_enrollment_notification_webhook() from public, anon, authenticated, service_role;
