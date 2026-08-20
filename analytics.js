@@ -130,7 +130,7 @@
 
   track("page_view", {
     page_title: document.title || "Teacher Flávio",
-    page_location: window.location.href
+    page_location: window.location.origin + currentPath()
   });
 
   function whatsappPosition(element) {
