@@ -39,7 +39,20 @@
     .message { min-height: 20px; color: #94a3b8; font-size: 13px; margin-top: 10px; line-height: 1.5; }
     .message.success { color: #6ee7b7; }
     .message.error { color: #fca5a5; }
-    @media (max-width: 560px) { .availability-grid { grid-template-columns: 68px repeat(5, minmax(0, 1fr)); gap: 8px 3px; } .grid-head, .time-label { font-size: 12px; } .slot-box { width: 25px; height: 25px; } }
+    .privacy-copy { margin-bottom: 14px; }
+    .privacy-links { display:flex; flex-wrap:wrap; gap:12px; margin:14px 0 16px; }
+    .privacy-links a { color:#c4b5fd; font-weight:bold; }
+    .privacy-request-status { padding:12px 14px; border-radius:12px; background:rgba(148,163,184,.08); border:1px solid rgba(148,163,184,.2); color:#cbd5e1; font-size:13px; line-height:1.55; margin-bottom:14px; }
+    .privacy-request-status.warning { color:#fde68a; border-color:rgba(251,191,36,.35); background:rgba(251,191,36,.08); }
+    .privacy-request-status.success { color:#a7f3d0; border-color:rgba(52,211,153,.35); background:rgba(52,211,153,.08); }
+    .privacy-request-status.error { color:#fecaca; border-color:rgba(248,113,113,.35); background:rgba(248,113,113,.08); }
+    .privacy-actions { display:flex; flex-wrap:wrap; gap:10px; }
+    .privacy-danger { color:#fecaca; border-color:rgba(248,113,113,.45); background:rgba(127,29,29,.18); font-weight:bold; }
+    .privacy-danger:hover { background:rgba(127,29,29,.32); }
+    .privacy-cancel { color:#cbd5e1; border-color:rgba(203,213,225,.28); }
+    button[hidden] { display:none !important; }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    @media (max-width: 560px) { .availability-grid { grid-template-columns: 68px repeat(5, minmax(0, 1fr)); gap: 8px 3px; } .grid-head, .time-label { font-size: 12px; } .slot-box { width: 25px; height: 25px; } .privacy-actions button { width:100%; } }
   </style>
 </head>
 <body>
@@ -86,6 +99,21 @@
         <div id="message" class="message"></div>
       </form>
     </div>
+
+    <section class="card" aria-labelledby="privacyTitle">
+      <h2 id="privacyTitle">Privacidade e meus dados</h2>
+      <p class="privacy-copy">Você pode consultar as regras de tratamento dos seus dados e solicitar o encerramento da conta. Quando um pedido é concluído, os dados operacionais desnecessários são eliminados ou anonimizados. Registros financeiros podem ser conservados de forma restrita quando houver obrigação legal, regulatória ou necessidade de exercício regular de direitos.</p>
+      <div class="privacy-links">
+        <a href="/privacidade/">Política de Privacidade</a>
+        <a href="/cookies/">Política de Cookies</a>
+        <a href="#" data-tf-open-privacy>Preferências de privacidade</a>
+      </div>
+      <div id="privacyRequestStatus" class="privacy-request-status" role="status" aria-live="polite">Consultando solicitações de privacidade...</div>
+      <div class="privacy-actions">
+        <button id="requestAccountDeletionButton" class="privacy-danger" type="button">SOLICITAR ENCERRAMENTO DA CONTA</button>
+        <button id="cancelAccountDeletionButton" class="privacy-cancel" type="button" hidden>CANCELAR PEDIDO</button>
+      </div>
+    </section>
   </div>
 
   <script>
@@ -217,6 +245,7 @@
     loadProfile();
     enforceGoogleOnlyCopy();
   </script>
-  <script defer src="/site_footer.js?v=20260814-1"></script>
+  <script defer src="/privacy_requests.js?v=20260820-1"></script>
+  <script defer src="/site_footer.js?v=20260820-privacy-1"></script>
 </body>
 </html>
