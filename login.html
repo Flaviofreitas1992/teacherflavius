@@ -23,9 +23,9 @@
     .google-g { font-family: Arial, sans-serif; font-size: 20px; font-weight: 700; }
     .secondary { background: rgba(255,255,255,0.05) !important; border: 1.5px solid rgba(129,140,248,0.35) !important; color: #cbd5e1 !important; }
     .notice { margin: 0 0 16px; padding: 11px 13px; border: 1px solid rgba(110,231,183,0.35); border-radius: 10px; background: rgba(110,231,183,0.10); color: #a7f3d0; font-size: 13px; line-height: 1.5; text-align: center; }
-    .info { margin: 0 0 18px; padding: 12px 14px; border: 1px solid rgba(129,140,248,.28); border-radius: 10px; background: rgba(129,140,248,.08); color: #cbd5e1; font-size: 13px; line-height: 1.55; text-align: center; }
     .error { min-height: 20px; color: #fca5a5; font-size: 13px; margin: 12px 0 0; line-height: 1.5; text-align: center; }
     .links { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+    .login-note { margin: 14px 0 0; color: #64748b; font-size: 12px; line-height: 1.5; text-align: center; }
 
     .link-overlay { position: fixed; inset: 0; z-index: 2147483000; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(2,6,23,.86); backdrop-filter: blur(8px); }
     .link-modal { width: min(100%, 480px); padding: 30px 26px; border: 1px solid rgba(129,140,248,.40); border-radius: 20px; background: linear-gradient(145deg,#111827,#1e1b4b); box-shadow: 0 28px 80px rgba(0,0,0,.48); text-align: center; }
@@ -42,13 +42,12 @@
     <div class="header">
       <div><span class="badge">TEACHER FLÁVIO</span></div>
       <h1>Entrar</h1>
-      <p>O acesso ao portal é feito exclusivamente com uma conta Google.</p>
+      <p>Entre com sua conta Google para acessar o curso.</p>
     </div>
 
     <div id="loginNotice" class="notice" role="status" hidden></div>
-    <div class="info">Use sua conta Google. Se o sistema reconhecer uma matrícula existente, ele oferecerá a vinculação mantendo seus dados e seu histórico.</div>
-
     <button id="googleLoginButton" class="google-button" type="button"><span class="google-g">G</span> CONTINUAR COM GOOGLE</button>
+    <p class="login-note">Se já houver uma matrícula associada a você, seus dados e histórico serão preservados.</p>
     <div id="loginError" class="error" role="alert"></div>
 
     <div class="links">
@@ -59,10 +58,10 @@
   <div id="accountLinkOverlay" class="link-overlay" role="dialog" aria-modal="true" aria-labelledby="accountLinkTitle" hidden>
     <div class="link-modal">
       <div><span class="badge">TEACHER FLÁVIO</span></div>
-      <h2 id="accountLinkTitle">Detectamos que você já é matriculado, Vincule agora a sua conta antiga com a sua conta Google.</h2>
-      <div class="enrollment-label">E-mail fornecido na matrícula</div>
+      <h2 id="accountLinkTitle">Encontramos uma matrícula anterior. Vincule-a à sua conta Google para manter seus dados e histórico.</h2>
+      <div class="enrollment-label">E-mail informado na matrícula</div>
       <div id="enrollmentEmail" class="enrollment-email"></div>
-      <button id="linkAccountButton" class="link-button" type="button">VINCULAR CONTA</button>
+      <button id="linkAccountButton" class="link-button" type="button">VINCULAR E CONTINUAR</button>
       <div id="linkAccountError" class="link-error" role="alert"></div>
     </div>
   </div>
@@ -208,7 +207,7 @@
         } catch (error) {
           linkError.textContent = error.message || "Não foi possível vincular a conta.";
           linkButton.disabled = false;
-          linkButton.textContent = "VINCULAR CONTA";
+          linkButton.textContent = "VINCULAR E CONTINUAR";
         }
       });
 
@@ -216,6 +215,6 @@
       processGoogleReturn();
     })();
   </script>
-  <script defer src="/site_footer.js?v=20260819-3"></script>
+  <script defer src="/site_footer.js?v=20260820-ux-1"></script>
 </body>
 </html>
