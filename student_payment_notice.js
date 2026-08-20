@@ -7,16 +7,58 @@
   var PAYMENT_PATH = "/pagamento/";
   var PAYMENT_WAITING_STATUSES = ["created", "pending", "authorized", "in_process", "in_mediation"];
 
-  function sleep(milliseconds) {
-    return new Promise(function (resolve) { window.setTimeout(resolve, milliseconds); });
+  function loadScript(selector, src, isReady) {
+    return new Promise(function (resolve) {
+      if (isReady()) {
+        resolve(true);
+        return;
+      }
+
+      var settled = false;
+      var script = document.querySelector(selector);
+      var finish = function () {
+        if (settled) return;
+        settled = true;
+        resolve(!!isReady());
+      };
+
+      if (!script) {
+        script = document.createElement("script");
+        script.src = src;
+        script.defer = true;
+        document.head.appendChild(script);
+      }
+
+      script.addEventListener("load", finish, { once: true });
+      script.addEventListener("error", finish, { once: true });
+      window.setTimeout(finish, 6000);
+    });
   }
 
-  async function waitForAuth() {
-    for (var attempt = 0; attempt < 40; attempt += 1) {
-      if (window.Auth && window.SUPABASE_CONFIG && Auth.isConfigured && Auth.isConfigured()) return true;
-      await sleep(250);
-    }
-    return false;
+  async function ensureAuthentication() {
+    if (window.Auth && window.SUPABASE_CONFIG && Auth.isConfigured && Auth.isConfigured()) return true;
+
+    var supabaseReady = await loadScript(
+      'script[src*="@supabase/supabase-js"]',
+      "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2",
+      function () { return !!(window.supabase && window.supabase.createClient); }
+    );
+    if (!supabaseReady) return false;
+
+    var configReady = await loadScript(
+      'script[src*="supabase_config.js"]',
+      "/supabase_config.js?v=20260820-tuition-warning-1",
+      function () { return !!window.SUPABASE_CONFIG; }
+    );
+    if (!configReady) return false;
+
+    var authReady = await loadScript(
+      'script[src*="auth.js"]',
+      "/auth.js?v=20260820-tuition-warning-1",
+      function () { return !!(window.Auth && Auth.getClient && Auth.getSession && Auth.isConfigured); }
+    );
+
+    return !!(authReady && Auth.isConfigured && Auth.isConfigured());
   }
 
   function formatCurrency(value) {
@@ -195,7 +237,7 @@
   }
 
   async function initializePaymentNotice() {
-    if (!(await waitForAuth())) return;
+    if (!(await ensureAuthentication())) return;
 
     var session;
     try {
