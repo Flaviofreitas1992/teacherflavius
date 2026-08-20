@@ -1,6 +1,9 @@
 @import url('aula_template.css?v=20260427-5');
 body { color: #f1f5f9; }
 .container { max-width: 920px; }
+.top-links { display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:nowrap; width:100%; }
+.top-links .top-link,
+.top-links #globalLogoutButton.global-logout-button { flex:0 1 auto; white-space:nowrap; }
 .panel { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 22px; backdrop-filter: blur(12px); margin-bottom: 16px; position: relative; z-index: 1; }
 .panel h2 { font-size: 20px; margin-bottom: 14px; color: #f1f5f9; }
 .student-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 15px; margin-bottom: 12px; }
@@ -14,3 +17,30 @@ body { color: #f1f5f9; }
 .delete-button:hover { background: rgba(248,113,113,0.18); border-color: rgba(248,113,113,0.75); }
 .delete-button:disabled { opacity: 0.55; cursor: not-allowed; }
 .student-filter-panel { display: none !important; }
+
+@media (max-width: 639px) {
+  .top-links { gap:6px; margin-bottom:22px; }
+  .top-links .top-link {
+    min-height:38px;
+    padding:7px 9px !important;
+    font-size:11px !important;
+    line-height:1.05;
+    letter-spacing:0;
+  }
+  .top-links #globalLogoutButton.global-logout-button {
+    width:auto !important;
+    min-width:56px !important;
+    min-height:38px !important;
+    padding:7px 8px !important;
+    border-radius:10px !important;
+    font:700 11px var(--tf-font-display) !important;
+    letter-spacing:0 !important;
+    line-height:1 !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .top-links { gap:5px; }
+  .top-links .top-link { padding-inline:7px !important; font-size:10px !important; }
+  .top-links #globalLogoutButton.global-logout-button { min-width:52px !important; padding-inline:6px !important; font-size:10px !important; }
+}
