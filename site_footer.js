@@ -148,6 +148,13 @@
     document.head.appendChild(script);
   }
 
+  function loadAnalytics() {
+    loadScript(
+      "teacher-flavius-analytics",
+      "/analytics.js?v=20260820-1"
+    );
+  }
+
   function loadMobileTopNavigation() {
     loadScript(
       "teacher-flavius-mobile-top-navigation",
@@ -188,6 +195,8 @@
       window.setTimeout(loadPublicPageScripts, 0);
     }
   }
+
+  loadAnalytics();
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initializeUi, { once: true });
