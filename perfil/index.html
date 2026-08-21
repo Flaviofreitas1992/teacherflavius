@@ -9,13 +9,19 @@
     (async function () {
       const response = await fetch('/perfil.html', { cache: 'no-store' });
       const html = await response.text();
+      const googleLinkFeedback = '<script>(function(){' +
+        'function paramsFromLocation(){var q=new URLSearchParams(window.location.search);var h=new URLSearchParams((window.location.hash||"").replace(/^#/,""));return {error:q.get("error")||h.get("error"),code:q.get("error_code")||h.get("error_code"),description:q.get("error_description")||h.get("error_description")};}' +
+        'function show(){var result=paramsFromLocation();if(!result.error&&!result.code&&!result.description)return;var status=document.getElementById("googleIdentityStatus");var message=document.getElementById("googleIdentityMessage");if(!status||!message){setTimeout(show,80);return;}var text=result.description||result.error||"Não foi possível vincular a conta Google.";if(result.code==="identity_already_exists"||/already linked to another user/i.test(text)){text="Esta conta Google já está vinculada a outra conta do TeacherFlavius. Entre com outra conta Google ou remova primeiro a conta de teste que já usa esse Google.";}status.textContent="A conta Google não foi vinculada.";status.classList.remove("google-link-success");message.className="message error";message.textContent=text;var button=document.getElementById("linkGoogleButton");if(button){button.hidden=false;button.disabled=false;button.textContent="VINCULAR CONTA GOOGLE";}}' +
+        'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){setTimeout(show,0);});else setTimeout(show,0);' +
+      '})();<\/script>';
       document.open();
-      document.write(html.replace('<head>', '<head>\n  <base href="/">'));
+      document.write(html.replace('<head>', '<head>\n  <base href="/">').replace('</body>', googleLinkFeedback + '\n</body>'));
       document.close();
     })();
   </script>
 </head>
 <body>
   <p>Carregando perfil...</p>
+  <script defer src="/site_footer.js?v=20260814-1"></script>
 </body>
 </html>
