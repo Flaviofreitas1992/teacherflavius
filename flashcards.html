@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Flashcards - Teacher Flávio</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3"></script>
   <script src="/supabase_config.js?v=20260430-3"></script>
   <script src="/auth.js?v=20260730-1"></script>
   <link rel="stylesheet" href="/flashcards.css?v=20260804-1">
@@ -113,7 +113,7 @@
         <div id="studyContent">
           <div class="study-progress-row">
             <span id="studyProgress">Cartão 1 de 1</span>
-            <span id="studyScore">0 acertos</span>
+            <span id="studyScore">0 revisados</span>
           </div>
           <div class="progress-track" aria-hidden="true"><span id="progressBar"></span></div>
 
@@ -128,9 +128,12 @@
             <div id="answerFeedback" class="answer-feedback" hidden>
               <span id="answerResult" class="answer-result"></span>
               <p>Tradução cadastrada: <strong id="expectedTranslation"></strong></p>
-              <div class="self-grade" aria-label="Autoavaliação">
-                <button class="button grade-button grade-wrong" type="button" data-grade="wrong">PRECISO REVISAR</button>
-                <button class="button grade-button grade-right" type="button" data-grade="right">EU ACERTEI</button>
+              <p id="reviewSchedule" class="status"></p>
+              <div class="self-grade" aria-label="Autoavaliação para repetição espaçada">
+                <button class="button grade-button grade-wrong" type="button" data-grade="again">NÃO LEMBREI</button>
+                <button class="button grade-button button-ghost" type="button" data-grade="hard">DIFÍCIL</button>
+                <button class="button grade-button button-secondary" type="button" data-grade="good">LEMBREI</button>
+                <button class="button grade-button grade-right" type="button" data-grade="easy">FÁCIL</button>
               </div>
             </div>
           </article>
@@ -147,7 +150,7 @@
           <h3>Sessão concluída</h3>
           <p id="summaryText"></p>
           <div class="summary-actions">
-            <button id="restartStudyButton" class="button button-secondary" type="button">ESTUDAR NOVAMENTE</button>
+            <button id="restartStudyButton" class="button button-secondary" type="button">REVISAR DE NOVO</button>
             <button id="finishStudyButton" class="button button-primary" type="button">VOLTAR À BIBLIOTECA</button>
           </div>
         </div>
@@ -172,6 +175,7 @@
     </div>
   </template>
 
-  <script src="/flashcards.js?v=20260804-1"></script>
+  <script src="/flashcards.js?v=20260820-srs1"></script>
+  <script defer src="/site_footer.js?v=20260814-1"></script>
 </body>
 </html>

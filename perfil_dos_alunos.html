@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Perfil dos Alunos - Teacher Flávio</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="supabase_config.js?v=20260429-8"></script>
   <script src="auth.js?v=20260429-8"></script>
@@ -15,6 +15,81 @@
       grid-template-columns: 1fr;
       gap: 10px;
       margin-top: 14px;
+    }
+
+    .student-billing-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 14px 0 4px;
+      padding: 12px 14px;
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 13px;
+      background: rgba(15,23,42,0.42);
+    }
+
+    .student-billing-row b {
+      color: #cbd5e1;
+      font-size: 13px;
+    }
+
+    .billing-category {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+      padding: 5px 10px;
+      border: 1px solid rgba(148,163,184,0.34);
+      border-radius: 999px;
+      color: #cbd5e1;
+      background: rgba(148,163,184,0.10);
+      font-size: 12px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .billing-category.configured {
+      border-color: rgba(52,211,153,0.42);
+      color: #a7f3d0;
+      background: rgba(16,185,129,0.13);
+    }
+
+    .billing-category.unconfigured {
+      border-color: rgba(251,191,36,0.42);
+      color: #fde68a;
+      background: rgba(245,158,11,0.12);
+    }
+
+    .billing-page-message {
+      margin-bottom: 18px;
+      padding: 13px 15px;
+      border: 1px solid rgba(129,140,248,0.30);
+      border-radius: 13px;
+      color: #cbd5e1;
+      background: rgba(129,140,248,0.09);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .billing-page-message.success {
+      border-color: rgba(52,211,153,0.42);
+      color: #a7f3d0;
+      background: rgba(16,185,129,0.12);
+    }
+
+    .billing-page-message.warning,
+    .billing-page-message.error {
+      border-color: rgba(251,191,36,0.42);
+      color: #fde68a;
+      background: rgba(245,158,11,0.11);
+    }
+
+    .billing-modal-note {
+      margin: -4px 0 14px;
+      color: #94a3b8;
+      font-size: 12px;
+      line-height: 1.55;
     }
 
     .student-count-panel,
@@ -290,6 +365,7 @@
           <option value="all">Todos os alunos</option>
           <option value="without_class">Alunos sem turma</option>
           <option value="enrolled">Alunos matriculados</option>
+          <option value="without_billing">Mensalidade não configurada</option>
           <option value="availability">Disponibilidade dos alunos</option>
           <option value="pre_enrolled">Alunos pré-matriculados</option>
         </select>
@@ -299,6 +375,8 @@
         <a class="archived-students-link" href="/alunos-arquivados/">VER ALUNOS ARQUIVADOS</a>
       </div>
     </div>
+
+    <div id="billingStatusMessage" class="billing-page-message" role="status" aria-live="polite" hidden></div>
 
     <div class="panel">
       <h2 id="studentProfilesTitle">Perfis completos</h2>
@@ -330,9 +408,35 @@
     </div>
   </div>
 
-  <script src="perfil_dos_alunos.js?v=20260807-archive-1"></script>
+  <div id="studentBillingModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="studentBillingTitle">
+      <div class="modal-header">
+        <div>
+          <h2 id="studentBillingTitle">Valor da mensalidade</h2>
+          <p id="studentBillingStudentName" class="modal-help">Defina o valor mensal deste aluno.</p>
+        </div>
+        <button id="closeStudentBillingModalButton" class="modal-close" type="button" aria-label="Fechar janela">×</button>
+      </div>
+
+      <form id="studentBillingForm">
+        <label for="studentMonthlyFee" class="modal-help">Valor mensal (R$)</label>
+        <input id="studentMonthlyFee" class="class-select" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="Ex.: 99,90" required>
+        <p class="billing-modal-note">O vencimento, o início da cobrança, o status e as observações já existentes serão preservados. Para uma nova configuração, o vencimento será no dia 10 e a cobrança começará no mês atual. As opções completas continuam disponíveis na página Mensalidades.</p>
+
+        <div id="studentBillingMessage" class="empty" role="status" aria-live="polite"></div>
+
+        <div class="modal-actions">
+          <button id="saveStudentBillingButton" class="modal-save-button" type="submit">SALVAR VALOR</button>
+          <button id="cancelStudentBillingButton" class="modal-cancel-button" type="button">CANCELAR</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="perfil_dos_alunos.js?v=20260814-billing-1"></script>
   <script src="perfil_dos_alunos_archive.js?v=20260807-archive-1"></script>
   <script src="perfil_dos_alunos_licoes.js?v=20260807-lessons-1"></script>
   <script src="animated_cards.js?v=20260429-8"></script>
+  <script defer src="/site_footer.js?v=20260814-1"></script>
 </body>
 </html>

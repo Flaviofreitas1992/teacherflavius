@@ -1,0 +1,24 @@
+[build]
+  command = "python3 scripts/build_netlify_site.py"
+  publish = "_site"
+
+[build.processing]
+  skip_processing = false
+
+[build.processing.html]
+  pretty_urls = true
+
+# Evita que o hostname padrão do Netlify concorra com o domínio canônico.
+# Os branch deploys (ex.: main--teacherflavius.netlify.app) continuam disponíveis
+# para smoke tests e não são afetados por esta regra.
+[[redirects]]
+  from = "https://teacherflavius.netlify.app/*"
+  to = "https://teacherflavius.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://teacherflavius.netlify.app/*"
+  to = "https://teacherflavius.com/:splat"
+  status = 301
+  force = true
