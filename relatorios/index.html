@@ -37,7 +37,7 @@
     <div class="report-tabs" role="tablist" aria-label="Tipos de relatório">
       <button class="report-tab active" type="button" data-target="syncFrame" role="tab" aria-selected="true">
         <strong>📋 Sincronização de exercícios</strong>
-        <span>Execuções automáticas, correspondências de e-mail, atualizações e erros.</span>
+        <span>Envios do Google Forms, conclusões detectadas, confirmações e falhas.</span>
       </button>
       <button class="report-tab" type="button" data-target="accessFrame" role="tab" aria-selected="false">
         <strong>📈 Acessos dos alunos</strong>
@@ -49,14 +49,15 @@
       </button>
     </div>
     <section class="report-panel">
-      <iframe id="syncFrame" class="report-frame" src="/relatorios.html" title="Relatórios de sincronização"></iframe>
-      <iframe id="accessFrame" class="report-frame" src="/acessos_dos_alunos.html" title="Acessos dos alunos" hidden></iframe>
-      <iframe id="vacancyFrame" class="report-frame" src="/relatorios_vagas_turmas.html?v=20260807-2" title="Turmas com vagas disponíveis" hidden></iframe>
+      <iframe id="syncFrame" class="report-frame" src="about:blank" data-embed-src="/relatorios.html?v=20260820-reports-fix-1" title="Relatórios de sincronização"></iframe>
+      <iframe id="accessFrame" class="report-frame" src="about:blank" data-embed-src="/acessos_dos_alunos.html?v=20260820-reports-fix-1" title="Acessos dos alunos" hidden></iframe>
+      <iframe id="vacancyFrame" class="report-frame" src="about:blank" data-embed-src="/relatorios_vagas_turmas.html?v=20260820-reports-fix-1" title="Turmas com vagas disponíveis" hidden></iframe>
     </section>
   </div>
   <script>
     const tabs = Array.from(document.querySelectorAll('.report-tab'));
     const frames = Array.from(document.querySelectorAll('.report-frame'));
+
     function activateTab(targetId) {
       tabs.forEach(function (tab) {
         const active = tab.dataset.target === targetId;
@@ -65,17 +66,49 @@
       });
       frames.forEach(function (frame) { frame.hidden = frame.id !== targetId; });
     }
-    tabs.forEach(function (tab) { tab.addEventListener('click', function () { activateTab(tab.dataset.target); }); });
+
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () { activateTab(tab.dataset.target); });
+    });
+
     function cleanEmbeddedPage(frame) {
       try {
         const doc = frame.contentDocument;
         if (!doc || !doc.head) return;
-        const style = doc.createElement('style');
-        style.textContent = `body { background: transparent !important; padding-top: 8px !important; } .top-links, .header, .divider { display: none !important; } .container { max-width: none !important; width: 100% !important; padding-left: 14px !important; padding-right: 14px !important; }`;
-        doc.head.appendChild(style);
-      } catch (error) { console.warn('Não foi possível ajustar o relatório incorporado.', error); }
+        let style = doc.getElementById('teacher-flavius-report-embed-cleanup');
+        if (!style) {
+          style = doc.createElement('style');
+          style.id = 'teacher-flavius-report-embed-cleanup';
+          style.textContent = `
+            body { background: transparent !important; padding-top: 8px !important; }
+            .top-links, .header, .divider,
+            #tf-mobile-top-navigation, #tf-mobile-top-menu-overlay,
+            #teacher-flavius-whatsapp-float, .whatsapp-float { display: none !important; }
+            body.tf-mobile-menu-open { overflow: auto !important; }
+            .container { max-width: none !important; width: 100% !important; padding-left: 14px !important; padding-right: 14px !important; }
+          `;
+          doc.head.appendChild(style);
+        }
+      } catch (error) {
+        console.warn('Não foi possível ajustar o relatório incorporado.', error);
+      }
     }
-    frames.forEach(function (frame) { frame.addEventListener('load', function () { cleanEmbeddedPage(frame); }); });
+
+    function loadEmbeddedFrame(frame) {
+      const target = frame.dataset.embedSrc;
+      if (!target || !frame.contentWindow) return;
+      try {
+        frame.contentWindow.location.replace(target);
+      } catch (error) {
+        frame.src = target;
+      }
+    }
+
+    frames.forEach(function (frame) {
+      frame.addEventListener('load', function () { cleanEmbeddedPage(frame); });
+      loadEmbeddedFrame(frame);
+    });
   </script>
+  <script defer src="/site_footer.js?v=20260820-desktop-menu-1"></script>
 </body>
 </html>

@@ -4,6 +4,9 @@ let studentClassMap = new Map();
 let selectedStudentForClass = null;
 let cachedVisibleStudents = [];
 let currentStudentFilter = "all";
+let studentBillingMap = new Map();
+let selectedStudentForBilling = null;
+let studentBillingLoaded = false;
 
 function redirectToLogin() {
   window.location.href = "login.html?next=" + encodeURIComponent("perfil_dos_alunos.html");
@@ -105,6 +108,16 @@ function hasAssignedClass(student) {
   return getAssignedClasses(student).length > 0;
 }
 
+function getStudentBilling(student) {
+  const studentId = student && (student.user_id || student.id);
+  return studentId ? studentBillingMap.get(String(studentId)) || null : null;
+}
+
+function hasBillingConfigured(student) {
+  const billing = getStudentBilling(student);
+  return !!(billing && billing.monthly_fee != null);
+}
+
 function filterStudents(students) {
   if (currentStudentFilter === "without_class") {
     return students.filter(function (student) { return !hasAssignedClass(student); });
@@ -112,6 +125,13 @@ function filterStudents(students) {
 
   if (currentStudentFilter === "enrolled") {
     return students.filter(isEnrolledStudent);
+  }
+
+  if (currentStudentFilter === "without_billing") {
+    if (!studentBillingLoaded) return [];
+    return students.filter(function (student) {
+      return isEnrolledStudent(student) && !hasBillingConfigured(student);
+    });
   }
 
   if (currentStudentFilter === "availability") {
@@ -141,6 +161,13 @@ function getFilterMetadata() {
       title: "Alunos matriculados",
       heading: "Alunos matriculados",
       empty: "Nenhum aluno matriculado encontrado."
+    },
+    without_billing: {
+      title: "Mensalidade não configurada",
+      heading: "Alunos sem valor de mensalidade",
+      empty: studentBillingLoaded
+        ? "Todos os alunos matriculados já possuem um valor de mensalidade."
+        : "Os valores de mensalidade não puderam ser carregados."
     },
     availability: {
       title: "Disponibilidade dos alunos",
@@ -202,6 +229,25 @@ function formatCreatedAt(value) {
   return date.toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+function formatCurrency(value) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return "Não configurada";
+  return amount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function getCurrentBillingMonth() {
+  const today = new Date();
+  return today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-01";
+}
+
+function setBillingStatusMessage(message, type) {
+  const element = document.getElementById("billingStatusMessage");
+  if (!element) return;
+  element.hidden = !message;
+  element.className = "billing-page-message" + (type ? " " + type : "");
+  element.textContent = message || "";
+}
+
 function getStudentClassNames(student) {
   const classes = getAssignedClasses(student);
   return classes.length ? classes.join(", ") : "Nenhuma turma atribuída";
@@ -239,6 +285,7 @@ function downloadEnrolledStudentsExcel() {
     "WhatsApp",
     "Chave PIX",
     "Código de matrícula",
+    "Mensalidade (R$)",
     "Turma",
     "Data da matrícula",
     "Disponibilidade"
@@ -258,6 +305,7 @@ function downloadEnrolledStudentsExcel() {
         String(student.whatsapp || ""),
         student.pix_key || "",
         student.enrollment_code || "",
+        hasBillingConfigured(student) ? Number(getStudentBilling(student).monthly_fee) : "",
         getStudentClassNames(student),
         enrollmentDate instanceof Date && !Number.isNaN(enrollmentDate.getTime()) ? enrollmentDate : "",
         formatAvailabilityForSpreadsheet(student)
@@ -265,7 +313,7 @@ function downloadEnrolledStudentsExcel() {
     });
 
   const worksheet = XLSX.utils.aoa_to_sheet([headers].concat(rows), { cellDates: true });
-  worksheet["!autofilter"] = { ref: "A1:I" + (rows.length + 1) };
+  worksheet["!autofilter"] = { ref: "A1:J" + (rows.length + 1) };
   worksheet["!cols"] = [
     { wch: 30 },
     { wch: 32 },
@@ -273,13 +321,16 @@ function downloadEnrolledStudentsExcel() {
     { wch: 17 },
     { wch: 26 },
     { wch: 20 },
+    { wch: 18 },
     { wch: 24 },
     { wch: 20 },
     { wch: 52 }
   ];
 
   for (let rowIndex = 2; rowIndex <= rows.length + 1; rowIndex++) {
-    const dateCell = worksheet["H" + rowIndex];
+    const feeCell = worksheet["G" + rowIndex];
+    if (feeCell && feeCell.t === "n") feeCell.z = 'R$ #,##0.00';
+    const dateCell = worksheet["I" + rowIndex];
     if (dateCell && dateCell.t === "d") dateCell.z = "dd/mm/yyyy hh:mm";
   }
 
@@ -318,6 +369,37 @@ async function loadStudents() {
   const response = await client.rpc("get_teacher_students");
   if (response.error) throw response.error;
   return response.data || [];
+}
+
+async function loadStudentBillingMap() {
+  const response = await Auth.getClient().rpc("get_teacher_billing_students");
+  if (response.error) throw response.error;
+
+  const map = new Map();
+  (response.data || []).forEach(function (item) {
+    if (item.student_id) map.set(String(item.student_id), item);
+  });
+
+  studentBillingMap = map;
+  studentBillingLoaded = true;
+  return studentBillingMap;
+}
+
+async function refreshStudentBillingMap(options) {
+  const showSuccess = options && options.showSuccess;
+  try {
+    await loadStudentBillingMap();
+    setBillingStatusMessage(showSuccess ? "Valor da mensalidade atualizado com sucesso." : "", showSuccess ? "success" : "");
+    return true;
+  } catch (error) {
+    studentBillingMap = new Map();
+    studentBillingLoaded = false;
+    setBillingStatusMessage(
+      "Não foi possível carregar os valores das mensalidades: " + (error.message || "erro desconhecido") + ". Verifique a configuração da página Mensalidades.",
+      "error"
+    );
+    return false;
+  }
 }
 
 async function loadTeacherClasses() {
@@ -453,6 +535,103 @@ async function saveClassAssignment() {
   }
 }
 
+function setStudentBillingMessage(message, type) {
+  const element = document.getElementById("studentBillingMessage");
+  if (!element) return;
+  element.className = type || "empty";
+  element.textContent = message || "";
+}
+
+function openStudentBillingModal(studentId, studentName) {
+  const settings = studentBillingMap.get(String(studentId)) || {};
+  selectedStudentForBilling = {
+    studentId: studentId,
+    studentName: studentName,
+    settings: settings
+  };
+
+  const modal = document.getElementById("studentBillingModal");
+  const nameLabel = document.getElementById("studentBillingStudentName");
+  const input = document.getElementById("studentMonthlyFee");
+
+  if (nameLabel) nameLabel.textContent = "Aluno: " + studentName;
+  if (input) input.value = settings.monthly_fee != null ? Number(settings.monthly_fee).toFixed(2) : "";
+  setStudentBillingMessage("", "empty");
+
+  if (modal) {
+    modal.classList.add("open");
+    modal.setAttribute("aria-hidden", "false");
+  }
+
+  if (input) window.setTimeout(function () { input.focus(); }, 0);
+}
+
+function closeStudentBillingModal() {
+  const modal = document.getElementById("studentBillingModal");
+  selectedStudentForBilling = null;
+  if (modal) {
+    modal.classList.remove("open");
+    modal.setAttribute("aria-hidden", "true");
+  }
+}
+
+async function saveStudentBilling(event) {
+  event.preventDefault();
+  if (!selectedStudentForBilling) return;
+
+  const input = document.getElementById("studentMonthlyFee");
+  const button = document.getElementById("saveStudentBillingButton");
+  const fee = Number(String(input ? input.value : "").replace(",", "."));
+
+  if (!Number.isFinite(fee) || fee <= 0) {
+    setStudentBillingMessage("Informe um valor de mensalidade maior que zero.", "error");
+    return;
+  }
+
+  const selection = selectedStudentForBilling;
+  const settings = selection.settings || {};
+  const dueDay = Number(settings.due_day);
+  const startMonth = settings.billing_start_month || getCurrentBillingMonth();
+  const active = settings.monthly_fee == null ? true : settings.billing_active === true;
+
+  button.disabled = true;
+  button.textContent = "SALVANDO...";
+  setStudentBillingMessage("Salvando o valor da mensalidade...", "empty");
+
+  try {
+    const client = Auth.getClient();
+    const response = await client.rpc("save_student_billing_settings", {
+      target_student_id: selection.studentId,
+      target_monthly_fee: fee,
+      target_due_day: Number.isInteger(dueDay) && dueDay >= 1 && dueDay <= 31 ? dueDay : 10,
+      target_billing_start_month: startMonth,
+      target_active: active,
+      target_notes: settings.billing_notes || ""
+    });
+    if (response.error) throw response.error;
+
+    const generation = await client.rpc("generate_monthly_tuition", {
+      target_reference_month: getCurrentBillingMonth()
+    });
+
+    const refreshed = await refreshStudentBillingMap({ showSuccess: !generation.error });
+    renderFilteredStudents();
+    closeStudentBillingModal();
+
+    if (generation.error && refreshed) {
+      setBillingStatusMessage(
+        "O valor foi salvo, mas a mensalidade do mês atual não pôde ser atualizada automaticamente: " + (generation.error.message || "erro desconhecido") + ".",
+        "warning"
+      );
+    }
+  } catch (error) {
+    setStudentBillingMessage("Não foi possível salvar o valor: " + (error.message || "erro desconhecido"), "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = "SALVAR VALOR";
+  }
+}
+
 function attachActionButtons() {
   document.querySelectorAll(".delete-student-button").forEach(function (button) {
     button.addEventListener("click", function () {
@@ -463,6 +642,12 @@ function attachActionButtons() {
   document.querySelectorAll(".assign-class-button").forEach(function (button) {
     button.addEventListener("click", function () {
       openClassAssignmentModal(button.dataset.refId, button.dataset.refType, button.dataset.studentName || "Aluno");
+    });
+  });
+
+  document.querySelectorAll(".billing-settings-button").forEach(function (button) {
+    button.addEventListener("click", function () {
+      openStudentBillingModal(button.dataset.studentId, button.dataset.studentName || "Aluno");
     });
   });
 }
@@ -476,6 +661,12 @@ function renderProfileCard(student) {
   const assignedClasses = getStudentClassNames(student);
   const pillLabel = preEnrolled ? "Pré-matriculado" : "Matriculado";
   const sourceLabel = preEnrolled ? "Pré-matrícula por convite" : (student.source || "Não informado");
+  const billing = getStudentBilling(student);
+  const billingConfigured = !!(billing && billing.monthly_fee != null);
+  const billingLabel = !studentBillingLoaded
+    ? "Indisponível"
+    : (preEnrolled ? "Disponível após matrícula" : (billingConfigured ? formatCurrency(billing.monthly_fee) : "Não configurada"));
+  const billingClass = billingConfigured ? "configured" : (studentBillingLoaded && !preEnrolled ? "unconfigured" : "");
 
   const editButton = userId
     ? '<a class="delete-button" href="editar_aluno.html?id=' + encodeURIComponent(userId) + '" style="display:inline-flex; justify-content:center; text-decoration:none; border-color:rgba(129,140,248,0.45); background:rgba(129,140,248,0.10); color:#c4b5fd;">EDITAR DADOS</a>'
@@ -483,6 +674,10 @@ function renderProfileCard(student) {
 
   const deleteButton = userId
     ? '<button class="delete-button delete-student-button" type="button" data-user-id="' + escapeHtml(userId) + '" data-student-name="' + escapeHtml(studentName) + '" style="border-color:rgba(248,113,113,0.55); background:rgba(248,113,113,0.10); color:#fca5a5;">EXCLUIR ALUNO</button>'
+    : '';
+
+  const billingButton = userId && !preEnrolled && studentBillingLoaded
+    ? '<button class="delete-button billing-settings-button" type="button" data-student-id="' + escapeHtml(userId) + '" data-student-name="' + escapeHtml(studentName) + '" style="border-color:rgba(52,211,153,0.48); background:rgba(16,185,129,0.11); color:#a7f3d0;">' + (billingConfigured ? 'EDITAR MENSALIDADE' : 'DEFINIR MENSALIDADE') + '</button>'
     : '';
 
   return '<div class="student-card">' +
@@ -500,11 +695,13 @@ function renderProfileCard(student) {
     '<p><b>Origem do registro:</b> ' + escapeHtml(sourceLabel) + '</p>' +
     '<p><b>Status da pré-matrícula:</b> ' + escapeHtml(student.pre_enrollment_status || (preEnrolled ? "pending" : "completed")) + '</p>' +
     '<p><b>Criado em:</b> ' + escapeHtml(formatCreatedAt(student.created_at)) + '</p>' +
+    '<div class="student-billing-row"><b>Mensalidade</b><span class="billing-category ' + billingClass + '">' + escapeHtml(billingLabel) + '</span></div>' +
     '<div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.08);">' +
       '<p><b>Disponibilidade para aulas:</b></p>' + formatAvailability(student) +
     '</div>' +
     '<div class="student-actions">' +
       '<button class="delete-button assign-class-button" type="button" data-ref-id="' + escapeHtml(refId) + '" data-ref-type="' + escapeHtml(refType) + '" data-student-name="' + escapeHtml(studentName) + '" style="border-color:rgba(129,140,248,0.45); background:rgba(129,140,248,0.10); color:#c4b5fd;">TURMA</button>' +
+      billingButton +
       editButton +
       deleteButton +
     '</div>' +
@@ -578,6 +775,10 @@ function setupModalEvents() {
   const cancelButton = document.getElementById("cancelClassAssignmentButton");
   const saveButton = document.getElementById("saveClassAssignmentButton");
   const modal = document.getElementById("classAssignmentModal");
+  const billingCloseButton = document.getElementById("closeStudentBillingModalButton");
+  const billingCancelButton = document.getElementById("cancelStudentBillingButton");
+  const billingForm = document.getElementById("studentBillingForm");
+  const billingModal = document.getElementById("studentBillingModal");
 
   if (closeButton) closeButton.addEventListener("click", closeClassAssignmentModal);
   if (cancelButton) cancelButton.addEventListener("click", closeClassAssignmentModal);
@@ -585,6 +786,15 @@ function setupModalEvents() {
   if (modal) {
     modal.addEventListener("click", function (event) {
       if (event.target === modal) closeClassAssignmentModal();
+    });
+  }
+
+  if (billingCloseButton) billingCloseButton.addEventListener("click", closeStudentBillingModal);
+  if (billingCancelButton) billingCancelButton.addEventListener("click", closeStudentBillingModal);
+  if (billingForm) billingForm.addEventListener("submit", saveStudentBilling);
+  if (billingModal) {
+    billingModal.addEventListener("click", function (event) {
+      if (event.target === billingModal) closeStudentBillingModal();
     });
   }
 }
@@ -607,7 +817,7 @@ async function guardPage() {
   setupModalEvents();
   setupFilterEvents();
   await loadTeacherClasses();
-  await loadStudentClassMap();
+  await Promise.all([loadStudentClassMap(), refreshStudentBillingMap()]);
   await renderStudentProfiles();
 }
 

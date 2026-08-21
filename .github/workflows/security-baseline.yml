@@ -1,0 +1,116 @@
+name: Security baseline
+
+on:
+  push:
+    branches:
+      - main
+      - 'security/**'
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  security-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Reject floating Supabase browser SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          matches=$(grep -RIl --include='*.html' 'cdn.jsdelivr.net/npm/@supabase/supabase-js@2"' . || true)
+          if [ -n "$matches" ]; then
+            echo "Floating @supabase/supabase-js@2 dependency found in:"
+            echo "$matches"
+            echo "Pin an exact 2.x version before merging."
+            exit 1
+          fi
+
+      - name: Reject floating Supabase Edge SDK
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          import sys
+
+          root = Path('supabase/functions')
+          floating = re.compile(r'(?:npm:|https://esm\.sh/)@supabase/supabase-js@2(?=["\'/])')
+          findings = []
+          if root.exists():
+              for path in root.rglob('*'):
+                  if path.suffix not in {'.ts', '.js'} or not path.is_file():
+                      continue
+                  for line_number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
+                      if floating.search(line):
+                          findings.append(f'{path}:{line_number}')
+
+          if findings:
+              print('Floating Supabase Edge SDK dependency found:')
+              print('\n'.join(findings))
+              sys.exit(1)
+
+      - name: Reject obvious hardcoded Edge Function secrets
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+          import sys
+
+          root = Path('supabase/functions')
+          assignment = re.compile(
+              r'''(?i)\b(?P<name>[A-Za-z0-9_]*(?:TOKEN|SECRET|SERVICE_ROLE_KEY|API_KEY)[A-Za-z0-9_]*)\s*=\s*["'](?P<value>[A-Za-z0-9_./+=:-]{20,})["']'''
+          )
+          findings = []
+          if root.exists():
+              for path in root.rglob('*'):
+                  if path.suffix not in {'.ts', '.js'} or not path.is_file():
+                      continue
+                  for line_number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
+                      match = assignment.search(line)
+                      if not match:
+                          continue
+                      name = match.group('name').upper()
+                      if 'SHA256' in name or name.endswith('_HASH'):
+                          continue
+                      findings.append(f'{path}:{line_number}:{match.group("name")}')
+
+          if findings:
+              print('Possible hardcoded raw secret found in Supabase function source:')
+              print('\n'.join(findings))
+              sys.exit(1)
+
+      - name: Verify disabled legacy runner has no query-string secret
+        shell: python
+        run: |
+          from pathlib import Path
+          import sys
+
+          path = Path('supabase/functions/exercise-sync-runner/index.ts')
+          if not path.exists():
+              sys.exit(0)
+          text = path.read_text(encoding='utf-8')
+          if 'searchParams.get("token")' in text or 'const TOKEN =' in text:
+              print('Legacy runner still contains token-based secret handling.')
+              sys.exit(1)
+
+      - name: Verify live HTTP redirects to HTTPS
+        shell: bash
+        run: |
+          set -euo pipefail
+          redirect=$(curl --max-time 20 -sS -o /dev/null -w '%{redirect_url}' http://teacherflavius.com/)
+          echo "HTTP redirect target: ${redirect:-<none>}"
+          case "$redirect" in
+            https://teacherflavius.com/*|https://www.teacherflavius.com/*) ;;
+            *) echo 'HTTP is not redirecting to the canonical HTTPS site.'; exit 1 ;;
+          esac
+
+      - name: Inspect live HTTPS response headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          headers=$(curl --max-time 20 -sS -I https://teacherflavius.com/ | tr -d '\r')
+          printf '%s\n' "$headers"
+          printf '%s\n' "$headers" | grep -qi '^content-type:'
