@@ -5,6 +5,15 @@
   const BUTTON_ID = "globalLogoutButton";
   const STYLE_ID = "globalLogoutStyles";
 
+  function loadMobileTopNavigation() {
+    if (window.__teacherFlaviusMobileTopNavigationLoaded) return;
+    if (document.querySelector('script[src*="mobile_top_navigation.js"]')) return;
+    const script = document.createElement("script");
+    script.src = "/mobile_top_navigation.js?v=20260820-desktop-menu-1";
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+
   function once(callback) {
     let called = false;
     return function () {
@@ -147,17 +156,22 @@
 
   function getOrCreateButton() {
     let button = findExistingButton();
+    const navigation = document.querySelector(".topbar-actions") || document.querySelector(".top-links") || document.querySelector(".top");
+
     if (!button) {
       button = document.createElement("button");
       button.type = "button";
-      const navigation = document.querySelector(".top-links") || document.querySelector(".top");
       if (navigation) {
         navigation.appendChild(button);
       } else {
         button.classList.add("global-logout-fallback");
         document.body.appendChild(button);
       }
+    } else if (navigation && button.parentElement !== navigation) {
+      navigation.appendChild(button);
     }
+
+    if (navigation) button.classList.remove("global-logout-fallback");
 
     button.id = BUTTON_ID;
     button.type = "button";
@@ -183,6 +197,7 @@
   }
 
   async function initialize() {
+    loadMobileTopNavigation();
     ensureAuthentication(async function () {
       if (!window.Auth || !window.Auth.isConfigured || !window.Auth.isConfigured()) return;
 

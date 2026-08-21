@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Meu Perfil - Teacher Flávio</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3"></script>
   <script src="supabase_config.js?v=20260428-4"></script>
-  <script src="auth.js?v=20260428-4"></script>
+  <script src="auth.js?v=20260819-1"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { min-height: 100vh; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%); padding: 32px 16px 48px; font-family: Georgia, serif; color: #f1f5f9; }
@@ -39,7 +39,20 @@
     .message { min-height: 20px; color: #94a3b8; font-size: 13px; margin-top: 10px; line-height: 1.5; }
     .message.success { color: #6ee7b7; }
     .message.error { color: #fca5a5; }
-    @media (max-width: 560px) { .availability-grid { grid-template-columns: 68px repeat(5, minmax(0, 1fr)); gap: 8px 3px; } .grid-head, .time-label { font-size: 12px; } .slot-box { width: 25px; height: 25px; } }
+    .privacy-copy { margin-bottom: 14px; }
+    .privacy-links { display:flex; flex-wrap:wrap; gap:12px; margin:14px 0 16px; }
+    .privacy-links a { color:#c4b5fd; font-weight:bold; }
+    .privacy-request-status { padding:12px 14px; border-radius:12px; background:rgba(148,163,184,.08); border:1px solid rgba(148,163,184,.2); color:#cbd5e1; font-size:13px; line-height:1.55; margin-bottom:14px; }
+    .privacy-request-status.warning { color:#fde68a; border-color:rgba(251,191,36,.35); background:rgba(251,191,36,.08); }
+    .privacy-request-status.success { color:#a7f3d0; border-color:rgba(52,211,153,.35); background:rgba(52,211,153,.08); }
+    .privacy-request-status.error { color:#fecaca; border-color:rgba(248,113,113,.35); background:rgba(248,113,113,.08); }
+    .privacy-actions { display:flex; flex-wrap:wrap; gap:10px; }
+    .privacy-danger { color:#fecaca; border-color:rgba(248,113,113,.45); background:rgba(127,29,29,.18); font-weight:bold; }
+    .privacy-danger:hover { background:rgba(127,29,29,.32); }
+    .privacy-cancel { color:#cbd5e1; border-color:rgba(203,213,225,.28); }
+    button[hidden] { display:none !important; }
+    button:disabled { opacity:.55; cursor:not-allowed; }
+    @media (max-width: 560px) { .availability-grid { grid-template-columns: 68px repeat(5, minmax(0, 1fr)); gap: 8px 3px; } .grid-head, .time-label { font-size: 12px; } .slot-box { width: 25px; height: 25px; } .privacy-actions button { width:100%; } }
   </style>
 </head>
 <body>
@@ -86,6 +99,21 @@
         <div id="message" class="message"></div>
       </form>
     </div>
+
+    <section class="card" aria-labelledby="privacyTitle">
+      <h2 id="privacyTitle">Privacidade e meus dados</h2>
+      <p class="privacy-copy">Nesta área você pode baixar uma cópia dos principais dados associados à sua conta, corrigir informações simples, registrar solicitações de acesso, correção, anonimização ou bloqueio, pedir informações sobre compartilhamentos e solicitar o encerramento da conta. Registros que precisem ser conservados por fundamento legal válido permanecem sujeitos à política de retenção.</p>
+      <div class="privacy-links">
+        <a href="/privacidade/">Política de Privacidade</a>
+        <a href="/cookies/">Política de Cookies</a>
+        <a href="#" data-tf-open-privacy>Preferências de privacidade</a>
+      </div>
+      <div id="privacyRequestStatus" class="privacy-request-status" role="status" aria-live="polite">Consultando solicitações de privacidade...</div>
+      <div class="privacy-actions">
+        <button id="requestAccountDeletionButton" class="privacy-danger" type="button">SOLICITAR ENCERRAMENTO DA CONTA</button>
+        <button id="cancelAccountDeletionButton" class="privacy-cancel" type="button" hidden>CANCELAR PEDIDO</button>
+      </div>
+    </section>
   </div>
 
   <script>
@@ -174,6 +202,23 @@
       setAvailability(profile.availability || {});
     }
 
+    function enforceGoogleOnlyCopy() {
+      const status = document.getElementById("googleIdentityStatus");
+      const googleMessage = document.getElementById("googleIdentityMessage");
+      const linkedStatus = "✓ Conta Google vinculada. A partir de agora, o acesso ao portal será feito pelo Google.";
+      const linkedMessage = "Conta Google vinculada com sucesso. Seus dados e seu progresso foram preservados. Nos próximos acessos, use o Google.";
+
+      if (status && status.textContent.includes("Conta Google vinculada") && status.textContent !== linkedStatus) {
+        status.textContent = linkedStatus;
+      }
+      if (googleMessage && googleMessage.textContent.includes("Conta Google vinculada com sucesso") && googleMessage.textContent !== linkedMessage) {
+        googleMessage.textContent = linkedMessage;
+      }
+    }
+
+    const googleCopyObserver = new MutationObserver(enforceGoogleOnlyCopy);
+    googleCopyObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
+
     document.getElementById("cpf").addEventListener("input", function () { this.value = formatCpf(this.value); });
 
     document.getElementById("profileForm").addEventListener("submit", async function (event) {
@@ -198,6 +243,9 @@
 
     buildAvailabilityGrid();
     loadProfile();
+    enforceGoogleOnlyCopy();
   </script>
+  <script defer src="/privacy_requests.js?v=20260820-2"></script>
+  <script defer src="/site_footer.js?v=20260820-privacy-1"></script>
 </body>
 </html>

@@ -1,0 +1,9 @@
+_site/
+.netlify/
+__pycache__/
+*.pyc
+
+# Local database backup material must never be committed.
+backups/
+*.sql.gpg
+*.tar.gz.gpg

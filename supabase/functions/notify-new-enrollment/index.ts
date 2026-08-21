@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.112.3";
 
 type NotificationRecord = {
   id: string;
@@ -30,14 +30,9 @@ async function digest(value: string): Promise<ArrayBuffer> {
 
 async function secretsMatch(received: string, expected: string): Promise<boolean> {
   if (!received || !expected) return false;
-
-  const [receivedDigest, expectedDigest] = await Promise.all([
-    digest(received),
-    digest(expected),
-  ]);
+  const [receivedDigest, expectedDigest] = await Promise.all([digest(received), digest(expected)]);
   const receivedBytes = new Uint8Array(receivedDigest);
   const expectedBytes = new Uint8Array(expectedDigest);
-
   if (receivedBytes.length !== expectedBytes.length) return false;
 
   let difference = 0;
@@ -45,23 +40,6 @@ async function secretsMatch(received: string, expected: string): Promise<boolean
     difference |= receivedBytes[index] ^ expectedBytes[index];
   }
   return difference === 0;
-}
-
-function escapeHtml(value: unknown): string {
-  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#039;",
-  })[character] ?? character);
-}
-
-function safeSubject(value: unknown): string {
-  return String(value ?? "Aluno sem nome")
-    .replace(/[\r\n]+/g, " ")
-    .trim()
-    .slice(0, 120) || "Aluno sem nome";
 }
 
 function formatEnrollmentDate(value: string): string {
@@ -77,9 +55,7 @@ function formatEnrollmentDate(value: string): string {
 }
 
 Deno.serve(async (request: Request) => {
-  if (request.method !== "POST") {
-    return jsonResponse({ error: "Method not allowed" }, 405);
-  }
+  if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -131,16 +107,13 @@ Deno.serve(async (request: Request) => {
     return jsonResponse({ error: "Notification not found" }, 404);
   }
 
-  if (notification.status === "sent") {
-    return jsonResponse({ ok: true, already_sent: true });
-  }
+  if (notification.status === "sent") return jsonResponse({ ok: true, already_sent: true });
 
   const attemptAt = new Date().toISOString();
-  const attemptNumber = Number(notification.attempts ?? 0) + 1;
   await supabase
     .from("enrollment_email_notifications")
     .update({
-      attempts: attemptNumber,
+      attempts: Number(notification.attempts ?? 0) + 1,
       last_attempt_at: attemptAt,
       updated_at: attemptAt,
       last_error: null,
@@ -149,7 +122,7 @@ Deno.serve(async (request: Request) => {
 
   const { data: student, error: studentError } = await supabase
     .from("profiles")
-    .select("id, name, email, whatsapp, enrollment_code, enrolled")
+    .select("id, enrolled")
     .eq("id", notification.student_id)
     .single();
 
@@ -159,38 +132,25 @@ Deno.serve(async (request: Request) => {
       .from("enrollment_email_notifications")
       .update({ status: "failed", last_error: errorMessage.slice(0, 1000), updated_at: new Date().toISOString() })
       .eq("id", notification.id);
-    console.error("Unable to load enrolled student", notification.id, errorMessage);
-    return jsonResponse({ error: "Unable to load enrolled student" }, 500);
+    console.error("Unable to verify enrolled student", notification.id, errorMessage);
+    return jsonResponse({ error: "Unable to verify enrolled student" }, 500);
   }
 
-  const studentName = safeSubject(student.name);
   const enrolledAt = formatEnrollmentDate(notification.created_at);
-  const studentEmail = String(student.email ?? "Não informado");
-  const studentWhatsapp = String(student.whatsapp ?? "Não informado");
-  const enrollmentCode = String(student.enrollment_code ?? "Não informado");
-
   const textBody = [
     "Um novo aluno concluiu a matrícula no site.",
     "",
-    `Nome: ${studentName}`,
-    `E-mail: ${studentEmail}`,
-    `WhatsApp: ${studentWhatsapp}`,
-    `Código de matrícula: ${enrollmentCode}`,
     `Data da matrícula: ${enrolledAt}`,
+    "",
+    "Consulte os dados necessários em Área do Professor → Alunos.",
   ].join("\n");
 
   const htmlBody = `
     <div style="font-family:Arial,sans-serif;line-height:1.6;color:#172033;max-width:620px;margin:0 auto">
-      <h1 style="font-size:22px;margin-bottom:18px">Nova matrícula no site</h1>
-      <p>Um novo aluno concluiu a matrícula.</p>
-      <table style="border-collapse:collapse;width:100%">
-        <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Nome</td><td>${escapeHtml(studentName)}</td></tr>
-        <tr><td style="padding:7px 12px 7px 0;font-weight:bold">E-mail</td><td>${escapeHtml(studentEmail)}</td></tr>
-        <tr><td style="padding:7px 12px 7px 0;font-weight:bold">WhatsApp</td><td>${escapeHtml(studentWhatsapp)}</td></tr>
-        <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Código</td><td>${escapeHtml(enrollmentCode)}</td></tr>
-        <tr><td style="padding:7px 12px 7px 0;font-weight:bold">Data</td><td>${escapeHtml(enrolledAt)}</td></tr>
-      </table>
-      <p style="margin-top:22px;color:#667085;font-size:13px">CPF e chave Pix não são enviados por e-mail por segurança.</p>
+      <h1 style="font-size:22px;margin-bottom:18px">Nova matrícula concluída</h1>
+      <p>Um novo aluno concluiu a matrícula no site.</p>
+      <p><strong>Data da matrícula:</strong> ${enrolledAt}</p>
+      <p style="margin-top:22px;color:#667085;font-size:13px">Por privacidade, os dados cadastrais não são duplicados neste e-mail. Consulte-os em Área do Professor → Alunos.</p>
     </div>
   `;
 
@@ -204,17 +164,16 @@ Deno.serve(async (request: Request) => {
     body: JSON.stringify({
       from: fromEmail,
       to: [notificationEmail],
-      subject: `Nova matrícula — ${studentName}`,
+      subject: "Nova matrícula concluída",
       text: textBody,
       html: htmlBody,
     }),
   });
 
   if (!resendResponse.ok) {
-    const resendError = (await resendResponse.text()).slice(0, 1000);
     await supabase
       .from("enrollment_email_notifications")
-      .update({ status: "failed", last_error: resendError, updated_at: new Date().toISOString() })
+      .update({ status: "failed", last_error: `provider_http_${resendResponse.status}`, updated_at: new Date().toISOString() })
       .eq("id", notification.id);
     console.error("Resend rejected enrollment notification", notification.id, resendResponse.status);
     return jsonResponse({ error: "Email provider rejected the message" }, 502);
@@ -223,16 +182,10 @@ Deno.serve(async (request: Request) => {
   const sentAt = new Date().toISOString();
   const { error: sentUpdateError } = await supabase
     .from("enrollment_email_notifications")
-    .update({
-      status: "sent",
-      sent_at: sentAt,
-      updated_at: sentAt,
-      last_error: null,
-    })
+    .update({ status: "sent", sent_at: sentAt, updated_at: sentAt, last_error: null })
     .eq("id", notification.id);
 
   if (sentUpdateError) {
-    // A chave de idempotencia evita um segundo envio caso o webhook seja repetido.
     console.error("Email sent but notification status update failed", notification.id, sentUpdateError.message);
     return jsonResponse({ error: "Email sent but status update failed" }, 500);
   }

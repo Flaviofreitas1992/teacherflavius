@@ -1,4 +1,6 @@
 (function () {
+  "use strict";
+
   if (window.__studentAccessTrackerLoaded) return;
   window.__studentAccessTrackerLoaded = true;
 

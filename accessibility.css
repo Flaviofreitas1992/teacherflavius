@@ -1,0 +1,49 @@
+/* Teacher Flávio accessibility baseline — WCAG 2.2 AA oriented. */
+.tf-skip-link{position:fixed;top:12px;left:12px;z-index:2147483647;transform:translateY(-180%);padding:12px 16px;border:2px solid #fff;border-radius:10px;background:#02102b;color:#fff;font:800 14px/1.25 var(--tf-font-body,Arial,sans-serif);text-decoration:none;box-shadow:0 8px 28px rgba(0,0,0,.35)}
+.tf-skip-link:focus,.tf-skip-link:focus-visible{transform:translateY(0);outline:3px solid #facc15;outline-offset:3px}
+.tf-sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:3px solid #facc15!important;outline-offset:3px!important}
+:where(button,[role='button'],input[type='button'],input[type='submit'],input[type='reset'],select){min-block-size:44px}
+:where(.btn,.student-link,.nav-link,.top-link,.professor-button,.secondary-button,.tf-site-footer__cta,.tf-mobile-menu-item,.tf-mobile-nav-toggle){min-height:44px!important}
+
+/* Primary green CTAs: white text now clears normal-text AA contrast. */
+html.tf-a11y :where(.btn-primary,.tf-site-footer__cta){background:#0f713d!important;color:#fff!important}
+html.tf-a11y :where(.btn-primary,.tf-site-footer__cta):hover{background:#0b5d32!important}
+
+/* Authentication and profile-completion flows. */
+html.tf-a11y-auth-page .badge{color:#111827!important;text-shadow:none!important}
+html.tf-a11y-auth-page .login-note{color:#b7c3d6!important;font-size:14px!important}
+html.tf-a11y-auth-page label.field-label{font-size:14px!important}
+html.tf-a11y-auth-page input:not([type='checkbox']):not([type='radio']){min-height:46px}
+html.tf-a11y-auth-page .message:empty,html.tf-a11y-auth-page .error:empty,html.tf-a11y-auth-page .link-error:empty{min-height:20px}
+
+/* Availability grid: 44px touch target and visible keyboard focus. */
+html.tf-a11y .availability-block{overflow-x:auto;overflow-y:visible;padding-bottom:6px}
+html.tf-a11y .availability-grid{min-width:360px}
+html.tf-a11y .slot{min-width:44px!important;min-height:44px!important;padding:4px;cursor:pointer}
+html.tf-a11y .slot-box{width:36px!important;height:36px!important;flex:0 0 36px;border-width:2px!important}
+html.tf-a11y .slot input:focus-visible + .slot-box{outline:3px solid #facc15!important;outline-offset:3px!important;box-shadow:0 0 0 5px rgba(250,204,21,.18)!important}
+html.tf-a11y .slot input:checked + .slot-box{border-color:#e9d5ff!important}
+
+/* Horizontal data regions remain keyboard-discoverable. */
+html.tf-a11y :where(.comparison,[role='region'][tabindex='0']):focus-visible{outline:3px solid #facc15!important;outline-offset:4px!important}
+
+@media(max-width:640px){
+  html.tf-a11y input:not([type='checkbox']):not([type='radio']),html.tf-a11y select,html.tf-a11y textarea{font-size:16px}
+}
+
+@media(prefers-contrast:more){
+  html.tf-a11y :where(.section-head p,.faq-item p,.course-intro-card p,.lead,.hero-lead){color:#334155!important}
+  html.tf-a11y :where(.hero .lead,.hero-lead,.hero-note,.cta-card p,.final-card p){color:#fff!important}
+  html.tf-a11y :where(.card,.faq-item,.course-intro-card,.benefits li){border-color:#64748b!important}
+}
+
+@media(forced-colors:active){
+  .tf-skip-link,:where(a,button,input,select,textarea,[tabindex]){forced-color-adjust:auto}
+  html.tf-a11y .slot-box{border:2px solid ButtonText!important;background:Canvas!important}
+  html.tf-a11y .slot input:checked + .slot-box::after{color:ButtonText!important}
+  html.tf-a11y :where(.btn-primary,.tf-site-footer__cta){background:ButtonFace!important;color:ButtonText!important;border:2px solid ButtonText!important}
+}
+
+@media(prefers-reduced-motion:reduce){.tf-skip-link{transition:none!important}}
