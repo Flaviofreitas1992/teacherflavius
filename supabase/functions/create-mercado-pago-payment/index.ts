@@ -39,6 +39,18 @@ const KNOWN_PAYMENT_STATUSES = new Set([
 
 const ALTERNATIVE_PIX_KEY = "flaviofreitas@ufu.br";
 
+function getDefaultKey(envName: string, legacyName: string): string {
+  const raw = Deno.env.get(envName);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const key = parsed?.default;
+      if (typeof key === "string" && key) return key;
+    } catch (_) {}
+  }
+  return Deno.env.get(legacyName) ?? "";
+}
+
 function getAllowedOrigin(request: Request): string {
   const configuredOrigin = (Deno.env.get("SITE_URL") ?? "https://teacherflavius.com").replace(/\/$/, "");
   const origin = request.headers.get("Origin") ?? "";
@@ -286,12 +298,12 @@ Deno.serve(async (request: Request) => {
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const secretKey = getDefaultKey("SUPABASE_SECRET_KEYS", "SUPABASE_SERVICE_ROLE_KEY");
   const mercadoPagoAccessToken = normalizeAccessToken(Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN"));
   const mercadoPagoPublicKey = (Deno.env.get("MERCADO_PAGO_PUBLIC_KEY") ?? "").trim();
   const authorization = request.headers.get("Authorization") ?? "";
 
-  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+  if (!supabaseUrl || !anonKey || !secretKey) {
     console.error("Supabase environment is incomplete for Mercado Pago payments");
     return jsonResponse(request, { error: "Configuração do servidor incompleta." }, 500);
   }
@@ -305,7 +317,7 @@ Deno.serve(async (request: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: { Authorization: authorization } },
   });
-  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+  const supabaseAdmin = createClient(supabaseUrl, secretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
