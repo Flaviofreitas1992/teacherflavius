@@ -76,9 +76,12 @@
     return String(value || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   }
 
-  function isPresentStatus(value) {
-    const s = normalizeStatus(value);
-    return s.includes("compareceu") || s === "presente" || s === "present" || s.includes("reposicao compareceu");
+  function attendanceKind(value) {
+    const status = normalizeStatus(value);
+    if (!status) return "excluded";
+    if (status === "nao compareceu") return "absent";
+    if (status === "feriado" || status === "teacher cancelou" || status === "problemas tecnicos") return "excluded";
+    return "present";
   }
 
   function daysSince(value) {
@@ -121,7 +124,7 @@
       client.rpc("get_public_teacher_exercises"),
       client.from("daily_exercise_completion").select("user_id,exercise_id,completed"),
       client.from("flashcard_practice_days").select("user_id,practice_date").gte("practice_date", flashcardStart),
-      client.from("student_frequency").select("user_id,class_date,attendance_status").gte("class_date", frequencyStart),
+      client.from("class_lesson_records").select("user_id,class_date,lesson_code").gte("class_date", frequencyStart),
       client.from("student_access_logs").select("user_id,accessed_at").gte("accessed_at", accessStart + "T00:00:00Z").order("accessed_at", { ascending:false }),
       client.from("study_roadmap_completion").select("user_id,lesson_number,lesson_id,completed"),
       client.from("class_students").select("user_id,class_number"),
@@ -164,8 +167,13 @@
       }).map(function (r) { return String(r.practice_date).slice(0,10); })).size : null;
 
       const freqRows = frequencyByUser.get(profile.id) || [];
-      const attendanceTotal = freqRows.length;
-      const attendancePresent = freqRows.filter(function (r) { return isPresentStatus(r.attendance_status); }).length;
+      const attendanceRows = freqRows.map(function (r) {
+        return attendanceKind(r.lesson_code);
+      }).filter(function (kind) {
+        return kind !== "excluded";
+      });
+      const attendanceTotal = attendanceRows.length;
+      const attendancePresent = attendanceRows.filter(function (kind) { return kind === "present"; }).length;
       const attendanceRate = attendanceTotal ? Math.round(attendancePresent / attendanceTotal * 100) : null;
 
       const userAccesses = accessByUser.get(profile.id) || [];
@@ -214,7 +222,7 @@
 
       if (attendanceTotal >= 2 && attendanceRate < 60) {
         score += 3;
-        reasons.push("Frequência recente baixa: " + attendanceRate + "% em " + attendanceTotal + " registros.");
+        reasons.push("Frequência recente baixa: " + attendanceRate + "% em " + attendanceTotal + " aulas.");
         actions.push("Verificar faltas recentes e necessidade de reposição ou contato.");
       } else if (attendanceTotal >= 2 && attendanceRate < 75) {
         score += 2;
