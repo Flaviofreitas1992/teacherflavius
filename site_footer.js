@@ -11,6 +11,12 @@
     var path = currentPath();
     return path === "/" ||
       path === "/index.html" ||
+      path === "/privacidade" ||
+      path === "/privacidade/" ||
+      path === "/cookies" ||
+      path === "/cookies/" ||
+      path === "/termos" ||
+      path === "/termos/" ||
       path === "/quero_conhecer" ||
       path === "/quero_conhecer.html" ||
       path === "/quero-conhecer" ||
@@ -196,7 +202,7 @@
 
   function loadPrivacy() {
     window.addEventListener("tf:privacy-consent-changed", applyPrivacyChoice);
-    loadScript("teacher-flavius-privacy-consent", "/privacy_consent.js?v=20260820-1", applyPrivacyChoice);
+    loadScript("teacher-flavius-privacy-consent", "/privacy_consent.js?v=20260820-2", applyPrivacyChoice);
   }
 
   function loadMobileTopNavigation() {
