@@ -1,6 +1,13 @@
 (function () {
   "use strict";
 
+  const GRADE_META = {
+    again: { label: "Não lembrei" },
+    hard: { label: "Difícil" },
+    good: { label: "Lembrei" },
+    easy: { label: "Fácil" }
+  };
+
   const state = {
     client: null,
     user: null,
@@ -9,13 +16,19 @@
     students: [],
     practiceByStudent: new Map(),
     practiceRecordedToday: false,
+    cardDeckById: new Map(),
+    srsByCard: new Map(),
+    dueCountByDeck: new Map(),
+    srsAvailable: true,
     editingDeckId: null,
     editingOwnerId: null,
     studyDeckId: null,
+    studyMode: "due",
     studyCards: [],
     studyIndex: 0,
     studyGrades: new Map(),
-    answerChecked: false
+    answerChecked: false,
+    reviewSaving: false
   };
 
   const elements = {};
@@ -29,7 +42,7 @@
       "cardsEditor", "cardCount", "addCardButton", "saveDeckButton", "editorTitle",
       "cardRowTemplate", "studyTitle", "studyProgress", "studyScore", "progressBar",
       "studyWord", "translationAnswer", "checkAnswerButton", "answerFeedback",
-      "answerResult", "expectedTranslation", "previousCardButton", "nextCardButton",
+      "answerResult", "expectedTranslation", "reviewSchedule", "previousCardButton", "nextCardButton",
       "shuffleButton", "leaveStudyButton", "studyContent", "studySummary", "summaryText",
       "restartStudyButton", "finishStudyButton"
     ].forEach(function (id) { elements[id] = document.getElementById(id); });
@@ -66,8 +79,9 @@
 
   function errorText(error, fallback) {
     const message = error && error.message ? error.message : "";
-    if (/save_flashcard_deck|flashcard_decks|flashcards/i.test(message) && /not find|schema cache|does not exist/i.test(message)) {
-      return "O banco de flashcards ainda não foi configurado. Execute o arquivo supabase_flashcards.sql no Supabase.";
+    if (/save_flashcard_deck|record_flashcard_review|flashcard_decks|flashcards|flashcard_srs|flashcard_review_history/i.test(message)
+        && /not find|schema cache|does not exist/i.test(message)) {
+      return "O banco de flashcards precisa da atualização de repetição espaçada. Aplique a migração SRS do projeto no Supabase.";
     }
     return message || fallback;
   }
@@ -83,6 +97,12 @@
   function deckCardCount(deck) {
     const relation = deck && deck.flashcards;
     return Array.isArray(relation) && relation[0] ? Number(relation[0].count || 0) : 0;
+  }
+
+  function dueCountForDeck(deck) {
+    if (!deck) return 0;
+    if (!state.srsAvailable) return deckCardCount(deck);
+    return Number(state.dueCountByDeck.get(deck.id) || 0);
   }
 
   function canManageDeck(deck) {
@@ -121,6 +141,28 @@
   function formatPracticeDate(isoDate, options) {
     return new Intl.DateTimeFormat("pt-BR", Object.assign({ timeZone: "UTC" }, options))
       .format(new Date(isoDate + "T12:00:00Z"));
+  }
+
+  function formatDueDate(isoDate) {
+    const today = saoPauloToday();
+    if (!isoDate || isoDate <= today) return "hoje";
+    if (isoDate === dateOffset(today, 1)) return "amanhã";
+    return formatPracticeDate(isoDate, { day: "2-digit", month: "short", year: "numeric" });
+  }
+
+  function isCardDue(card) {
+    const srs = state.srsByCard.get(card.id);
+    return !srs || !srs.due_date || srs.due_date <= saoPauloToday();
+  }
+
+  function recalculateDueCounts() {
+    state.dueCountByDeck = new Map();
+    state.cardDeckById.forEach(function (deckId, cardId) {
+      const srs = state.srsByCard.get(cardId);
+      if (!srs || !srs.due_date || srs.due_date <= saoPauloToday()) {
+        state.dueCountByDeck.set(deckId, Number(state.dueCountByDeck.get(deckId) || 0) + 1);
+      }
+    });
   }
 
   function createActionButton(label, className, action, deckId) {
@@ -163,16 +205,34 @@
     }
 
     const count = deckCardCount(deck);
+    const due = dueCountForDeck(deck);
     const meta = document.createElement("p");
     meta.className = "deck-meta";
-    meta.textContent = count + (count === 1 ? " cartão" : " cartões");
+    const cardText = count + (count === 1 ? " cartão" : " cartões");
+    const dueText = due === 0
+      ? "em dia hoje"
+      : due + " para revisar hoje";
+    meta.textContent = cardText + " · " + dueText;
     article.appendChild(meta);
 
     const actions = document.createElement("div");
     actions.className = "deck-actions";
-    const studyButton = createActionButton("ESTUDAR", "button-primary", "study", deck.id);
-    studyButton.disabled = count === 0;
-    actions.appendChild(studyButton);
+
+    if (state.isTeacher) {
+      const studyButton = createActionButton("ESTUDAR", "button-primary", "study-all", deck.id);
+      studyButton.disabled = count === 0;
+      actions.appendChild(studyButton);
+    } else {
+      const reviewLabel = due > 0 ? "REVISAR (" + due + ")" : "EM DIA ✓";
+      const reviewButton = createActionButton(reviewLabel, "button-primary", "study-due", deck.id);
+      reviewButton.disabled = count === 0 || due === 0;
+      actions.appendChild(reviewButton);
+
+      const allButton = createActionButton("ESTUDAR TODOS", "button-secondary", "study-all", deck.id);
+      allButton.disabled = count === 0;
+      actions.appendChild(allButton);
+    }
+
     if (canManageDeck(deck)) {
       actions.appendChild(createActionButton("EDITAR", "button-secondary", "edit", deck.id));
     }
@@ -368,6 +428,43 @@
     elements.deckOwner.replaceChildren(placeholder, ...options);
   }
 
+  async function fetchAllRows(table, columns, orderColumn) {
+    const rows = [];
+    const pageSize = 1000;
+    let from = 0;
+
+    while (true) {
+      const response = await state.client
+        .from(table)
+        .select(columns)
+        .order(orderColumn, { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (response.error) throw response.error;
+      const page = response.data || [];
+      rows.push.apply(rows, page);
+      if (page.length < pageSize) break;
+      from += pageSize;
+    }
+    return rows;
+  }
+
+  async function loadSrsOverview() {
+    const cards = await fetchAllRows("flashcards", "id, deck_id", "id");
+    const srsRows = await fetchAllRows(
+      "flashcard_srs",
+      "user_id, card_id, ease_factor, interval_days, repetitions, lapses, due_date, last_grade, last_reviewed_at",
+      "card_id"
+    );
+
+    state.cardDeckById = new Map();
+    cards.forEach(function (card) { state.cardDeckById.set(card.id, card.deck_id); });
+
+    state.srsByCard = new Map();
+    srsRows.forEach(function (srs) { state.srsByCard.set(srs.card_id, srs); });
+    state.srsAvailable = true;
+    recalculateDueCounts();
+  }
+
   async function loadDecks() {
     elements.myDecks.innerHTML = '<div class="empty-state">Carregando seus conjuntos...</div>';
     const response = await state.client
@@ -377,6 +474,20 @@
 
     if (response.error) throw response.error;
     state.decks = response.data || [];
+
+    try {
+      await loadSrsOverview();
+    } catch (error) {
+      state.srsAvailable = false;
+      state.cardDeckById = new Map();
+      state.srsByCard = new Map();
+      state.dueCountByDeck = new Map();
+      state.decks.forEach(function (deck) {
+        state.dueCountByDeck.set(deck.id, deckCardCount(deck));
+      });
+      console.warn("Repetição espaçada indisponível; usando modo compatível.", error);
+    }
+
     renderDecks();
   }
 
@@ -392,6 +503,7 @@
   function addCardRow(card) {
     const fragment = elements.cardRowTemplate.content.cloneNode(true);
     const row = fragment.querySelector(".card-editor-row");
+    row.dataset.cardId = card && card.id ? card.id : "";
     row.querySelector(".english-input").value = card && card.english_word ? card.english_word : "";
     row.querySelector(".translation-input").value = card && card.translation ? card.translation : "";
     elements.cardsEditor.appendChild(fragment);
@@ -400,10 +512,12 @@
 
   function readEditorCards() {
     return Array.from(elements.cardsEditor.querySelectorAll(".card-editor-row")).map(function (row) {
-      return {
+      const card = {
         english_word: row.querySelector(".english-input").value.trim(),
         translation: row.querySelector(".translation-input").value.trim()
       };
+      if (row.dataset.cardId) card.id = row.dataset.cardId;
+      return card;
     });
   }
 
@@ -499,7 +613,7 @@
       if (response.error) throw response.error;
       await loadDecks();
       setView("library");
-      showMessage("Conjunto salvo com sucesso.", "success");
+      showMessage("Conjunto salvo com sucesso. O progresso de revisão dos cartões mantidos foi preservado.", "success");
     } catch (error) {
       showMessage(errorText(error, "Não foi possível salvar o conjunto."), "error");
     } finally {
@@ -533,42 +647,100 @@
       .trim();
   }
 
+  function gradeButtons() {
+    return Array.from(elements.answerFeedback.querySelectorAll("[data-grade]"));
+  }
+
+  function setGradeButtonsDisabled(disabled) {
+    gradeButtons().forEach(function (button) { button.disabled = disabled; });
+  }
+
+  function renderStudyScore() {
+    const reviewed = state.studyGrades.size;
+    elements.studyScore.textContent = reviewed + (reviewed === 1 ? " revisado" : " revisados");
+  }
+
+  function renderSavedReview(card, grade) {
+    const srs = state.srsByCard.get(card.id);
+    const meta = GRADE_META[grade] || { label: "Avaliado" };
+    elements.reviewSchedule.textContent = state.isTeacher
+      ? meta.label + ". Prévia do professor: a agenda do aluno não foi alterada."
+      : meta.label + ". Próxima revisão: " + formatDueDate(srs && srs.due_date) + ".";
+  }
+
   function renderStudyCard() {
     const card = state.studyCards[state.studyIndex];
     if (!card) return;
-    state.answerChecked = false;
+
+    const existingGrade = state.studyGrades.get(card.id);
+    state.answerChecked = !!existingGrade;
+    state.reviewSaving = false;
     elements.studyWord.textContent = card.english_word;
     elements.translationAnswer.value = "";
-    elements.translationAnswer.disabled = false;
-    elements.answerFeedback.hidden = true;
-    elements.answerFeedback.querySelectorAll("[data-grade]").forEach(function (button) {
-      button.disabled = false;
-    });
     elements.answerResult.className = "answer-result";
     elements.studyProgress.textContent = "Cartão " + (state.studyIndex + 1) + " de " + state.studyCards.length;
     elements.progressBar.style.width = (((state.studyIndex + 1) / state.studyCards.length) * 100) + "%";
-    elements.studyScore.textContent = Array.from(state.studyGrades.values()).filter(Boolean).length + " acertos";
+    renderStudyScore();
     elements.previousCardButton.disabled = state.studyIndex === 0;
     elements.nextCardButton.textContent = state.studyIndex === state.studyCards.length - 1 ? "FINALIZAR" : "PRÓXIMO ›";
-    elements.nextCardButton.disabled = true;
+    elements.shuffleButton.disabled = state.studyGrades.size > 0;
+
+    if (existingGrade) {
+      elements.translationAnswer.disabled = true;
+      elements.checkAnswerButton.disabled = true;
+      elements.answerFeedback.hidden = false;
+      elements.answerResult.textContent = "Este cartão já foi avaliado nesta sessão.";
+      elements.expectedTranslation.textContent = card.translation;
+      setGradeButtonsDisabled(true);
+      renderSavedReview(card, existingGrade);
+      elements.nextCardButton.disabled = false;
+      return;
+    }
+
+    elements.translationAnswer.disabled = false;
     elements.checkAnswerButton.disabled = false;
+    elements.answerFeedback.hidden = true;
+    elements.reviewSchedule.textContent = "";
+    setGradeButtonsDisabled(false);
+    elements.nextCardButton.disabled = true;
     elements.translationAnswer.focus();
   }
 
-  async function startStudy(deckId) {
+  async function startStudy(deckId, mode) {
     const deck = state.decks.find(function (item) { return item.id === deckId; });
     if (!deck) return;
+
     try {
-      const cards = await loadCards(deckId);
+      let cards = await loadCards(deckId);
       if (!cards.length) {
         showMessage("Este conjunto ainda não tem cartões.", "error");
         return;
       }
+
+      const studyMode = mode === "all" || state.isTeacher ? "all" : "due";
+      if (studyMode === "due") {
+        cards = cards.filter(isCardDue).sort(function (a, b) {
+          const aDue = (state.srsByCard.get(a.id) || {}).due_date || saoPauloToday();
+          const bDue = (state.srsByCard.get(b.id) || {}).due_date || saoPauloToday();
+          return aDue.localeCompare(bDue) || Number(a.position || 0) - Number(b.position || 0);
+        });
+      }
+
+      if (!cards.length) {
+        renderDecks();
+        showMessage("Você está em dia neste conjunto. Nenhum cartão precisa ser revisado hoje.", "success");
+        return;
+      }
+
       state.studyDeckId = deckId;
+      state.studyMode = studyMode;
       state.studyCards = cards.slice();
       state.studyIndex = 0;
       state.studyGrades = new Map();
-      elements.studyTitle.textContent = deck.title;
+      state.answerChecked = false;
+      state.reviewSaving = false;
+      elements.studyTitle.textContent = studyMode === "due" ? deck.title + " — revisão de hoje" : deck.title;
+      elements.restartStudyButton.textContent = studyMode === "due" ? "REVISAR DE NOVO" : "ESTUDAR NOVAMENTE";
       elements.studyContent.hidden = false;
       elements.studySummary.hidden = true;
       setView("study");
@@ -585,6 +757,7 @@
       elements.translationAnswer.focus();
       return;
     }
+
     clearMessage();
     const card = state.studyCards[state.studyIndex];
     const matches = normalizeAnswer(answer) === normalizeAnswer(card.translation);
@@ -592,32 +765,99 @@
     elements.translationAnswer.disabled = true;
     elements.checkAnswerButton.disabled = true;
     elements.expectedTranslation.textContent = card.translation;
-    elements.answerResult.textContent = matches ? "A tradução corresponde ao cartão." : "Compare sua resposta com a tradução cadastrada.";
+    elements.answerResult.textContent = matches
+      ? "A tradução corresponde ao cartão."
+      : "Compare sua resposta com a tradução cadastrada.";
     elements.answerResult.className = "answer-result " + (matches ? "correct" : "review");
     elements.answerFeedback.hidden = false;
-    elements.nextCardButton.disabled = false;
+    elements.nextCardButton.disabled = true;
+    elements.shuffleButton.disabled = true;
+    setGradeButtonsDisabled(false);
+    elements.reviewSchedule.textContent = state.isTeacher
+      ? "Escolha uma avaliação para continuar. A prévia do professor não altera a agenda do aluno."
+      : "Como foi lembrar? Escolha uma opção para calcular a próxima revisão.";
     recordPracticeDay();
   }
 
-  function gradeCurrentCard(isCorrect) {
+  async function gradeCurrentCard(grade) {
     const card = state.studyCards[state.studyIndex];
-    state.studyGrades.set(card.id, isCorrect);
-    elements.studyScore.textContent = Array.from(state.studyGrades.values()).filter(Boolean).length + " acertos";
-    const buttons = elements.answerFeedback.querySelectorAll("[data-grade]");
-    buttons.forEach(function (button) { button.disabled = true; });
+    if (!card || !state.answerChecked || state.reviewSaving || !GRADE_META[grade]) return;
+    if (state.studyGrades.has(card.id)) return;
+
+    state.reviewSaving = true;
+    setGradeButtonsDisabled(true);
+    elements.nextCardButton.disabled = true;
+
+    try {
+      if (!state.isTeacher) {
+        if (!state.srsAvailable) {
+          throw new Error("A repetição espaçada ainda não está disponível no banco de dados.");
+        }
+
+        const response = await state.client.rpc("record_flashcard_review", {
+          p_card_id: card.id,
+          p_grade: grade
+        });
+        if (response.error) throw response.error;
+
+        const saved = response.data || {};
+        state.srsByCard.set(card.id, {
+          user_id: state.user.id,
+          card_id: card.id,
+          ease_factor: Number(saved.ease_factor || 2.5),
+          interval_days: Number(saved.interval_days || 0),
+          repetitions: Number(saved.repetitions || 0),
+          lapses: Number(saved.lapses || 0),
+          due_date: saved.due_date || saoPauloToday(),
+          last_grade: saved.grade || grade,
+          last_reviewed_at: saved.last_reviewed_at || new Date().toISOString()
+        });
+        recalculateDueCounts();
+      }
+
+      state.studyGrades.set(card.id, grade);
+      renderStudyScore();
+      renderSavedReview(card, grade);
+      elements.nextCardButton.disabled = false;
+      elements.shuffleButton.disabled = true;
+    } catch (error) {
+      showMessage(errorText(error, "Não foi possível salvar esta revisão."), "error");
+      setGradeButtonsDisabled(false);
+    } finally {
+      state.reviewSaving = false;
+    }
   }
 
   function showStudySummary() {
+    const counts = { again: 0, hard: 0, good: 0, easy: 0 };
+    state.studyGrades.forEach(function (grade) {
+      if (Object.prototype.hasOwnProperty.call(counts, grade)) counts[grade] += 1;
+    });
+
+    const reviewed = state.studyGrades.size;
     const total = state.studyCards.length;
-    const answered = state.studyGrades.size;
-    const correct = Array.from(state.studyGrades.values()).filter(Boolean).length;
+    const base = "Você revisou " + reviewed + " de " + total + " cartões. "
+      + "Não lembrei: " + counts.again + " · Difícil: " + counts.hard
+      + " · Lembrei: " + counts.good + " · Fácil: " + counts.easy + ".";
+
+    let suffix = "";
+    if (state.isTeacher) {
+      suffix = " Esta foi uma prévia: nenhuma agenda de revisão do aluno foi alterada.";
+    } else {
+      const remaining = Number(state.dueCountByDeck.get(state.studyDeckId) || 0);
+      suffix = remaining > 0
+        ? " Ainda há " + remaining + (remaining === 1 ? " cartão devido hoje." : " cartões devidos hoje.")
+        : " Você está em dia neste conjunto.";
+    }
+
     elements.studyContent.hidden = true;
     elements.studySummary.hidden = false;
-    elements.summaryText.textContent = "Você marcou " + correct + " acertos em " + answered + " cartões avaliados, de um total de " + total + ".";
+    elements.summaryText.textContent = base + suffix;
   }
 
   function nextStudyCard() {
-    if (!state.answerChecked) return;
+    const card = state.studyCards[state.studyIndex];
+    if (!card || !state.answerChecked || !state.studyGrades.has(card.id) || state.reviewSaving) return;
     if (state.studyIndex >= state.studyCards.length - 1) {
       showStudySummary();
       return;
@@ -627,12 +867,16 @@
   }
 
   function previousStudyCard() {
-    if (state.studyIndex === 0) return;
+    if (state.studyIndex === 0 || state.reviewSaving) return;
     state.studyIndex -= 1;
     renderStudyCard();
   }
 
   function shuffleStudyCards() {
+    if (state.studyGrades.size > 0 || state.answerChecked) {
+      showMessage("Embaralhe antes de iniciar as avaliações para não duplicar revisões já registradas.", "error");
+      return;
+    }
     for (let index = state.studyCards.length - 1; index > 0; index -= 1) {
       const randomIndex = Math.floor(Math.random() * (index + 1));
       const temporary = state.studyCards[index];
@@ -640,9 +884,13 @@
       state.studyCards[randomIndex] = temporary;
     }
     state.studyIndex = 0;
-    state.studyGrades = new Map();
     renderStudyCard();
     showMessage("Cartões embaralhados.", "success");
+  }
+
+  function finishStudy() {
+    setView("library");
+    renderDecks();
   }
 
   function bindEvents() {
@@ -669,7 +917,8 @@
       const actionButton = event.target.closest("[data-action]");
       if (!actionButton) return;
       const deckId = actionButton.dataset.deckId;
-      if (actionButton.dataset.action === "study") startStudy(deckId);
+      if (actionButton.dataset.action === "study-due") startStudy(deckId, "due");
+      if (actionButton.dataset.action === "study-all" || actionButton.dataset.action === "study") startStudy(deckId, "all");
       if (actionButton.dataset.action === "edit") openDeckEditor(deckId);
       if (actionButton.dataset.action === "delete") deleteDeck(deckId);
       if (actionButton.dataset.action === "new-for-student") openNewDeck(actionButton.dataset.ownerId);
@@ -679,19 +928,21 @@
     elements.translationAnswer.addEventListener("keydown", function (event) {
       if (event.key === "Enter") {
         event.preventDefault();
-        if (state.answerChecked) nextStudyCard(); else checkAnswer();
+        const card = state.studyCards[state.studyIndex];
+        if (state.answerChecked && card && state.studyGrades.has(card.id)) nextStudyCard();
+        else if (!state.answerChecked) checkAnswer();
       }
     });
     elements.answerFeedback.addEventListener("click", function (event) {
       const gradeButton = event.target.closest("[data-grade]");
-      if (gradeButton) gradeCurrentCard(gradeButton.dataset.grade === "right");
+      if (gradeButton) gradeCurrentCard(gradeButton.dataset.grade);
     });
     elements.previousCardButton.addEventListener("click", previousStudyCard);
     elements.nextCardButton.addEventListener("click", nextStudyCard);
     elements.shuffleButton.addEventListener("click", shuffleStudyCards);
-    elements.leaveStudyButton.addEventListener("click", function () { setView("library"); });
-    elements.finishStudyButton.addEventListener("click", function () { setView("library"); });
-    elements.restartStudyButton.addEventListener("click", function () { startStudy(state.studyDeckId); });
+    elements.leaveStudyButton.addEventListener("click", finishStudy);
+    elements.finishStudyButton.addEventListener("click", finishStudy);
+    elements.restartStudyButton.addEventListener("click", function () { startStudy(state.studyDeckId, state.studyMode); });
   }
 
   async function initialize() {
@@ -718,8 +969,8 @@
     elements.deckOwnerField.hidden = !state.isTeacher;
     elements.libraryTitle.textContent = state.isTeacher ? "Flashcards por aluno" : "Conjuntos de palavras";
     elements.libraryLead.textContent = state.isTeacher
-      ? "Abra os conjuntos de cada aluno para praticar, adicionar palavras, editar traduções ou excluir cartões."
-      : "Crie seus próprios cartões e pratique sempre que quiser.";
+      ? "Abra os conjuntos de cada aluno para estudar ou editar. A prévia do professor não altera a agenda de repetição espaçada do aluno."
+      : "Revise primeiro o que está devido hoje. O sistema agenda cada cartão novamente conforme sua autoavaliação.";
     elements.newDeckButton.textContent = state.isTeacher ? "+ NOVO CONJUNTO PARA ALUNO" : "+ NOVO CONJUNTO";
     elements.loginStatus.textContent = state.isTeacher
       ? "Professor autenticado. Você pode administrar os conjuntos individuais dos alunos."

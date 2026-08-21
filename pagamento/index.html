@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Pagamento de mensalidade - Teacher Flávio</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase_config.js?v=20260430-3"></script>
+  <script src="/auth.js?v=20260430-3"></script>
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
+  <link rel="stylesheet" href="/pagamento/style.css?v=20260814-1">
+  <style>
+    .payment-help-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:16px}
+    .payment-help-actions .secondary-button{width:auto;min-height:44px;margin:0;padding:11px 16px}
+    @media(max-width:560px){.payment-help-actions{display:grid}.payment-help-actions .secondary-button,.payment-help-actions a{width:100%}}
+  </style>
+</head>
+<body class="auth-checking">
+  <main class="payment-shell">
+    <nav class="payment-nav" aria-label="Navegação da página de pagamento">
+      <a href="/area-do-estudante/">← Área do Estudante</a>
+      <span>Pagamento seguro</span>
+    </nav>
+
+    <header class="payment-hero">
+      <div>
+        <p class="payment-eyebrow">Mensalidades</p>
+        <h1>Pague com Pix ou cartão</h1>
+        <p>O pagamento é processado pelo Mercado Pago.</p>
+      </div>
+      <div class="payment-security" aria-label="Informações de segurança">
+        <strong>Ambiente protegido</strong>
+      </div>
+    </header>
+
+    <p id="paymentPageMessage" class="payment-message" role="status" aria-live="polite">Verificando sua conta...</p>
+
+    <section id="paymentWorkspace" class="payment-workspace" hidden>
+      <aside class="tuition-panel" aria-labelledby="tuitionListTitle">
+        <div class="panel-heading">
+          <p class="payment-eyebrow">Em aberto</p>
+          <h2 id="tuitionListTitle">Suas mensalidades</h2>
+        </div>
+        <div id="tuitionList" class="tuition-list"></div>
+      </aside>
+
+      <section class="checkout-panel" aria-labelledby="checkoutTitle">
+        <div class="panel-heading">
+          <p class="payment-eyebrow">Pagamento</p>
+          <h2 id="checkoutTitle">Carregando mensalidade...</h2>
+          <p id="checkoutDescription">A cobrança mais próxima será selecionada automaticamente.</p>
+        </div>
+
+        <div id="paymentBrickLoading" class="brick-loading" hidden>Carregando o ambiente seguro do Mercado Pago...</div>
+        <div id="paymentBrickContainer"></div>
+        <div id="statusScreenBrickContainer"></div>
+
+        <button id="retryPaymentButton" class="secondary-button" type="button" hidden>TENTAR OUTRO MEIO DE PAGAMENTO</button>
+      </section>
+    </section>
+
+    <section id="paymentSuccess" class="payment-success" hidden aria-labelledby="paymentSuccessTitle">
+      <div class="success-icon" aria-hidden="true">✓</div>
+      <h2 id="paymentSuccessTitle">Mensalidades em dia</h2>
+      <p id="paymentSuccessDescription">Não há nenhuma mensalidade pendente nesta conta.</p>
+      <a href="/area-do-estudante/">VOLTAR À ÁREA DO ESTUDANTE</a>
+    </section>
+
+    <section class="payment-help">
+      <h2>Pagamento já realizado?</h2>
+      <p>Se você já pagou e a cobrança ainda aparece como pendente, faça uma nova verificação antes de entrar em contato.</p>
+      <div class="payment-help-actions">
+        <button id="verifyPaymentButton" class="secondary-button" type="button">VERIFICAR PAGAMENTO NOVAMENTE</button>
+        <a href="https://wa.me/5534998349756?text=Teacher%2C%20preciso%20de%20ajuda%20com%20o%20pagamento%20da%20mensalidade" target="_blank" rel="noopener noreferrer">Falar com o professor</a>
+      </div>
+    </section>
+  </main>
+
+  <script src="/pagamento/app.js?v=20260819-1"></script>
+  <script>
+    (function(){
+      const button=document.getElementById('verifyPaymentButton');
+      if(!button)return;
+      button.addEventListener('click',async function(){
+        const original=button.textContent;
+        button.disabled=true;
+        button.textContent='VERIFICANDO...';
+        try{
+          if(typeof reconcilePendingPayments!=='function')throw new Error('A verificação de pagamentos ainda não foi carregada.');
+          await reconcilePendingPayments();
+          window.location.reload();
+        }catch(error){
+          if(typeof setPageMessage==='function')setPageMessage(error.message||'Não foi possível verificar o pagamento agora.','error');
+          button.disabled=false;
+          button.textContent=original;
+        }
+      });
+    })();
+  </script>
+  <script defer src="/site_footer.js?v=20260820-ux-1"></script>
+</body>
+</html>
