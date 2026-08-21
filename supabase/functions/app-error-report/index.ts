@@ -7,6 +7,18 @@ const ALLOWED_TYPES = new Set([
 const ALLOWED_SEVERITIES = new Set(["warning", "error", "critical"]);
 const ALLOWED_METADATA = new Set(["phase", "resource_tag", "online", "provider", "function_name"]);
 
+function getDefaultKey(envName: string, legacyName: string): string {
+  const raw = Deno.env.get(envName);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const key = parsed?.default;
+      if (typeof key === "string" && key) return key;
+    } catch (_) {}
+  }
+  return Deno.env.get(legacyName) ?? "";
+}
+
 function safeText(value: unknown, max = 1000): string | null {
   if (typeof value !== "string") return null;
   const text = value.trim();
@@ -111,10 +123,10 @@ Deno.serve(async (req: Request) => {
   if (Number.isFinite(contentLength) && contentLength > 49152) return noContent(origin);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !serviceRoleKey) return noContent(origin);
+  const secretKey = getDefaultKey("SUPABASE_SECRET_KEYS", "SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !secretKey) return noContent(origin);
 
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
+  const admin = createClient(supabaseUrl, secretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 

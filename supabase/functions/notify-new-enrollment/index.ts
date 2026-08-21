@@ -17,6 +17,18 @@ type DatabaseWebhookPayload = {
 
 const encoder = new TextEncoder();
 
+function getDefaultKey(envName: string, legacyName: string): string {
+  const raw = Deno.env.get(envName);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const key = parsed?.default;
+      if (typeof key === "string" && key) return key;
+    } catch (_) {}
+  }
+  return Deno.env.get(legacyName) ?? "";
+}
+
 function jsonResponse(body: Record<string, unknown>, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -58,13 +70,13 @@ Deno.serve(async (request: Request) => {
   if (request.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const secretKey = getDefaultKey("SUPABASE_SECRET_KEYS", "SUPABASE_SERVICE_ROLE_KEY");
   const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
   const notificationEmail = Deno.env.get("ENROLLMENT_NOTIFICATION_EMAIL") ?? "";
   const fromEmail = Deno.env.get("ENROLLMENT_FROM_EMAIL") ?? "";
   const expectedWebhookSecret = Deno.env.get("ENROLLMENT_WEBHOOK_SECRET") ?? "";
 
-  if (!supabaseUrl || !serviceRoleKey || !resendApiKey || !notificationEmail || !fromEmail || !expectedWebhookSecret) {
+  if (!supabaseUrl || !secretKey || !resendApiKey || !notificationEmail || !fromEmail || !expectedWebhookSecret) {
     console.error("Missing required environment variables for enrollment notification");
     return jsonResponse({ error: "Server configuration is incomplete" }, 500);
   }
@@ -92,7 +104,7 @@ Deno.serve(async (request: Request) => {
     return jsonResponse({ error: "Unexpected webhook payload" }, 400);
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+  const supabase = createClient(supabaseUrl, secretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 

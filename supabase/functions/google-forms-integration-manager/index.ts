@@ -3,6 +3,18 @@ import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 const SECRET_SHA256 = "f093cfbed40de5128fa41e842a9431d385a27db653ff2e79eab7576ad8086f9e";
 const jsonHeaders = { "Content-Type": "application/json; charset=utf-8" };
 
+function getDefaultKey(envName: string, legacyName: string): string {
+  const raw = Deno.env.get(envName);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const key = parsed?.default;
+      if (typeof key === "string" && key) return key;
+    } catch (_) {}
+  }
+  return Deno.env.get(legacyName) ?? "";
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: jsonHeaders });
 }
@@ -23,12 +35,12 @@ Deno.serve(async (req: Request) => {
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (!supabaseUrl || !serviceRoleKey) {
+    const secretKey = getDefaultKey("SUPABASE_SECRET_KEYS", "SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !secretKey) {
       return json({ ok: false, status: "server_not_configured" }, 500);
     }
 
-    const admin = createClient(supabaseUrl, serviceRoleKey, {
+    const admin = createClient(supabaseUrl, secretKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
