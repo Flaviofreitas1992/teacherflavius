@@ -21,8 +21,7 @@
   function getClassNumber() {
     var params = new URLSearchParams(window.location.search);
     var value = Number(params.get("id"));
-    if (!Number.isInteger(value) || value < 1) return null;
-    return value;
+    return Number.isInteger(value) && value > 0 ? value : null;
   }
 
   function escapeHtml(value) {
@@ -60,27 +59,20 @@
   function formatBrazilianDate(value) {
     if (!value) return "";
     var parts = String(value).split("-");
-    if (parts.length === 3) return parts[2] + "/" + parts[1] + "/" + parts[0].slice(2);
-    return value;
+    return parts.length === 3 ? parts[2] + "/" + parts[1] + "/" + parts[0].slice(2) : value;
   }
 
   function todayIso() {
     var d = new Date();
-    var y = d.getFullYear();
-    var m = String(d.getMonth() + 1).padStart(2, "0");
-    var day = String(d.getDate()).padStart(2, "0");
-    return y + "-" + m + "-" + day;
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   }
 
   function lessonOptions(selected) {
     var html = '<option value="">Selecionar</option>';
-
     specialLessonOptions.forEach(function (option) {
       html += '<option value="' + escapeHtml(option) + '"' + (selected === option ? ' selected' : '') + '>' + escapeHtml(option) + '</option>';
     });
-
     html += '<option disabled>──────────</option>';
-
     for (var i = 1; i <= 74; i++) {
       var lesson = "L" + i;
       html += '<option value="' + lesson + '"' + (selected === lesson ? ' selected' : '') + '>' + lesson + '</option>';
@@ -89,15 +81,13 @@
   }
 
   async function loadClassStudents(classNumber) {
-    var client = Auth.getClient();
-    var response = await client.rpc("get_teacher_class_students", { target_class_number: classNumber });
+    var response = await Auth.getClient().rpc("get_teacher_class_students", { target_class_number: classNumber });
     if (response.error) throw response.error;
     return response.data || [];
   }
 
   async function loadLessonRecords(classNumber) {
-    var client = Auth.getClient();
-    var response = await client.rpc("get_teacher_class_lesson_records", { target_class_number: classNumber });
+    var response = await Auth.getClient().rpc("get_teacher_class_lesson_records", { target_class_number: classNumber });
     if (response.error) throw response.error;
     return response.data || [];
   }
@@ -123,7 +113,7 @@
       return '<tr>' +
         '<td>' + escapeHtml(formatBrazilianDate(record.class_date)) + '</td>' +
         '<td><span class="lesson-status-pill">' + escapeHtml(record.lesson_code || "") + '</span></td>' +
-        '<td></td>' +
+        '<td><button class="delete-button lesson-delete-button" type="button" data-record-id="' + escapeHtml(record.id) + '" data-record-label="' + escapeHtml((record.lesson_code || "lição") + " de " + formatBrazilianDate(record.class_date)) + '">EXCLUIR</button></td>' +
       '</tr>';
     }).join("");
 
@@ -143,9 +133,7 @@
 
     return '<div class="lesson-attendance-card">' +
       '<table class="lesson-attendance-table">' +
-        '<thead>' +
-          '<tr><th>' + escapeHtml(name + preLabel) + '</th><th colspan="2">Matrícula: ' + escapeHtml(enrollment) + '</th></tr>' +
-        '</thead>' +
+        '<thead><tr><th>' + escapeHtml(name + preLabel) + '</th><th colspan="2">Matrícula: ' + escapeHtml(enrollment) + '</th></tr></thead>' +
         '<tbody>' + renderRecordRows(student, records) + '</tbody>' +
       '</table>' +
     '</div>';
@@ -165,21 +153,14 @@
       alert("Não foi possível identificar este aluno. Atualize a página e tente novamente.");
       return;
     }
-    if (!dateInput.value) {
-      alert("Escolha uma data.");
-      return;
-    }
-    if (!lessonSelect.value) {
-      alert("Escolha uma opção da lista.");
-      return;
-    }
+    if (!dateInput.value) { alert("Escolha uma data."); return; }
+    if (!lessonSelect.value) { alert("Escolha uma opção da lista."); return; }
 
     button.disabled = true;
     button.textContent = "SALVANDO...";
 
     try {
-      var client = Auth.getClient();
-      var response = await client.rpc("save_teacher_class_lesson_record_by_ref", {
+      var response = await Auth.getClient().rpc("save_teacher_class_lesson_record_by_ref", {
         target_class_number: classNumber,
         target_student_ref_id: refId,
         target_student_ref_type: refType,
@@ -189,17 +170,43 @@
       if (response.error) throw response.error;
       await renderLessonAttendance();
     } catch (error) {
-      alert("Não foi possível salvar o registro: " + (error.message || "erro desconhecido") + ". Execute supabase_licoes_pre_matriculas_fix.sql no Supabase.");
+      alert("Não foi possível salvar o registro: " + (error.message || "erro desconhecido") + ".");
       button.disabled = false;
       button.textContent = "SALVAR";
     }
   }
 
-  function attachSaveButtons() {
+  async function deleteLessonRecord(button) {
+    var recordId = String(button.dataset.recordId || "").trim();
+    if (!recordId) return;
+    var label = button.dataset.recordLabel || "este registro";
+    if (!window.confirm("Excluir " + label + "? Esta ação remove o registro de frequência/lição.")) return;
+
+    button.disabled = true;
+    button.textContent = "EXCLUINDO...";
+    try {
+      var response = await Auth.getClient().rpc("delete_teacher_class_lesson_record", {
+        target_record_id: recordId
+      });
+      if (response.error) throw response.error;
+      await renderLessonAttendance();
+    } catch (error) {
+      alert("Não foi possível excluir o registro: " + (error.message || "erro desconhecido") + ".");
+      button.disabled = false;
+      button.textContent = "EXCLUIR";
+    }
+  }
+
+  function attachActionButtons() {
     document.querySelectorAll(".lesson-save-button").forEach(function (button) {
       if (button.dataset.bound === "true") return;
       button.dataset.bound = "true";
       button.addEventListener("click", function () { saveLessonRecord(button); });
+    });
+    document.querySelectorAll(".lesson-delete-button").forEach(function (button) {
+      if (button.dataset.bound === "true") return;
+      button.dataset.bound = "true";
+      button.addEventListener("click", function () { deleteLessonRecord(button); });
     });
   }
 
@@ -225,18 +232,15 @@
       target.innerHTML = students.map(function (student) {
         return renderStudentTable(student, grouped[getStudentKey(student)] || []);
       }).join("");
-      attachSaveButtons();
+      attachActionButtons();
     } catch (error) {
       target.className = "error";
-      target.textContent = "Não foi possível carregar a tabela de frequência. Execute supabase_licoes_pre_matriculas_fix.sql no Supabase.";
+      target.textContent = "Não foi possível carregar a tabela de frequência e lições.";
     }
   }
 
   window.renderLessonAttendance = renderLessonAttendance;
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", renderLessonAttendance);
-  } else {
-    renderLessonAttendance();
-  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", renderLessonAttendance);
+  else renderLessonAttendance();
 })();
