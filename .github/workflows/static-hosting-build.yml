@@ -1,0 +1,56 @@
+name: Static hosting build
+
+on:
+  pull_request:
+    paths:
+      - "**/*.html"
+      - "**/*.css"
+      - "**/*.js"
+      - "**/*.json"
+      - "**/*.xml"
+      - "**/*.txt"
+      - "scripts/build_static_site.py"
+      - "netlify/_headers"
+      - "netlify.toml"
+      - ".github/workflows/static-hosting-build.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "**/*.html"
+      - "**/*.css"
+      - "**/*.js"
+      - "**/*.json"
+      - "**/*.xml"
+      - "**/*.txt"
+      - "scripts/build_static_site.py"
+      - "netlify/_headers"
+      - "netlify.toml"
+      - ".github/workflows/static-hosting-build.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build static site
+        run: python3 scripts/build_static_site.py
+
+      - name: Validate publish output
+        run: |
+          test -f _site/index.html
+          test -f _site/404.html
+          test -f _site/robots.txt
+          test -f _site/sitemap.xml
+          test -f _site/error_monitor.js
+          test -f _site/responsive_compat.css
+          test -f _site/_headers
+          if find _site -type f \( -name '*.md' -o -name '*.sql' -o -name '*.py' -o -name '*.yml' -o -name '*.yaml' -o -name '*.toml' \) | grep -q .; then
+            echo 'Operational file leaked into _site'
+            exit 1
+          fi

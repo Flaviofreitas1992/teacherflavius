@@ -1,5 +1,5 @@
 [build]
-  command = "python3 scripts/build_netlify_site.py"
+  command = "python3 scripts/build_static_site.py"
   publish = "_site"
 
 [build.processing]
