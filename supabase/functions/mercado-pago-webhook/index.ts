@@ -30,6 +30,18 @@ const KNOWN_PAYMENT_STATUSES = new Set([
   "charged_back",
 ]);
 
+function getDefaultKey(envName: string, legacyName: string): string {
+  const raw = Deno.env.get(envName);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const key = parsed?.default;
+      if (typeof key === "string" && key) return key;
+    } catch (_) {}
+  }
+  return Deno.env.get(legacyName) ?? "";
+}
+
 function jsonResponse(body: JsonRecord, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -121,11 +133,11 @@ Deno.serve(async (request: Request) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const secretKey = getDefaultKey("SUPABASE_SECRET_KEYS", "SUPABASE_SERVICE_ROLE_KEY");
   const mercadoPagoAccessToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN") ?? "";
   const webhookSecret = Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET") ?? "";
 
-  if (!supabaseUrl || !serviceRoleKey || !mercadoPagoAccessToken || !webhookSecret) {
+  if (!supabaseUrl || !secretKey || !mercadoPagoAccessToken || !webhookSecret) {
     console.error("Missing environment variables for Mercado Pago webhook");
     return jsonResponse({ error: "Server configuration is incomplete" }, 500);
   }
@@ -188,7 +200,7 @@ Deno.serve(async (request: Request) => {
     return jsonResponse({ error: "Inconsistent payment data" }, 422);
   }
 
-  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+  const supabaseAdmin = createClient(supabaseUrl, secretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
