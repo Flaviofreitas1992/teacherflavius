@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Pagamento de mensalidade - Teacher Flávio</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase_config.js?v=20260430-3"></script>
+  <script src="/auth.js?v=20260430-3"></script>
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
+  <link rel="stylesheet" href="/pagamento/style.css?v=20260814-1">
+</head>
+<body class="auth-checking">
+  <main class="payment-shell">
+    <nav class="payment-nav" aria-label="Navegação da página de pagamento">
+      <a href="/area-do-estudante/">← Área do Estudante</a>
+      <span>Pagamento seguro</span>
+    </nav>
+
+    <header class="payment-hero">
+      <div>
+        <p class="payment-eyebrow">Mensalidades</p>
+        <h1>Pague com Pix ou cartão</h1>
+        <p>O pagamento é processado pelo Mercado Pago.</p>
+      </div>
+      <div class="payment-security" aria-label="Informações de segurança">
+        <strong>Ambiente protegido</strong>
+      </div>
+    </header>
+
+    <p id="paymentPageMessage" class="payment-message" role="status" aria-live="polite">Verificando sua conta...</p>
+
+    <section id="paymentWorkspace" class="payment-workspace" hidden>
+      <aside class="tuition-panel" aria-labelledby="tuitionListTitle">
+        <div class="panel-heading">
+          <p class="payment-eyebrow">Em aberto</p>
+          <h2 id="tuitionListTitle">Suas mensalidades</h2>
+        </div>
+        <div id="tuitionList" class="tuition-list"></div>
+      </aside>
+
+      <section class="checkout-panel" aria-labelledby="checkoutTitle">
+        <div class="panel-heading">
+          <p class="payment-eyebrow">Pagamento selecionado</p>
+          <h2 id="checkoutTitle">Escolha uma mensalidade</h2>
+          <p id="checkoutDescription">Selecione uma cobrança para carregar as opções de pagamento.</p>
+        </div>
+
+        <div id="paymentBrickLoading" class="brick-loading" hidden>Carregando o ambiente seguro do Mercado Pago...</div>
+        <div id="paymentBrickContainer"></div>
+        <div id="statusScreenBrickContainer"></div>
+
+        <button id="retryPaymentButton" class="secondary-button" type="button" hidden>TENTAR OUTRO MEIO DE PAGAMENTO</button>
+      </section>
+    </section>
+
+    <section id="paymentSuccess" class="payment-success" hidden aria-labelledby="paymentSuccessTitle">
+      <div class="success-icon" aria-hidden="true">✓</div>
+      <h2 id="paymentSuccessTitle">Mensalidades em dia</h2>
+      <p id="paymentSuccessDescription">Não há nenhuma mensalidade pendente nesta conta.</p>
+      <a href="/area-do-estudante/">VOLTAR À ÁREA DO ESTUDANTE</a>
+    </section>
+
+    <section class="payment-help">
+      <h2>Precisa de ajuda?</h2>
+      <p>Se o pagamento já foi realizado e ainda aparece como pendente, aguarde alguns instantes para a confirmação automática.</p>
+      <a href="https://wa.me/5534998349756?text=Teacher%2C%20preciso%20de%20ajuda%20com%20o%20pagamento%20da%20mensalidade" target="_blank" rel="noopener noreferrer">Falar com o professor</a>
+    </section>
+  </main>
+
+  <script src="/pagamento/app.js?v=20260814-1"></script>
+  <script defer src="/site_footer.js?v=20260814-payment-1"></script>
+</body>
+</html>
