@@ -11,7 +11,8 @@
   var LEGACY_ANALYTICS_KEYS = [
     "tf_analytics_first_touch_v1",
     "tf_analytics_last_touch_v1",
-    "tf_analytics_purchases_v1"
+    "tf_analytics_purchases_v1",
+    "tf_cro_cta_copy_v1"
   ];
 
   function safeParse(value) {
