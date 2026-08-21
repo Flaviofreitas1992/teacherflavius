@@ -1,0 +1,25 @@
+name: Responsive compatibility
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate-responsive-compat:
+    name: Validate responsive compatibility
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Netlify publish directory
+        run: python3 scripts/build_netlify_site.py
+
+      - name: Validate mobile and browser compatibility baseline
+        run: python3 scripts/validate_responsive_compat.py

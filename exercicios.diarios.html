@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PORTAL DE EXERCICIOS - Teacher Flávio</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3"></script>
   <script src="supabase_config.js"></script>
   <script src="auth.js"></script>
   <style>
@@ -18,6 +18,7 @@
     .header { text-align: center; margin-bottom: 26px; }
     .header h1 { color: #f1f5f9; font-size: 38px; font-weight: bold; letter-spacing: -1px; margin-bottom: 8px; }
     .page-description { color: #cbd5e1; font-size: 15px; line-height: 1.6; max-width: 700px; margin: 12px auto 0; text-align: center; }
+    .automation-note { max-width: 680px; margin: 14px auto 0; padding: 11px 14px; border: 1px solid rgba(129,140,248,.28); border-radius: 11px; background: rgba(129,140,248,.08); color: #c7d2fe; font-size: 13px; line-height: 1.55; }
     .status { color: #cbd5e1; font-size: 13px; line-height: 1.5; margin-top: 10px; }
     .divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(129,140,248,0.3), transparent); margin-bottom: 32px; }
     .menu-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
@@ -37,12 +38,11 @@
     .week-badge.current { color:#fde68a; border-color:rgba(251,191,36,0.35); background:rgba(251,191,36,0.10); }
     .week-badge.done { color:#86efac; border-color:rgba(74,222,128,0.30); background:rgba(74,222,128,0.10); }
     .week-badge.future { color:#cbd5e1; }
-    .completion-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); }
-    .completion-label { display: inline-flex; align-items: center; gap: 10px; color: #cbd5e1; font-size: 14px; cursor: pointer; user-select: none; }
-    .completion-label input { width: 22px; height: 22px; accent-color: #818cf8; cursor: pointer; }
-    .completion-status { color: #94a3b8; font-size: 12px; text-align: right; min-width: 90px; }
-    .completion-status.saved { color: #6ee7b7; }
-    .completion-status.error { color: #fca5a5; }
+    .completion-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.08); }
+    .completion-label { color:#94a3b8; font-size:12px; line-height:1.45; }
+    .completion-status { display:inline-flex; align-items:center; min-height:28px; padding:5px 9px; border:1px solid rgba(148,163,184,.25); border-radius:999px; color:#cbd5e1; background:rgba(148,163,184,.08); font-size:11px; font-weight:bold; text-align:center; }
+    .completion-status.saved { color:#86efac; border-color:rgba(74,222,128,.3); background:rgba(74,222,128,.1); }
+    .completion-status.legacy { color:#c7d2fe; border-color:rgba(129,140,248,.3); background:rgba(129,140,248,.1); }
     .blocked-panel { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; padding: 20px; color: #cbd5e1; line-height: 1.6; text-align: center; }
     @media (min-width: 760px) { .menu-grid { grid-template-columns: 1fr 1fr; } }
   </style>
@@ -58,6 +58,7 @@
       <div><span class="badge">TEACHER FLÁVIO</span></div>
       <h1>PORTAL DE EXERCICIOS</h1>
       <p class="page-description">ESSES EXERCÍCIOS DEVEM SER FEITOS TODA SEMANA, NA ORDEM NUMÉRICA ESTABELECIDA.</p>
+      <p class="automation-note">A conclusão das atividades é registrada automaticamente. Não é necessário — nem possível — marcar uma atividade como feita manualmente.</p>
       <div id="pageStatus" class="status">Verificando acesso...</div>
     </div>
 
@@ -73,7 +74,7 @@
     let dailyExercises = [];
     let currentUser = null;
     let currentProfile = null;
-    let completedExercises = new Map();
+    let completionRecords = new Map();
     let currentExerciseWeek = 0;
     let exerciseScheduleStartDate = EXERCISE_SCHEDULE_CUTOFF;
 
@@ -115,11 +116,7 @@
       const storedStartDate = profile && profile.exercise_schedule_start_date
         ? String(profile.exercise_schedule_start_date).slice(0, 10)
         : "";
-
-      if (/^\d{4}-\d{2}-\d{2}$/.test(storedStartDate)) {
-        return storedStartDate;
-      }
-
+      if (/^\d{4}-\d{2}-\d{2}$/.test(storedStartDate)) return storedStartDate;
       const profileCreatedDate = profile && profile.created_at ? dateKeyInSaoPaulo(profile.created_at) : "";
       if (!profileCreatedDate || profileCreatedDate <= EXERCISE_SCHEDULE_CUTOFF) return EXERCISE_SCHEDULE_CUTOFF;
       return profileCreatedDate;
@@ -150,6 +147,19 @@
       if (currentExerciseWeek > 0 && activityNumber < currentExerciseWeek) return { className: "overdue", label: "Atrasada · Semana " + activityNumber };
       if (currentExerciseWeek > 0 && activityNumber === currentExerciseWeek) return { className: "current", label: "Semana atual · Atividade " + activityNumber };
       return { className: "future", label: "Programada · Semana " + activityNumber };
+    }
+
+    function completionPresentation(record) {
+      if (!record || record.completed !== true) {
+        return { cssClass: "", text: "Aguardando detecção", detail: "Status atualizado pelo monitoramento" };
+      }
+      if (record.completion_source === "monitor") {
+        return { cssClass: "saved", text: "Detectado pelo sistema", detail: "Conclusão confirmada automaticamente" };
+      }
+      if (record.completion_source === "legacy") {
+        return { cssClass: "legacy", text: "Concluído", detail: "Registro anterior à automação obrigatória" };
+      }
+      return { cssClass: "saved", text: "Concluído", detail: "Conclusão registrada pelo sistema" };
     }
 
     function blockPage(message) {
@@ -189,60 +199,31 @@
 
       grid.className = "menu-grid";
       grid.innerHTML = dailyExercises.map(function (exercise) {
-        const isDone = completedExercises.get(exercise.id) === true;
+        const record = completionRecords.get(exercise.id) || null;
+        const isDone = !!record && record.completed === true;
         const weekState = getWeekState(exercise, isDone);
+        const completion = completionPresentation(record);
         return '<div class="exercise-card ' + (isDone ? 'done ' : '') + weekState.className + '" data-exercise-id="' + escapeHtml(exercise.id) + '">' +
           '<a class="exercise-link" href="' + escapeHtml(exercise.url) + '" target="_blank" rel="noopener noreferrer">' +
             '<span><span class="icon">📝</span>' + escapeHtml(exercise.title) + '</span><span class="arrow">›</span>' +
           '</a>' +
           '<div class="week-row"><span class="week-badge ' + weekState.className + '">' + escapeHtml(weekState.label) + '</span></div>' +
           '<div class="completion-row">' +
-            '<label class="completion-label"><input class="completion-checkbox" type="checkbox" data-exercise-id="' + escapeHtml(exercise.id) + '" ' + (isDone ? 'checked' : '') + ' /><span>Já fiz este exercício</span></label>' +
-            '<span class="completion-status ' + (isDone ? 'saved' : '') + '" id="status-' + escapeHtml(exercise.id) + '">' + (isDone ? 'Feito' : 'Não feito') + '</span>' +
+            '<span class="completion-label">' + escapeHtml(completion.detail) + '</span>' +
+            '<span class="completion-status ' + completion.cssClass + '">' + escapeHtml(completion.text) + '</span>' +
           '</div>' +
         '</div>';
       }).join("");
-
-      document.querySelectorAll(".completion-checkbox").forEach(function (checkbox) {
-        checkbox.addEventListener("change", function () { saveExerciseCompletion(checkbox.dataset.exerciseId, checkbox.checked, checkbox); });
-      });
     }
 
     async function loadCompletedExercises() {
       const client = Auth.getClient();
-      const response = await client.from("daily_exercise_completion").select("exercise_id, completed").eq("user_id", currentUser.id);
+      const response = await client
+        .from("daily_exercise_completion")
+        .select("exercise_id, completed, completion_source, completed_at")
+        .eq("user_id", currentUser.id);
       if (response.error) throw response.error;
-      completedExercises = new Map((response.data || []).map(function (row) { return [row.exercise_id, row.completed === true]; }));
-    }
-
-    async function saveExerciseCompletion(exerciseId, completed, checkbox) {
-      const exercise = dailyExercises.find(function (item) { return item.id === exerciseId; });
-      const status = document.getElementById("status-" + exerciseId);
-      const client = Auth.getClient();
-      checkbox.disabled = true;
-      status.className = "completion-status";
-      status.textContent = "Salvando...";
-
-      try {
-        const response = await client.from("daily_exercise_completion").upsert({
-          user_id: currentUser.id,
-          exercise_id: exercise.id,
-          exercise_title: exercise.title,
-          exercise_url: exercise.url,
-          completed: completed,
-          completed_at: completed ? new Date().toISOString() : null,
-          updated_at: new Date().toISOString()
-        }, { onConflict: "user_id,exercise_id" });
-
-        if (response.error) throw response.error;
-        completedExercises.set(exerciseId, completed);
-        renderExercises();
-      } catch (error) {
-        checkbox.checked = !completed;
-        status.className = "completion-status error";
-        status.textContent = "Erro ao salvar";
-        checkbox.disabled = false;
-      }
+      completionRecords = new Map((response.data || []).map(function (row) { return [row.exercise_id, row]; }));
     }
 
     async function initPage() {
@@ -285,7 +266,7 @@
         try {
           await loadCompletedExercises();
         } catch (error) {
-          completedExercises = new Map();
+          completionRecords = new Map();
         }
 
         renderExercises();
@@ -298,5 +279,6 @@
 
     initPage();
   </script>
+  <script defer src="/site_footer.js?v=20260814-1"></script>
 </body>
 </html>

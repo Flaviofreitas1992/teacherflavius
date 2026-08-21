@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Área do Professor - Teacher Flávio</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.3"></script>
   <script src="supabase_config.js?v=20260715-1"></script>
   <script src="auth.js?v=20260730-1"></script>
-  <link rel="stylesheet" href="professor.css?v=20260715-1">
+  <link rel="stylesheet" href="professor.css?v=20260820-1">
   <style>
     .reorder-help { color:#94a3b8; font-size:13px; line-height:1.5; text-align:center; margin:-4px 0 18px; }
     .menu-grid.reorder-enabled .menu-button { cursor:grab; user-select:none; }
@@ -32,8 +32,10 @@
       <a class="menu-button" href="/reposicoes-admin/" draggable="true" data-card-id="reposicoes"><span><span class="icon">📅</span>AGENDA DE REPOSIÇÕES</span><span class="arrow">›</span></a>
       <a class="menu-button" href="quadro-de-turmas.html" draggable="true" data-card-id="quadro-de-turmas"><span><span class="icon">📊</span>QUADRO DE TURMAS</span><span class="arrow">›</span></a>
       <a class="menu-button" href="/criar-exercicio/" draggable="true" data-card-id="criar-exercicio"><span><span class="icon">➕</span>CRIAR EXERCÍCIO</span><span class="arrow">›</span></a>
+      <a class="menu-button" href="/integracao-google-forms/" draggable="true" data-card-id="integracao-google-forms"><span><span class="icon">🔗</span>INTEGRAÇÃO GOOGLE FORMS</span><span class="arrow">›</span></a>
       <a class="menu-button" href="aulas-de-gramatica-interface-do-professor.html" draggable="true" data-card-id="aulas-de-gramatica"><span><span class="icon">📚</span>AULAS DE GRAMÁTICA</span><span class="arrow">›</span></a>
       <a class="menu-button" href="/exercicios-dos-alunos/" draggable="true" data-card-id="exercicios-dos-alunos"><span><span class="icon">📝</span>EXERCÍCIOS FEITOS PELOS ALUNOS</span><span class="arrow">›</span></a>
+      <a class="menu-button" href="/monitoramento-de-erros/" draggable="true" data-card-id="monitoramento-de-erros"><span><span class="icon">🚨</span>MONITORAMENTO DE ERROS</span><span class="arrow">›</span></a>
       <a class="menu-button" href="/relatorios/" draggable="true" data-card-id="relatorios"><span><span class="icon">📋</span>RELATÓRIOS</span><span class="arrow">›</span></a>
     </div>
   </div>
@@ -54,5 +56,6 @@
   </script>
   <script src="professor_home.js?v=20260715-1"></script>
   <script src="animated_cards.js?v=20260715-1"></script>
+  <script defer src="/site_footer.js?v=20260820-desktop-menu-1"></script>
 </body>
 </html>

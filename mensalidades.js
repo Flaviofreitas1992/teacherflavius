@@ -125,6 +125,14 @@ async function assertAdminAccess() {
   return response.data === true;
 }
 
+async function reconcileMercadoPagoPayments() {
+  const response = await Auth.getClient().functions.invoke("reconcile-mercado-pago-payments", {
+    body: {}
+  });
+  if (response.error) throw response.error;
+  return response.data || {};
+}
+
 async function loadBillingStudents() {
   const response = await Auth.getClient().rpc("get_teacher_billing_students");
   if (response.error) throw response.error;
@@ -503,7 +511,22 @@ function attachEvents() {
   document.getElementById("studentSearch").addEventListener("input", renderDashboard);
   document.getElementById("statusFilter").addEventListener("change", renderDashboard);
   document.getElementById("refreshMonthButton").addEventListener("click", function () {
-    loadSelectedMonth({ generate: true });
+    (async function () {
+      try {
+        setPageMessage("Verificando confirmações do Mercado Pago...", "info");
+        const reconciliation = await reconcileMercadoPagoPayments();
+        await loadSelectedMonth({ generate: true });
+        if (Number(reconciliation.approved || 0) > 0) {
+          setPageMessage(
+            Number(reconciliation.approved) + " pagamento(s) confirmado(s) pelo Mercado Pago.",
+            "success"
+          );
+        }
+      } catch (error) {
+        console.warn("Não foi possível reconciliar pagamentos do Mercado Pago:", error);
+        await loadSelectedMonth({ generate: true });
+      }
+    })();
   });
   document.getElementById("exportButton").addEventListener("click", exportCurrentView);
   document.getElementById("tuitionTableBody").addEventListener("click", handleTuitionTableClick);
@@ -558,8 +581,20 @@ async function initializePage() {
 
     status.textContent = "Administrador autenticado: " + currentAdminSession.user.email + ".";
     document.body.classList.remove("auth-checking");
+    let reconciliation = {};
+    try {
+      reconciliation = await reconcileMercadoPagoPayments();
+    } catch (error) {
+      console.warn("Não foi possível reconciliar pagamentos do Mercado Pago:", error);
+    }
     await loadBillingStudents();
     await loadSelectedMonth({ generate: true });
+    if (Number(reconciliation.approved || 0) > 0) {
+      setPageMessage(
+        Number(reconciliation.approved) + " pagamento(s) confirmado(s) pelo Mercado Pago.",
+        "success"
+      );
+    }
   } catch (error) {
     status.textContent = "Não foi possível abrir o controle financeiro.";
     document.body.classList.remove("auth-checking");
