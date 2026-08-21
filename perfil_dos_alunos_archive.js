@@ -1,12 +1,42 @@
 (function () {
-  function relabelArchiveButtons(root) {
+  function collectDeleteButtons(root) {
+    const buttons = [];
     const scope = root && root.querySelectorAll ? root : document;
+
+    if (scope.matches && scope.matches(".delete-student-button")) {
+      buttons.push(scope);
+    }
+
     scope.querySelectorAll(".delete-student-button").forEach(function (button) {
-      button.textContent = "ARQUIVAR ALUNO";
-      button.title = "Arquivar sem excluir o histórico do aluno";
-      button.style.borderColor = "rgba(251,191,36,0.55)";
-      button.style.background = "rgba(251,191,36,0.10)";
-      button.style.color = "#fde68a";
+      buttons.push(button);
+    });
+
+    return buttons;
+  }
+
+  function ensureArchiveButtons(root) {
+    collectDeleteButtons(root).forEach(function (deleteButton) {
+      if (deleteButton.dataset.archiveButtonAdded === "1") return;
+
+      deleteButton.dataset.archiveButtonAdded = "1";
+      deleteButton.textContent = "EXCLUIR ALUNO";
+      deleteButton.title = "Excluir definitivamente a conta e os dados vinculados ao aluno";
+      deleteButton.style.borderColor = "rgba(248,113,113,0.55)";
+      deleteButton.style.background = "rgba(248,113,113,0.10)";
+      deleteButton.style.color = "#fca5a5";
+
+      const archiveButton = document.createElement("button");
+      archiveButton.className = "delete-button archive-student-button";
+      archiveButton.type = "button";
+      archiveButton.dataset.userId = deleteButton.dataset.userId || "";
+      archiveButton.dataset.studentName = deleteButton.dataset.studentName || "";
+      archiveButton.textContent = "ARQUIVAR ALUNO";
+      archiveButton.title = "Arquivar sem excluir o histórico do aluno";
+      archiveButton.style.borderColor = "rgba(251,191,36,0.55)";
+      archiveButton.style.background = "rgba(251,191,36,0.10)";
+      archiveButton.style.color = "#fde68a";
+
+      deleteButton.parentNode.insertBefore(archiveButton, deleteButton);
     });
   }
 
@@ -38,7 +68,7 @@
   }
 
   document.addEventListener("click", function (event) {
-    const button = event.target.closest && event.target.closest(".delete-student-button");
+    const button = event.target.closest && event.target.closest(".archive-student-button");
     if (!button) return;
 
     event.preventDefault();
@@ -49,11 +79,11 @@
   const observer = new MutationObserver(function (mutations) {
     mutations.forEach(function (mutation) {
       mutation.addedNodes.forEach(function (node) {
-        if (node.nodeType === 1) relabelArchiveButtons(node);
+        if (node.nodeType === 1) ensureArchiveButtons(node);
       });
     });
   });
 
   observer.observe(document.documentElement, { childList: true, subtree: true });
-  relabelArchiveButtons(document);
+  ensureArchiveButtons(document);
 })();
