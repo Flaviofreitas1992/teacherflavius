@@ -1,10 +1,16 @@
 User-agent: *
 Allow: /
 
+Disallow: /matricula/
+Disallow: /matricula.html
 Disallow: /professor/
 Disallow: /professor.html
 Disallow: /login/
 Disallow: /login.html
+Disallow: /cadastro/
+Disallow: /cadastro.html
+Disallow: /complete-cadastro/
+Disallow: /complete-cadastro.html
 Disallow: /area-do-estudante/
 Disallow: /area_do_estudante.html
 Disallow: /perfil/
@@ -28,5 +34,24 @@ Disallow: /exercicios-dos-alunos/
 Disallow: /relatorios/
 Disallow: /radar-de-alunos/
 Disallow: /alunos-arquivados/
+Disallow: /horarios-disponiveis/
+Disallow: /flashcards/
+Disallow: /flashcards.html
+Disallow: /meu-progresso/
+Disallow: /meu_progresso.html
+Disallow: /minha-semana/
+Disallow: /planos-semanais/
+Disallow: /roteiro-de-estudos/
+Disallow: /roteiro_de_estudos.html
+Disallow: /pagamento/
+Disallow: /quadro-de-turmas/
+Disallow: /quadro-de-turmas.html
+Disallow: /turma/
+Disallow: /turma.html
+Disallow: /relatorios-vagas-turmas/
+Disallow: /relatorios_vagas_turmas.html
+Disallow: /integracao-google-forms/
+Disallow: /guia-do-estudante/
+Disallow: /guia-do-estudante.html
 
 Sitemap: https://teacherflavius.com/sitemap.xml

@@ -5,26 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - Teacher Flávio</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase_config.js?v=20260429-4"></script>
-  <script src="auth.js?v=20260429-4"></script>
+  <script src="/supabase_config.js?v=20260429-4"></script>
+  <script src="/auth.js?v=20260819-2"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
     body { min-height: 100vh; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%); display: flex; align-items: center; justify-content: center; padding: 32px 16px; font-family: Georgia, serif; color: #f1f5f9; }
     .box { width: 100%; max-width: 440px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 28px; backdrop-filter: blur(12px); }
     .header { text-align: center; margin-bottom: 24px; }
     .badge { display: inline-block; background: linear-gradient(90deg,#818cf8,#a78bfa); color: #fff; font-size: 11px; font-family: monospace; letter-spacing: 3px; padding: 4px 14px; border-radius: 20px; margin-bottom: 12px; }
     h1 { font-size: 32px; margin-bottom: 8px; }
     p { color: #94a3b8; font-size: 14px; line-height: 1.6; }
-    input { width: 100%; background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.12); border-radius: 12px; padding: 13px 14px; color: #f1f5f9; font-size: 15px; font-family: Georgia, serif; margin-bottom: 12px; }
-    input:focus { outline: none; border-color: #818cf8; }
-    .password-field { position: relative; }
-    .password-field input { padding-right: 112px; }
-    .toggle-password { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: auto; margin: 0; padding: 7px 10px; border-radius: 9px; border: 1px solid rgba(129,140,248,0.35); background: rgba(255,255,255,0.05); color: #cbd5e1; font-size: 12px; font-weight: bold; cursor: pointer; font-family: Georgia, serif; }
-    button, a.btn { width: 100%; display: inline-flex; justify-content: center; align-items: center; padding: 14px; border-radius: 12px; border: none; background: linear-gradient(90deg,#818cf8,#a78bfa); color: #fff; font-size: 16px; font-weight: bold; cursor: pointer; font-family: Georgia, serif; text-decoration: none; margin-top: 6px; }
+    button, a.btn { width: 100%; display: inline-flex; justify-content: center; align-items: center; padding: 14px; border-radius: 12px; border: none; color: #fff; font-size: 16px; font-weight: bold; cursor: pointer; font-family: Georgia, serif; text-decoration: none; margin-top: 6px; }
+    button:disabled { opacity: .65; cursor: wait; }
+    .google-button { gap: 10px; background: #fff; color: #1f2937; border: 1.5px solid rgba(255,255,255,.35); }
+    .google-button:hover { background: #f8fafc; }
+    .google-g { font-family: Arial, sans-serif; font-size: 20px; font-weight: 700; }
     .secondary { background: rgba(255,255,255,0.05) !important; border: 1.5px solid rgba(129,140,248,0.35) !important; color: #cbd5e1 !important; }
-    .error { min-height: 20px; color: #fca5a5; font-size: 13px; margin: 8px 0; line-height: 1.5; }
     .notice { margin: 0 0 16px; padding: 11px 13px; border: 1px solid rgba(110,231,183,0.35); border-radius: 10px; background: rgba(110,231,183,0.10); color: #a7f3d0; font-size: 13px; line-height: 1.5; text-align: center; }
-    .links { margin-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+    .info { margin: 0 0 18px; padding: 12px 14px; border: 1px solid rgba(129,140,248,.28); border-radius: 10px; background: rgba(129,140,248,.08); color: #cbd5e1; font-size: 13px; line-height: 1.55; text-align: center; }
+    .error { min-height: 20px; color: #fca5a5; font-size: 13px; margin: 12px 0 0; line-height: 1.5; text-align: center; }
+    .links { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+
+    .link-overlay { position: fixed; inset: 0; z-index: 2147483000; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(2,6,23,.86); backdrop-filter: blur(8px); }
+    .link-modal { width: min(100%, 480px); padding: 30px 26px; border: 1px solid rgba(129,140,248,.40); border-radius: 20px; background: linear-gradient(145deg,#111827,#1e1b4b); box-shadow: 0 28px 80px rgba(0,0,0,.48); text-align: center; }
+    .link-modal h2 { font-size: 23px; line-height: 1.45; margin-bottom: 18px; }
+    .enrollment-label { color: #94a3b8; font-size: 12px; margin-bottom: 7px; text-transform: uppercase; letter-spacing: 1px; }
+    .enrollment-email { padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.10); color: #f8fafc; font-size: 16px; word-break: break-word; margin-bottom: 17px; }
+    .link-button { background: linear-gradient(90deg,#818cf8,#a78bfa); }
+    .link-error { min-height: 18px; margin-top: 12px; color: #fca5a5; font-size: 13px; line-height: 1.45; }
+    @media(max-width:520px){ .link-modal { padding: 25px 20px; } .link-modal h2 { font-size: 20px; } }
   </style>
 </head>
 <body>
@@ -32,71 +42,180 @@
     <div class="header">
       <div><span class="badge">TEACHER FLÁVIO</span></div>
       <h1>Entrar</h1>
-      <p>Acesse sua conta para responder às atividades e acompanhar seu histórico.</p>
+      <p>O acesso ao portal é feito exclusivamente com uma conta Google.</p>
     </div>
 
-    <div id="loginNotice" class="notice" role="status" hidden>Você saiu da conta anterior. Agora pode entrar com outro e-mail.</div>
+    <div id="loginNotice" class="notice" role="status" hidden></div>
+    <div class="info">Use sua conta Google. Se o sistema reconhecer uma matrícula existente, ele oferecerá a vinculação mantendo seus dados e seu histórico.</div>
 
-    <form id="loginForm">
-      <input id="email" type="email" placeholder="E-mail" required>
-      <div class="password-field">
-        <input id="password" type="password" placeholder="Senha" required>
-        <button type="button" class="toggle-password" data-target="password">MOSTRAR</button>
-      </div>
-      <div id="error" class="error"></div>
-      <button type="submit">ENTRAR</button>
-    </form>
+    <button id="googleLoginButton" class="google-button" type="button"><span class="google-g">G</span> CONTINUAR COM GOOGLE</button>
+    <div id="loginError" class="error" role="alert"></div>
 
     <div class="links">
-      <a class="btn secondary" href="/matricula/">FAZER MATRÍCULA</a>
-      <a class="btn secondary" href="index.html">VOLTAR AO INÍCIO</a>
+      <a class="btn secondary" href="/">VOLTAR AO INÍCIO</a>
+    </div>
+  </div>
+
+  <div id="accountLinkOverlay" class="link-overlay" role="dialog" aria-modal="true" aria-labelledby="accountLinkTitle" hidden>
+    <div class="link-modal">
+      <div><span class="badge">TEACHER FLÁVIO</span></div>
+      <h2 id="accountLinkTitle">Detectamos que você já é matriculado, Vincule agora a sua conta antiga com a sua conta Google.</h2>
+      <div class="enrollment-label">E-mail fornecido na matrícula</div>
+      <div id="enrollmentEmail" class="enrollment-email"></div>
+      <button id="linkAccountButton" class="link-button" type="button">VINCULAR CONTA</button>
+      <div id="linkAccountError" class="link-error" role="alert"></div>
     </div>
   </div>
 
   <script>
-    function showLogoutNotice() {
-      const params = new URLSearchParams(window.location.search);
+    (function () {
+      "use strict";
+
+      const googleButton = document.getElementById("googleLoginButton");
+      const loginError = document.getElementById("loginError");
       const notice = document.getElementById("loginNotice");
-      if (notice && params.get("logged_out") === "1") notice.hidden = false;
-    }
+      const overlay = document.getElementById("accountLinkOverlay");
+      const enrollmentEmail = document.getElementById("enrollmentEmail");
+      const linkButton = document.getElementById("linkAccountButton");
+      const linkError = document.getElementById("linkAccountError");
 
-    function getNextPage() {
-      const params = new URLSearchParams(window.location.search);
-      return params.get("next") || "index.html";
-    }
+      function safeNext() {
+        const params = new URLSearchParams(window.location.search);
+        const value = String(params.get("next") || "/area-do-estudante/").trim();
+        if (!value.startsWith("/") || value.startsWith("//")) return "/area-do-estudante/";
+        return value;
+      }
 
-    showLogoutNotice();
+      function showNotice() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("logged_out") === "1") {
+          notice.textContent = "Você saiu da conta anterior. Entre novamente com Google.";
+          notice.hidden = false;
+        } else if (params.get("google_required") === "1") {
+          notice.textContent = "O acesso por e-mail e senha foi desativado. Entre com sua conta Google.";
+          notice.hidden = false;
+        }
+      }
 
-    document.querySelectorAll(".toggle-password").forEach(function (button) {
-      button.addEventListener("click", function () {
-        const input = document.getElementById(button.dataset.target);
-        const isHidden = input.type === "password";
-        input.type = isHidden ? "text" : "password";
-        button.textContent = isHidden ? "OCULTAR" : "MOSTRAR";
+      function setLoginBusy(busy) {
+        googleButton.disabled = busy;
+        googleButton.innerHTML = busy
+          ? "ABRINDO GOOGLE..."
+          : '<span class="google-g">G</span> CONTINUAR COM GOOGLE';
+      }
+
+      async function waitForSession() {
+        for (let attempt = 0; attempt < 35; attempt++) {
+          const session = await Auth.getSession();
+          if (session && session.user) return session;
+          await new Promise(function (resolve) { setTimeout(resolve, 100); });
+        }
+        return null;
+      }
+
+      async function invokeLinkService(action) {
+        const client = Auth.getClient();
+        const response = await client.functions.invoke("student-google-account-link", { body: { action: action } });
+        if (response.error) throw response.error;
+        if (response.data && response.data.error) throw new Error(response.data.error);
+        return response.data || {};
+      }
+
+      async function finishEntry(session) {
+        const client = Auth.getClient();
+        const adminCheck = await client.rpc("is_teacher_admin");
+        if (!adminCheck.error && adminCheck.data === true) {
+          window.location.replace(safeNext());
+          return;
+        }
+
+        const profile = await Auth.ensureProfileForUser(session.user);
+        if (!profile || profile.profile_completed !== true) {
+          window.location.replace("/complete-cadastro/?next=" + encodeURIComponent(safeNext()));
+          return;
+        }
+        window.location.replace(safeNext());
+      }
+
+      async function processGoogleReturn() {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("google_callback") !== "1") return;
+
+        setLoginBusy(true);
+        loginError.textContent = "";
+
+        try {
+          const session = await waitForSession();
+          if (!session) throw new Error("Não foi possível concluir o login com Google. Tente novamente.");
+
+          const identities = await Auth.getUserIdentities();
+          const hasGoogle = identities.some(function (identity) {
+            return identity && identity.provider === "google";
+          });
+          if (!hasGoogle) throw new Error("A sessão recebida não possui uma identidade Google válida.");
+
+          const candidate = await invokeLinkService("candidate");
+          if (candidate.show_prompt === true && candidate.enrollment_email) {
+            enrollmentEmail.textContent = candidate.enrollment_email;
+            overlay.hidden = false;
+            document.documentElement.style.overflow = "hidden";
+            linkButton.focus();
+            return;
+          }
+
+          await finishEntry(session);
+        } catch (error) {
+          loginError.textContent = error.message || "Não foi possível concluir o acesso com Google.";
+          setLoginBusy(false);
+        }
+      }
+
+      googleButton.addEventListener("click", async function () {
+        loginError.textContent = "";
+        if (!window.Auth || !Auth.isConfigured || !Auth.isConfigured()) {
+          loginError.textContent = "Não foi possível carregar a autenticação. Atualize a página e tente novamente.";
+          return;
+        }
+
+        setLoginBusy(true);
+        try {
+          const redirectTo = "https://teacherflavius.com/login/?google_callback=1&next=" + encodeURIComponent(safeNext());
+          const response = await Auth.getClient().auth.signInWithOAuth({
+            provider: "google",
+            options: {
+              redirectTo: redirectTo,
+              queryParams: { prompt: "select_account" }
+            }
+          });
+          if (response.error) throw response.error;
+        } catch (error) {
+          loginError.textContent = error.message || "Não foi possível abrir o Google.";
+          setLoginBusy(false);
+        }
       });
-    });
 
-    document.getElementById("loginForm").addEventListener("submit", async function (event) {
-      event.preventDefault();
-      const error = document.getElementById("error");
-      error.textContent = "";
+      linkButton.addEventListener("click", async function () {
+        linkButton.disabled = true;
+        linkButton.textContent = "VINCULANDO...";
+        linkError.textContent = "";
 
-      if (!window.Auth || !Auth.isConfigured()) {
-        if (window.Auth && Auth.showConfigWarning) Auth.showConfigWarning();
-        error.textContent = "Não foi possível carregar a configuração do Supabase. Atualize a página ou limpe o cache do navegador.";
-        return;
-      }
+        try {
+          const result = await invokeLinkService("link");
+          if (result.linked !== true) throw new Error("Não foi possível concluir a vinculação.");
+          const session = await Auth.getSession();
+          if (!session || !session.user) throw new Error("Sua sessão expirou. Entre novamente com Google.");
+          await finishEntry(session);
+        } catch (error) {
+          linkError.textContent = error.message || "Não foi possível vincular a conta.";
+          linkButton.disabled = false;
+          linkButton.textContent = "VINCULAR CONTA";
+        }
+      });
 
-      try {
-        await Auth.signIn(
-          document.getElementById("email").value.trim(),
-          document.getElementById("password").value
-        );
-        window.location.href = getNextPage();
-      } catch (err) {
-        error.textContent = err.message || "Não foi possível entrar.";
-      }
-    });
+      showNotice();
+      processGoogleReturn();
+    })();
   </script>
+  <script defer src="/site_footer.js?v=20260819-3"></script>
 </body>
 </html>
