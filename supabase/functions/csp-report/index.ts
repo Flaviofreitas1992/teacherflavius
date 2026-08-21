@@ -6,6 +6,18 @@ const jsonHeaders = {
   "Cache-Control": "no-store",
 };
 
+function getDefaultKey(envName: string, legacyName: string): string {
+  const raw = Deno.env.get(envName);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const key = parsed?.default;
+      if (typeof key === "string" && key) return key;
+    } catch (_) {}
+  }
+  return Deno.env.get(legacyName) ?? "";
+}
+
 function noContent() {
   return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
 }
@@ -75,10 +87,10 @@ Deno.serve(async (req: Request) => {
   if (Number.isFinite(contentLength) && contentLength > 32768) return noContent();
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!supabaseUrl || !serviceRoleKey) return noContent();
+  const secretKey = getDefaultKey("SUPABASE_SECRET_KEYS", "SUPABASE_SERVICE_ROLE_KEY");
+  if (!supabaseUrl || !secretKey) return noContent();
 
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
+  const admin = createClient(supabaseUrl, secretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
