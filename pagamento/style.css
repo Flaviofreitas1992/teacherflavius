@@ -1,0 +1,268 @@
+:root {
+  color-scheme: dark;
+  --bg: #050914;
+  --panel: rgba(15, 23, 42, 0.9);
+  --panel-soft: rgba(30, 41, 59, 0.72);
+  --border: rgba(148, 163, 184, 0.2);
+  --text: #f8fafc;
+  --muted: #a7b2c5;
+  --primary: #6366f1;
+  --primary-strong: #4338ca;
+  --danger: #ef4444;
+  --warning: #f59e0b;
+  --success: #10b981;
+}
+
+* { box-sizing: border-box; }
+
+html { min-height: 100%; background: var(--bg); }
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--text);
+  background:
+    radial-gradient(circle at 15% 0%, rgba(79, 70, 229, 0.22), transparent 32rem),
+    radial-gradient(circle at 100% 25%, rgba(14, 165, 233, 0.13), transparent 28rem),
+    linear-gradient(180deg, #070b18, var(--bg));
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body.auth-checking .payment-shell { visibility: hidden; }
+
+a { color: inherit; }
+
+.payment-shell {
+  width: min(1160px, calc(100% - 36px));
+  margin: 0 auto;
+  padding: 30px 0 72px;
+}
+
+.payment-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 30px;
+  color: #cbd5e1;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.payment-nav a { text-decoration: none; }
+.payment-nav a:hover { color: #fff; }
+.payment-nav span { color: #86efac; }
+
+.payment-hero {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 32px;
+  margin-bottom: 26px;
+  padding: clamp(26px, 5vw, 48px);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 28px;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.92), rgba(30, 27, 75, 0.82));
+  box-shadow: 0 28px 70px rgba(2, 6, 23, 0.36);
+}
+
+.payment-eyebrow {
+  margin: 0 0 9px;
+  color: #a5b4fc;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.payment-hero h1 {
+  max-width: 760px;
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(34px, 7vw, 64px);
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+}
+
+.payment-hero > div > p:last-child {
+  max-width: 690px;
+  margin: 20px 0 0;
+  color: #cbd5e1;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.payment-security {
+  flex: 0 0 235px;
+  padding: 18px;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  border-radius: 17px;
+  background: rgba(16, 185, 129, 0.09);
+}
+
+.payment-security strong,
+.payment-security span { display: block; }
+.payment-security strong { color: #a7f3d0; font-size: 14px; }
+.payment-security span { margin-top: 6px; color: #cbd5e1; font-size: 12px; line-height: 1.4; }
+
+.payment-message {
+  margin: 0 0 22px;
+  padding: 13px 16px;
+  border: 1px solid rgba(129, 140, 248, 0.32);
+  border-radius: 14px;
+  color: #c7d2fe;
+  background: rgba(99, 102, 241, 0.09);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.payment-message[hidden] { display: none; }
+.payment-message.error { border-color: rgba(248, 113, 113, 0.42); color: #fecaca; background: rgba(239, 68, 68, 0.1); }
+.payment-message.success { border-color: rgba(52, 211, 153, 0.4); color: #a7f3d0; background: rgba(16, 185, 129, 0.1); }
+.payment-message.warning { border-color: rgba(251, 191, 36, 0.42); color: #fde68a; background: rgba(245, 158, 11, 0.1); }
+
+.payment-workspace {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.28fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.tuition-panel,
+.checkout-panel,
+.payment-success,
+.payment-help {
+  border: 1px solid var(--border);
+  border-radius: 23px;
+  background: var(--panel);
+  box-shadow: 0 22px 58px rgba(2, 6, 23, 0.3);
+}
+
+.tuition-panel,
+.checkout-panel { padding: 24px; }
+.checkout-panel { min-height: 520px; }
+
+.panel-heading { margin-bottom: 20px; }
+.panel-heading h2 { margin: 0; font-size: clamp(22px, 4vw, 29px); }
+.panel-heading > p:last-child { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+
+.tuition-list { display: grid; gap: 11px; }
+
+.tuition-card {
+  width: 100%;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--text);
+  background: var(--panel-soft);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.tuition-card:hover { transform: translateY(-2px); border-color: rgba(129, 140, 248, 0.55); }
+.tuition-card.selected { border-color: #818cf8; background: rgba(79, 70, 229, 0.18); box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.13); }
+.tuition-card:focus-visible { outline: 3px solid #fde047; outline-offset: 3px; }
+
+.tuition-card__top,
+.tuition-card__bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tuition-card__top strong { text-transform: capitalize; }
+.tuition-card__amount { color: #fff; font-size: 19px; font-weight: 900; }
+.tuition-card__bottom { margin-top: 12px; color: var(--muted); font-size: 12px; }
+.tuition-card__status { padding: 4px 8px; border-radius: 999px; color: #fde68a; background: rgba(245, 158, 11, 0.13); font-weight: 800; }
+.tuition-card__status.overdue { color: #fecaca; background: rgba(239, 68, 68, 0.14); }
+
+.brick-loading {
+  padding: 18px;
+  border: 1px dashed rgba(129, 140, 248, 0.38);
+  border-radius: 15px;
+  color: #c7d2fe;
+  background: rgba(99, 102, 241, 0.08);
+  text-align: center;
+}
+
+#paymentBrickContainer,
+#statusScreenBrickContainer { min-height: 1px; }
+
+.secondary-button {
+  width: 100%;
+  min-height: 46px;
+  margin-top: 16px;
+  padding: 11px 16px;
+  border: 1px solid rgba(129, 140, 248, 0.45);
+  border-radius: 999px;
+  color: #c7d2fe;
+  background: rgba(99, 102, 241, 0.1);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.payment-success {
+  padding: clamp(30px, 6vw, 58px);
+  text-align: center;
+}
+
+.success-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(135deg, #34d399, #059669);
+  box-shadow: 0 16px 40px rgba(16, 185, 129, 0.25);
+  font-size: 32px;
+  font-weight: 900;
+}
+
+.payment-success h2 { margin: 18px 0 9px; font-size: 30px; }
+.payment-success p { margin: 0; color: var(--muted); line-height: 1.6; }
+.payment-success a,
+.payment-help a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 45px;
+  margin-top: 22px;
+  padding: 11px 18px;
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.payment-help {
+  margin-top: 22px;
+  padding: 22px 24px;
+}
+
+.payment-help h2 { margin: 0 0 7px; font-size: 18px; }
+.payment-help p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.6; }
+.payment-help a { margin-top: 14px; color: #d1fae5; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(52, 211, 153, 0.32); }
+
+@media (max-width: 820px) {
+  .payment-hero { align-items: stretch; flex-direction: column; }
+  .payment-security { flex-basis: auto; }
+  .payment-workspace { grid-template-columns: 1fr; }
+  .checkout-panel { min-height: 420px; }
+}
+
+@media (max-width: 560px) {
+  .payment-shell { width: min(100% - 24px, 1160px); padding-top: 18px; }
+  .payment-nav { align-items: flex-start; flex-direction: column; gap: 8px; }
+  .payment-hero { border-radius: 21px; }
+  .tuition-panel, .checkout-panel { padding: 19px; border-radius: 19px; }
+  .tuition-card__top { align-items: flex-start; flex-direction: column; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tuition-card { transition: none; }
+}
