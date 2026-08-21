@@ -4,6 +4,18 @@ import { createClient } from "npm:@supabase/supabase-js@2.112.3";
 const allowedOrigin = "https://teacherflavius.com";
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function getDefaultKey(envName: string, legacyName: string): string {
+  const raw = Deno.env.get(envName);
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const key = parsed?.default;
+      if (typeof key === "string" && key) return key;
+    } catch (_) {}
+  }
+  return Deno.env.get(legacyName) || "";
+}
+
 function headers(origin: string | null) {
   const result: Record<string, string> = {
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -32,10 +44,10 @@ Deno.serve(async (req: Request) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const secretKey = getDefaultKey("SUPABASE_SECRET_KEYS", "SUPABASE_SERVICE_ROLE_KEY");
   const resendApiKey = Deno.env.get("RESEND_API_KEY") || "";
   const fromEmail = Deno.env.get("RESEND_FROM_EMAIL") || "you@example.com";
-  if (!supabaseUrl || !serviceRoleKey || !resendApiKey) {
+  if (!supabaseUrl || !secretKey || !resendApiKey) {
     return json({ error: "Configuração interna indisponível." }, 503, origin);
   }
 
@@ -43,7 +55,7 @@ Deno.serve(async (req: Request) => {
   const token = authorization.replace(/^Bearer\s+/i, "").trim();
   if (!token) return json({ error: "Sessão ausente." }, 401, origin);
 
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
+  const admin = createClient(supabaseUrl, secretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const { data: userData, error: userError } = await admin.auth.getUser(token);
