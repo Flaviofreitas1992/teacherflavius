@@ -40,6 +40,7 @@ grant execute on function public.generate_monthly_tuition(date) to authenticated
 grant execute on function public.get_available_makeup_slots() to authenticated;
 grant execute on function public.get_my_lesson_records() to authenticated;
 grant execute on function public.get_my_makeup_bookings() to authenticated;
+grant execute on function public.get_my_pending_tuitions() to authenticated;
 grant execute on function public.get_my_private_student_data() to authenticated;
 grant execute on function public.get_my_student_class() to authenticated;
 grant execute on function public.get_public_teacher_exercises() to authenticated;
@@ -103,6 +104,7 @@ declare
     'public.get_available_makeup_slots()',
     'public.get_my_lesson_records()',
     'public.get_my_makeup_bookings()',
+    'public.get_my_pending_tuitions()',
     'public.get_my_private_student_data()',
     'public.get_my_student_class()',
     'public.get_public_teacher_exercises()',
