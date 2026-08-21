@@ -1,8 +1,8 @@
 # Mapa de dados pessoais — Teacher Flávio
 
-Versão: 2026-08-20
+Versão: 2026-08-20 · revisão externa 1
 
-Este documento é um inventário operacional. Ele deve ser atualizado quando houver nova tabela, fornecedor, finalidade, formulário, evento analítico ou integração que trate dados pessoais.
+Este documento é o inventário operacional de dados pessoais do teacherflavius.com. Ele deve ser atualizado quando houver nova tabela, finalidade, formulário, fornecedor, integração, evento analítico ou mudança relevante de retenção.
 
 ## Princípios adotados
 
@@ -10,151 +10,148 @@ Este documento é um inventário operacional. Ele deve ser atualizado quando hou
 - separar dados necessários à prestação do serviço de dados opcionais de Analytics;
 - aplicar RLS, menor privilégio e funções de servidor para operações privilegiadas;
 - não enviar CPF, WhatsApp, e-mail, chave PIX ou conteúdo de formulário para Analytics;
+- não duplicar dados cadastrais em e-mails administrativos quando eles já estiverem disponíveis no portal;
+- manter PII operacional fora do código-fonte e do histórico Git sempre que possível;
 - eliminar ou anonimizar dados quando a finalidade terminar, ressalvadas hipóteses legais de conservação;
-- manter uma forma simples de o titular acessar políticas, rever consentimento e solicitar direitos;
-- separar tecnicamente o encerramento da conta da retenção seletiva de registros financeiros;
-- evitar duplicar dados pessoais para atender solicitações de acesso: a exportação automática é gerada sob demanda e não é armazenada novamente no banco;
-- automatizar apenas expurgos com finalidade operacional clara e prazo definido, mantendo dados financeiros, solicitações LGPD e registros acadêmicos/cadastrais fora de deleções automáticas por idade.
+- automatizar apenas expurgos com finalidade operacional clara e prazo definido;
+- manter dados financeiros, solicitações LGPD e registros acadêmicos/cadastrais fora de deleções automáticas por idade arbitrária;
+- distinguir retenção **local** da retenção **no fornecedor externo**: apagar uma linha no Postgres não significa que um terceiro tenha apagado seus próprios registros.
 
 ## Inventário principal
 
-| Categoria | Exemplos | Local/fornecedor principal | Finalidade | Retenção operacional | Exclusão/observação |
-| --- | --- | --- | --- | --- | --- |
-| Conta e identidade | nome, e-mail, ID, metadados de autenticação | Supabase Auth / `profiles` | login, conta e identificação do aluno | durante a relação e pelo período justificável após o término | no encerramento concluído, Auth e perfil são eliminados |
-| Matrícula | CPF, WhatsApp, código de matrícula | Supabase `profiles` e estruturas de matrícula | matrícula, identificação e contato | durante a relação e pelo período justificável | removidos no fluxo de encerramento; CPF exige cuidado reforçado por impacto em caso de vazamento |
-| Reembolso | chave PIX | Supabase `profiles` / `student_private_data` | eventual devolução de valores | enquanto houver necessidade operacional/financeira | removida quando a conta é encerrada e não há finalidade operacional remanescente |
-| Disponibilidade | dias e horários | Supabase `profiles` | formação/gestão de turmas | enquanto necessária à organização das aulas | removida com o perfil no encerramento |
-| Acadêmicos | turma, frequência, lições, exercícios, progresso, reposições, flashcards | Supabase | prestação do serviço e acompanhamento pedagógico | enquanto necessário ao serviço e histórico justificável | o fluxo de encerramento remove os registros operacionais vinculados ao titular |
-| Financeiros | mensalidades, valores, status, identificadores e eventos de pagamento | Supabase + Mercado Pago | cobrança, conciliação, estorno e comprovação | conforme obrigação legal/regulatória/contábil e exercício de direitos | `monthly_tuition` e `tuition_payment_attempts` usam `subject_ref` pseudônimo; não entram no expurgo automático |
-| Cartão | dados necessários ao checkout | Mercado Pago | processar pagamento | segundo o provedor e obrigações aplicáveis | o banco acadêmico não deve armazenar número completo do cartão ou CVV |
-| Acessos de alunos | user_id, data/hora, caminho, título, timezone | `student_access_logs` | acompanhamento operacional/acadêmico e segurança | máximo de 90 dias | expurgo diário por `pg_cron` e remoção no encerramento da conta |
-| Erros da aplicação | tipo, severidade, mensagem técnica, caminho, fingerprint, metadados reduzidos | `app_error_events` | diagnóstico, segurança e correção de falhas | 90 dias | expurgo diário; falhas da própria manutenção também são registradas aqui |
-| Relatórios CSP | diretiva, recurso bloqueado, origem, linha/coluna, referrer | `csp_violation_reports` | diagnosticar violações da Content Security Policy | 30 dias | expurgo diário por ser dado técnico de curto prazo |
-| Eventos de sincronização | exercício, status, e-mail normalizado, usuário, erro e metadados | `exercise_sync_events` | diagnóstico da integração de exercícios | 90 dias | expurgo diário e remoção no encerramento da conta |
-| E-mail transacional | endereço e conteúdo operacional | Resend + Edge Functions | confirmações necessárias | conforme necessidade transacional e configuração do provedor | notificações internas vinculadas ao aluno são removidas no encerramento; evitar conteúdo excessivo |
-| Analytics | página, origem, eventos, conversão e atributos técnicos | Google Analytics + storage do navegador | mensuração e CRO | somente após consentimento; retenção conforme configuração da propriedade e necessidade | desligar após revogação; limpar estados locais próprios e cookies GA quando possível |
-| Consentimento | versão, categorias, data e expiração | `localStorage` do navegador | provar e respeitar a preferência no dispositivo | 180 dias na versão atual | usuário pode alterar antes do prazo; nova versão relevante invalida preferência anterior |
-| Solicitações de privacidade | tipo, detalhes, status, datas, referência do titular e resposta | `data_subject_requests` | registrar e demonstrar o atendimento ao titular | sem prazo automático nesta fase | nome/e-mail temporários são removidos quando o pedido é concluído; eliminação integral exige revisão de prestação de contas |
-| Snapshots legados | cópias de maio/2026 de Auth, perfis e dados privados | tabelas `backup_*_20260501` | recuperação histórica | revisão manual | novas exclusões de Auth/perfil removem também a linha correspondente dos snapshots; revisão integral prevista para 28/10/2026 |
+| Categoria | Exemplos | Local/fornecedor | Finalidade | Retenção / controle |
+| --- | --- | --- | --- | --- |
+| Conta e identidade | nome, e-mail, ID, metadados de autenticação | Supabase Auth / `profiles` | login e identificação | ciclo da conta; Auth/perfil são eliminados no encerramento concluído |
+| Matrícula | CPF, WhatsApp, código de matrícula | Supabase | matrícula e contato | ciclo da relação; removidos no encerramento quando não houver fundamento de conservação |
+| Reembolso | chave PIX | Supabase | eventual devolução de valores | enquanto houver necessidade operacional/financeira |
+| Disponibilidade | dias e horários | Supabase | organização de turmas | removida com o perfil |
+| Acadêmicos | turma, frequência, exercícios, progresso, reposições, flashcards | Supabase | prestação e acompanhamento do serviço | ciclo da relação/conta, sem expurgo fixo por idade nesta fase |
+| Pronúncia | áudio, texto de referência, notas e resultado | Azure Speech + Supabase | avaliação de pronúncia | Azure processa em tempo real; cópia local segue ciclo acadêmico/conta |
+| Financeiros | mensalidades, valores, status e IDs de pagamento | Supabase + Mercado Pago | cobrança e conciliação | retenção seletiva conforme obrigação legal/regulatória/contábil e exercício de direitos |
+| Cartão | token e dados necessários ao checkout | Mercado Pago | processar pagamento | PAN completo/CVV não são armazenados no banco acadêmico |
+| Acessos | user_id, data/hora, caminho, timezone | `student_access_logs` | operação, segurança e acompanhamento | 90 dias, expurgo diário |
+| Erros | mensagem técnica, caminho, fingerprint e metadados reduzidos | `app_error_events` | diagnóstico | 90 dias, expurgo diário |
+| CSP | diretiva, recurso bloqueado, origem e referrer | `csp_violation_reports` | segurança | 30 dias, expurgo diário |
+| Sincronização | exercício, status, e-mail normalizado e erro | Google Forms + `exercise_sync_events` | importar conclusões e diagnosticar integração | cópia local 90 dias; fonte Google exige revisão própria |
+| E-mail transacional | destinatário e conteúdo necessário | Resend | confirmações e notificações | minimizar conteúdo; retenção do fornecedor exige revisão externa |
+| Analytics | página, origem, eventos e atributos técnicos | Google Analytics | mensuração/CRO | somente após consentimento; retenção configurada no GA deve ser verificada externamente |
+| Consentimento | versão, categorias, datas | `localStorage` | respeitar preferência do dispositivo | 180 dias na versão atual; revogável antes |
+| Solicitações LGPD | tipo, detalhes, status, datas e resposta | `data_subject_requests` | atendimento ao titular | registro mínimo pseudonimizado; sem prazo automático nesta fase |
+| Snapshots legados | cópias de maio/2026 | tabelas `backup_*_20260501` | recuperação histórica | revisão manual prevista; exclusões novas removem também a UUID dos snapshots |
 
-## Política automatizada de retenção
+## Retenção automatizada local
 
-A tabela `data_retention_policies` é a fonte operacional dos prazos. Ela separa conjuntos com **expurgo automático** daqueles que exigem **revisão manual**.
+A tabela `data_retention_policies` é a fonte operacional dos prazos locais. O job `daily-data-retention-maintenance` roda via `pg_cron` todos os dias às **05:35 UTC (02:35 no horário de Brasília)**.
 
-Conjuntos atualmente automatizados:
+| Conjunto | Prazo | Corte |
+| --- | ---: | --- |
+| `student_access_logs` | 90 dias | `accessed_at` |
+| `app_error_events` | 90 dias | `created_at` |
+| `csp_violation_reports` | 30 dias | `created_at` |
+| `exercise_sync_events` | 90 dias | `received_at` |
 
-| Conjunto | Prazo | Coluna de corte | Execução |
-| --- | ---: | --- | --- |
-| `student_access_logs` | 90 dias | `accessed_at` | diária |
-| `app_error_events` | 90 dias | `created_at` | diária |
-| `csp_violation_reports` | 30 dias | `created_at` | diária |
-| `exercise_sync_events` | 90 dias | `received_at` | diária |
+Cada execução registra origem, início, conclusão, status e quantidade removida em `data_retention_runs`. O histórico técnico da própria manutenção é limitado a 365 dias e uma advisory lock impede execuções concorrentes.
 
-O job `daily-data-retention-maintenance` roda via `pg_cron` todos os dias às **05:35 UTC (02:35 no horário de Brasília)**. A função interna `perform_data_retention_maintenance()` não possui `EXECUTE` para `anon` nem `authenticated`. A execução manual disponível na Área do Professor passa por `run_data_retention_maintenance_now()`, que exige `is_teacher_admin()`.
+Ficam deliberadamente fora do expurgo automático: solicitações LGPD, finanças, dados acadêmicos/cadastrais e snapshots legados.
 
-Cada execução grava em `data_retention_runs`:
+## Governança de fornecedores externos
 
-- origem (`cron` ou manual);
-- início e conclusão;
-- status;
-- quantidade removida por conjunto;
-- mensagem de erro, quando houver.
+As tabelas `external_data_processors` e `external_data_processor_reviews` mantêm o registro operacional dos fornecedores que podem tratar dados fora do Postgres. O painel **Área do Professor → Retenção de dados** mostra o estado e permite registrar evidência de revisão.
 
-O histórico técnico de execuções da própria retenção é limitado a 365 dias. Uma trava consultiva impede duas execuções simultâneas.
+Os estados significam:
 
-### Conjuntos deliberadamente fora do expurgo automático
+- **verified**: documentação/configuração foi efetivamente conferida;
+- **pending**: ainda depende de conferência em painel, conta ou documentação do fornecedor;
+- **action_required**: foi encontrada uma correção concreta ainda não encerrada.
 
-- `data_subject_requests`: permanece em registro mínimo pseudonimizado; prazo integral depende de revisão jurídica e de accountability;
-- registros financeiros: conservação depende de obrigação legal/regulatória/contábil e exercício de direitos;
-- dados acadêmicos e cadastrais: seguem o ciclo de prestação do serviço e o fluxo de encerramento da conta;
-- snapshots legados: ficam em revisão manual até confirmação de que não há mais necessidade de recuperação.
+Esse status é um controle operacional; não equivale a uma certificação jurídica de conformidade.
 
-O painel **Área do Professor → Retenção de dados** mostra políticas, contagens, registros atualmente elegíveis, próxima revisão, cron e última execução.
+### Estado em 20/08/2026
 
-## Limpeza de dados em backups legados
+| Fornecedor | Dados/escopo | Retenção do fornecedor | Controle atual | Estado |
+| --- | --- | --- | --- | --- |
+| Google Analytics | navegação, eventos e atributos técnicos | GA4 possui controles de retenção; para propriedade padrão há opções como 2 ou 14 meses | só carrega após consentimento; publicidade negada; alvo operacional é conferir 2 meses e reset por nova atividade desligado | pendente |
+| Supabase | Auth, DB, Storage, Edge Functions e logs | logs de plataforma dependem do plano; DB/Storage dependem do ciclo definido pelo controlador | expurgos próprios no Postgres; reduzir PII em logs das Edge Functions | pendente |
+| Resend | endereço e conteúdo de e-mail | política pública não fornece um prazo único para todo conteúdo enviado | matrícula administrativa não duplica mais dados cadastrais; respostas de erro do provedor não são gravadas no console | pendente |
+| Mercado Pago | dados necessários ao pagamento | conforme necessidade operacional e obrigações aplicáveis | tokenização; sem PAN/CVV local; resposta persistida reduzida a IDs/status/valor/método/datas | verificado tecnicamente |
+| Google Forms / Sheets | e-mail, exercício e data de conclusão | respostas permanecem na conta Google até limpeza/configuração do proprietário | cópia diagnóstica local expira em 90 dias; aliases são consultados no banco, não no código | pendente |
+| Azure Speech | áudio de pronúncia e texto de referência | documentação oficial informa ausência de retenção do conteúdo enviado no Pronunciation Assessment em tempo real | qualquer cópia que permanece depois da resposta é mantida pelo próprio portal no Supabase | verificado tecnicamente |
+| Netlify | requisições e logs técnicos de entrega | depende do serviço/plano do fornecedor | frontend hospedado aqui; Netlify Forms permanece desativado; não usar o hosting como armazenamento cadastral | pendente |
+| GitHub | código e histórico de commits | versões antigas permanecem no histórico Git até tratamento específico | PII foi removido do código corrente; revisar histórico antigo antes de qualquer reescrita destrutiva | ação necessária |
 
-Foram adicionados gatilhos `BEFORE DELETE` em `auth.users` e `profiles`. Quando uma conta/perfil é removido, a mesma UUID é removida, quando presente, de:
+## Minimizações aplicadas nesta revisão
 
-- `backup_profiles_20260501`;
-- `backup_auth_users_metadata_20260501`;
-- `backup_student_private_data_20260501`.
+### Resend
 
-Isso evita que uma solicitação de exclusão concluída deixe uma cópia residual de CPF, e-mail, WhatsApp, PIX ou metadados nos snapshots antigos.
+A notificação administrativa de nova matrícula deixou de incluir nome, e-mail e WhatsApp do aluno. Ela informa apenas que uma matrícula foi concluída e orienta o professor a consultar os dados na área autenticada.
+
+O remetente genérico `resend-email` não registra mais o corpo de erro devolvido pelo provedor; apenas o código HTTP é registrado. O frontend recebe somente `ok` e, quando disponível, o identificador técnico do envio.
+
+E-mails destinados ao próprio aluno, como confirmação de reposição, continuam necessariamente usando seu endereço e podem conter o mínimo de dados necessários à mensagem transacional.
+
+### Mercado Pago → Resend
+
+O alerta administrativo usado quando o Mercado Pago bloqueia a criação de um pagamento não inclui mais e-mail do aluno, UUID da mensalidade ou UUID da tentativa. O alerta contém somente HTTP/código técnico e orienta o professor a consultar o Controle de Mensalidades no portal.
+
+### Google Forms / GitHub
+
+Aliases de e-mail usadas pela sincronização de exercícios deixaram de ser constantes no código. A Edge Function consulta `student_google_email_aliases`, protegida no banco. Isso impede novas versões do código de continuarem copiando esses endereços para o GitHub.
+
+A remoção do código atual **não elimina automaticamente versões antigas do histórico Git**. Por isso, GitHub permanece como `action_required` até decisão controlada sobre histórico, branches, forks/clones e eventual procedimento de remoção de dado sensível.
+
+### Azure Speech
+
+A Edge Function `pronunciation-assess` envia áudio e texto de referência ao Azure Speech para avaliação em tempo real. Segundo a documentação oficial da Microsoft para esse fluxo, o serviço não mantém o conteúdo enviado após a requisição. O portal, porém, salva áudio e resultado no Supabase; essa retenção local é uma decisão do Teacher Flávio e continua sujeita ao ciclo de vida acadêmico/da conta.
 
 ## Central de direitos do titular
 
-A área **Perfil → Privacidade e meus dados** concentra os seguintes recursos:
+Em **Perfil → Privacidade e meus dados**, o titular pode:
 
-1. **Cópia automática dos dados**: a RPC `get_my_data_export()` usa exclusivamente `auth.uid()` e gera um JSON com os principais dados diretamente associados à sessão autenticada. O navegador cria o arquivo localmente; o portal não grava uma segunda cópia do conteúdo exportado.
-2. **Correções simples**: nome, CPF, WhatsApp, chave PIX e disponibilidade continuam editáveis diretamente no perfil.
-3. **Acesso adicional**: o titular pode registrar pedido formal quando a cópia automática não for suficiente ou quando precisar de esclarecimento sobre outros dados.
-4. **Correção formal**: para dados que não podem ser alterados diretamente pelo aluno, o pedido registra o item incorreto e a correção solicitada.
-5. **Anonimização ou bloqueio**: o titular pode indicar quais dados considera inadequados, excessivos ou desnecessários para análise administrativa.
-6. **Informações sobre compartilhamentos**: o titular pode pedir esclarecimentos sobre fornecedores, integrações ou categorias de compartilhamento.
-7. **Encerramento da conta**: permanece separado por ser a única operação destrutiva do fluxo.
+1. baixar uma cópia automática dos principais dados vinculados à sessão autenticada;
+2. corrigir diretamente nome, CPF, WhatsApp, chave PIX e disponibilidade;
+3. solicitar acesso adicional;
+4. solicitar correção formal de dados não editáveis;
+5. solicitar anonimização/bloqueio;
+6. pedir informações sobre compartilhamentos;
+7. solicitar encerramento da conta.
 
-Os pedidos não destrutivos usam `create_data_subject_request`, `mark_data_subject_request_in_review` e `complete_data_subject_request`. A conclusão exige que o professor registre uma resposta ao titular. O aluno pode cancelar pedidos ainda em status `open`.
+A exportação usa exclusivamente `auth.uid()` e não recebe um `user_id` informado pelo navegador. Não inclui segredos operacionais, `idempotency_key`, identificadores administrativos desnecessários nem o payload bruto do Azure.
 
-## Escopo da cópia automática
+## Ciclo de encerramento da conta
 
-A exportação automática inclui, quando existentes: conta e identidades de autenticação, perfil, dados privados, matrícula, vínculo com turma, frequência, resultados e progresso acadêmico, planos semanais, flashcards e histórico de prática, reposições, tentativas de pronúncia em formato reduzido, logs próprios de acesso, tags, eventos de sincronização relevantes, configurações de cobrança, mensalidades, tentativas de pagamento e metadados dos arquivos pertencentes ao usuário no Storage.
+1. O aluno solicita encerramento no perfil.
+2. Enquanto `open`, pode cancelar.
+3. O professor analisa na fila administrativa.
+4. A rotina identifica também contas Google/legadas vinculadas.
+5. Dados operacionais, acadêmicos, privados, aliases e logs vinculados são eliminados quando não houver necessidade de conservação.
+6. `auth.users` e `profiles` são removidos.
+7. Registros financeiros necessários ficam desligados do perfil (`student_id = NULL`) e conservam apenas `subject_ref` pseudônimo.
+8. Notas livres de pagamento são removidas.
+9. Nome/e-mail temporários são apagados do registro da solicitação concluída.
+10. A UUID também é removida dos snapshots legados de maio/2026.
+11. Objetos ainda pertencentes ao usuário no Storage bloqueiam a conclusão até remoção/transferência.
 
-Por segurança e minimização, o arquivo automático não inclui segredos operacionais, `idempotency_key`, identificadores administrativos de quem realizou alterações, nem o payload bruto e potencialmente volumoso do provedor de pronúncia. O titular pode pedir acesso adicional formalmente quando necessário.
+## Terceiros, transferências e revisão
 
-## Ciclo operacional de encerramento da conta
+Fornecedores/runtime atualmente mapeados: Supabase, Mercado Pago, Resend, Google Analytics, Google Forms/Sheets, Microsoft Azure Speech e Netlify. GitHub é tratado separadamente como repositório de código e deve permanecer livre de PII operacional. WhatsApp/Meta participa quando o próprio usuário decide iniciar contato pelo canal disponibilizado.
 
-O fluxo implementado usa `data_subject_requests` e RPCs com controle de acesso.
+Antes de adicionar novo terceiro, revisar:
 
-1. O aluno solicita o encerramento em **Perfil → Privacidade e meus dados**.
-2. Enquanto o pedido estiver `open`, o próprio titular pode cancelá-lo.
-3. O professor visualiza a fila em **Área do Professor → Solicitações de Privacidade** e pode marcar o pedido como `in_review`.
-4. Na conclusão, a rotina identifica também contas Google/legadas vinculadas ao mesmo aluno.
-5. Dados acadêmicos, de acesso, matrícula, disponibilidade, flashcards, cobrança futura, dados privados e aliases de e-mail são eliminados.
-6. `auth.users` e `profiles` são excluídos. O `ON DELETE SET NULL` nos registros financeiros impede que o histórico necessário seja apagado em cascata.
-7. Quando existe histórico financeiro, `subject_ref` conserva apenas o UUID pseudônimo que existia antes do encerramento; o relacionamento direto `student_id` é removido.
-8. `payment_notes` e o campo equivalente em eventos são eliminados para reduzir conteúdo livre desnecessário.
-9. A solicitação é marcada como `completed`; nome e e-mail são removidos do registro da solicitação e fica somente o mínimo necessário para auditoria.
-10. A exclusão da conta/perfil também remove eventual cópia correspondente nos três snapshots legados de maio/2026.
-11. Se o aluno possuir objetos próprios no Supabase Storage, o encerramento é bloqueado até que os arquivos sejam removidos ou tenham a propriedade transferida.
+1. finalidade e categorias de dados;
+2. necessidade e minimização;
+3. termos/DPA e localização do tratamento;
+4. retenção e mecanismos de exclusão/exportação;
+5. segurança e resposta a incidentes;
+6. como exercer direitos do titular em dados que já saíram do banco local.
 
-## Terceiros e transferências
+## Revisões periódicas prioritárias
 
-Fornecedores atualmente identificados no projeto: Supabase, Mercado Pago, Resend, Google, GitHub Pages e WhatsApp/Meta. Antes de adicionar novos terceiros, revisar:
-
-1. finalidade e dados compartilhados;
-2. necessidade do compartilhamento;
-3. termos/DPA do fornecedor;
-4. localização do tratamento e eventual transferência internacional;
-5. prazo de retenção;
-6. mecanismo de exclusão/exportação;
-7. segurança e resposta a incidentes.
-
-## Direitos dos titulares
-
-Canais operacionais atuais:
-
-- **Perfil → Privacidade e meus dados**, para cópia automática, acesso adicional, correção, anonimização/bloqueio, informações sobre compartilhamentos e pedido de encerramento da conta;
-- WhatsApp indicado na Política de Privacidade, para suporte complementar e situações em que o portal não seja suficiente.
-
-Fluxo operacional para cada solicitação:
-
-1. registrar data, titular, tipo e descrição necessária da solicitação sem coletar documentação excessiva;
-2. verificar identidade de forma proporcional ao risco — para pedidos feitos dentro do portal, a sessão autenticada funciona como primeira camada de verificação;
-3. localizar dados em Auth, banco, pagamentos e fornecedores aplicáveis;
-4. avaliar obrigação de conservação antes de anonimização, bloqueio ou exclusão;
-5. executar correção, exportação, bloqueio, anonimização ou exclusão conforme o caso;
-6. registrar a resposta administrativa no pedido e disponibilizá-la ao titular pelo portal;
-7. guardar somente o registro mínimo necessário para demonstrar o atendimento.
-
-## Pontos que exigem revisão periódica
-
-- conferir se a retenção da propriedade do Google Analytics está configurada de acordo com a política publicada;
-- revisar periodicamente os registros financeiros pseudonimizados e eliminá-los quando terminar o fundamento de conservação;
-- revisar os snapshots legados em 28/10/2026 e eliminar integralmente o que não tiver necessidade de recuperação remanescente;
-- revisar logs das Edge Functions e provedores para evitar retenção desnecessária de payloads;
-- testar semestralmente a recusa e a revogação de Analytics;
-- revisar semestralmente os prazos de `data_retention_policies` e o estado do job `daily-data-retention-maintenance`;
-- testar periodicamente os dois cenários de encerramento: sem histórico financeiro e com retenção financeira;
-- testar periodicamente a exportação com usuários que possuam diferentes conjuntos de dados, garantindo que o resultado permaneça limitado a `auth.uid()`;
-- revisar a política sempre que houver novo fornecedor, nova finalidade ou nova categoria de dado;
-- manter as migrations como fonte de verdade da rotina de encerramento e não restaurar versões antigas de `delete_teacher_student`.
+- confirmar no Google Analytics o prazo efetivo de retenção e a opção de reset por nova atividade;
+- confirmar o plano Supabase e os prazos reais de API/DB/Auth/Edge logs;
+- revisar no Resend histórico, exportação e mecanismos disponíveis de exclusão/limpeza;
+- definir rotina de limpeza de respostas/planilhas do Google Forms depois que não forem mais necessárias;
+- revisar controles de logs/analytics do Netlify;
+- decidir, em procedimento separado, como tratar PII presente no histórico antigo do GitHub sem reescrever o repositório de forma precipitada;
+- revisar snapshots legados em 28/10/2026;
+- revisar semestralmente `data_retention_policies`, fornecedores externos e estado do cron;
+- manter migrations como fonte de verdade das rotinas de privacidade e retenção.
