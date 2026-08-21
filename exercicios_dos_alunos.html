@@ -17,6 +17,18 @@
       line-height: 1.65;
       text-align: center;
     }
+    .automation-note {
+      max-width: 860px;
+      margin: -8px auto 24px;
+      padding: 11px 14px;
+      border: 1px solid rgba(129,140,248,.28);
+      border-radius: 11px;
+      background: rgba(129,140,248,.08);
+      color: #c7d2fe;
+      font-size: 13px;
+      line-height: 1.55;
+      text-align: center;
+    }
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -53,10 +65,7 @@
       flex-wrap: wrap;
       margin-bottom: 18px;
     }
-    .filter-row label {
-      color: #cbd5e1;
-      font-size: 14px;
-    }
+    .filter-row label { color: #cbd5e1; font-size: 14px; }
     .filter-row select {
       margin-left: 8px;
       background: #111827;
@@ -66,31 +75,16 @@
       padding: 9px 11px;
       font: inherit;
     }
-    #visibleStudentsCount {
-      color: #94a3b8;
-      font-size: 13px;
-    }
+    #visibleStudentsCount { color: #94a3b8; font-size: 13px; }
     .student-status-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
       gap: 16px;
     }
-    .exercise-status-card {
-      margin: 0;
-      border-left: 4px solid rgba(129,140,248,0.65);
-    }
-    .exercise-status-card.status-late {
-      border-left-color: #f87171;
-      background: rgba(248,113,113,0.055);
-    }
-    .exercise-status-card.status-done {
-      border-left-color: #34d399;
-      background: rgba(52,211,153,0.05);
-    }
-    .exercise-status-card.status-pending {
-      border-left-color: #fbbf24;
-      background: rgba(251,191,36,0.045);
-    }
+    .exercise-status-card { margin: 0; border-left: 4px solid rgba(129,140,248,0.65); }
+    .exercise-status-card.status-late { border-left-color: #f87171; background: rgba(248,113,113,0.055); }
+    .exercise-status-card.status-done { border-left-color: #34d399; background: rgba(52,211,153,0.05); }
+    .exercise-status-card.status-pending { border-left-color: #fbbf24; background: rgba(251,191,36,0.045); }
     .student-heading {
       display: flex;
       align-items: flex-start;
@@ -98,60 +92,24 @@
       gap: 12px;
       margin-bottom: 14px;
     }
-    .student-heading strong {
-      display: block;
-      color: #f8fafc;
-      font-size: 18px;
-      line-height: 1.3;
-    }
-    .student-email {
-      color: #94a3b8;
-      font-size: 12px;
-      margin-top: 4px;
-      overflow-wrap: anywhere;
-    }
-    .exercise-status-pill {
-      flex-shrink: 0;
-      border-radius: 999px;
-      padding: 6px 9px;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-    }
+    .student-heading strong { display: block; color: #f8fafc; font-size: 18px; line-height: 1.3; }
+    .student-email { color: #94a3b8; font-size: 12px; margin-top: 4px; overflow-wrap: anywhere; }
+    .exercise-status-pill { flex-shrink: 0; border-radius: 999px; padding: 6px 9px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
     .exercise-status-pill.late { color: #fecaca; background: rgba(248,113,113,0.17); }
     .exercise-status-pill.done { color: #a7f3d0; background: rgba(52,211,153,0.16); }
     .exercise-status-pill.pending { color: #fde68a; background: rgba(251,191,36,0.15); }
-    .exercise-metrics {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 9px;
-      margin-bottom: 14px;
-    }
-    .exercise-metric {
-      background: rgba(15,23,42,0.48);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 10px;
-      padding: 10px;
-    }
-    .exercise-metric span {
-      display: block;
-      color: #94a3b8;
-      font-size: 11px;
-      line-height: 1.3;
-      margin-bottom: 4px;
-    }
+    .exercise-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-bottom: 14px; }
+    .exercise-metric { background: rgba(15,23,42,0.48); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; padding: 10px; }
+    .exercise-metric span { display: block; color: #94a3b8; font-size: 11px; line-height: 1.3; margin-bottom: 4px; }
     .exercise-metric b { color: #f8fafc; font-size: 20px; }
     .exercise-metric.danger b { color: #fca5a5; }
-    .student-details {
-      padding-top: 12px;
-      border-top: 1px solid rgba(255,255,255,0.08);
-    }
-    .student-details p {
-      color: #cbd5e1;
-      font-size: 13px;
-      line-height: 1.5;
-      margin: 5px 0;
-    }
+    .student-details { padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .student-details p { color: #cbd5e1; font-size: 13px; line-height: 1.5; margin: 5px 0; }
+
+    /* Acompanhamento somente leitura: nenhuma conclusão pode ser marcada manualmente. */
+    .student-actions,
+    .exercise-editor { display: none !important; }
+
     @media (max-width: 520px) {
       .student-status-grid { grid-template-columns: 1fr; }
       .student-heading { flex-direction: column; }
@@ -179,6 +137,9 @@
       A semana atual só é considerada atrasada depois que o prazo termina. Mais de um exercício feito no mesmo
       ciclo conta como uma única semana cumprida.
     </p>
+    <p class="automation-note">
+      O acompanhamento agora é somente leitura. Novas conclusões são registradas exclusivamente pelo sistema de monitoramento quando a realização da atividade é detectada.
+    </p>
 
     <section class="summary-grid" aria-label="Resumo do acompanhamento semanal">
       <div class="summary-card"><span>Alunos matriculados</span><strong id="totalStudentsCount">—</strong></div>
@@ -203,7 +164,8 @@
       <div id="exerciseCompletionList" class="empty">Carregando acompanhamento...</div>
     </div>
   </div>
-  <script src="exercicios_dos_alunos.js?v=20260806-1"></script>
+  <script src="exercicios_dos_alunos.js?v=20260819-1"></script>
   <script src="animated_cards.js?v=20260806-1"></script>
+  <script defer src="/site_footer.js?v=20260814-1"></script>
 </body>
 </html>

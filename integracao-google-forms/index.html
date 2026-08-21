@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integração Google Forms - Teacher Flávio</title>
+  <meta name="robots" content="noindex,nofollow">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase_config.js?v=20260715-1"></script>
+  <script src="/auth.js?v=20260730-1"></script>
+  <link rel="stylesheet" href="/professor.css?v=20260715-1">
+  <link rel="stylesheet" href="./style.css?v=20260813-1">
+</head>
+<body class="auth-checking">
+  <main class="integration-shell">
+    <div class="top-links">
+      <a class="top-link" href="/professor.html">← ÁREA DO PROFESSOR</a>
+      <a class="top-link" href="/">HOME</a>
+    </div>
+
+    <header class="integration-header">
+      <span class="badge">TEACHER FLÁVIO</span>
+      <h1>Integração Google Forms</h1>
+      <p class="lede">Conecte a planilha de respostas de cada exercício. Depois da ativação, novas respostas serão registradas automaticamente no acompanhamento dos alunos.</p>
+      <div id="adminStatus" class="status">Verificando credenciais de professor...</div>
+    </header>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">NOVA INTEGRAÇÃO</p>
+          <h2>Conectar uma planilha</h2>
+        </div>
+        <span class="step-badge">1 vez por exercício</span>
+      </div>
+
+      <form id="integrationForm" class="integration-form">
+        <label>
+          <span>Exercício</span>
+          <select id="exerciseSelect" required>
+            <option value="">Carregando exercícios...</option>
+          </select>
+        </label>
+
+        <label>
+          <span>Planilha de respostas do Google Forms</span>
+          <input id="spreadsheetUrl" type="url" inputmode="url" placeholder="https://docs.google.com/spreadsheets/d/..." required>
+          <small>Cole a URL completa da planilha de respostas vinculada ao formulário.</small>
+        </label>
+
+        <label class="check-row">
+          <input id="importExisting" type="checkbox" checked>
+          <span>
+            <strong>Importar respostas já existentes</strong>
+            <small>As respostas antigas serão processadas quando a integração for ativada.</small>
+          </span>
+        </label>
+
+        <div id="formMessage" class="form-message" aria-live="polite"></div>
+        <button id="connectButton" class="primary-button" type="submit">CONECTAR PLANILHA</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">INTEGRAÇÕES</p>
+          <h2>Planilhas cadastradas</h2>
+        </div>
+        <button id="refreshButton" class="secondary-button" type="button">ATUALIZAR</button>
+      </div>
+
+      <div id="integrationList" class="integration-list">
+        <div class="empty-state">Carregando integrações...</div>
+      </div>
+    </section>
+
+    <section class="panel info-panel">
+      <p class="eyebrow">COMO FUNCIONA</p>
+      <p>Após clicar em <strong>Conectar planilha</strong>, a integração fica como <strong>Pendente</strong>. O gerenciador do Google Apps Script verifica novas solicitações periodicamente, instala o gatilho da planilha e altera o status para <strong>Ativa</strong>. A partir daí, os novos envios do formulário são registrados automaticamente.</p>
+    </section>
+  </main>
+
+  <script src="./app.js?v=20260813-1"></script>
+  <script defer src="/site_footer.js?v=20260814-1"></script>
+</body>
+</html>
